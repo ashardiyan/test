@@ -853,7 +853,9 @@
       li.className = 'prod-card';
       li.setAttribute('tabindex','0');
       setTimeout(()=>li.classList.add('show'), 121+idx*64);
-      let imgHTML = product.photo ? `<img src="${escapeHTML(product.photo)}" class="prod-photo-thumb" alt="Product Photo">` : `<span>🖼︎</span>`;
+      let imgHTML = product.photo
+  ? `<img src="${escapeHTML(product.photo)}" class="prod-photo-thumb" alt="Product Photo">`
+  : `<img src="https://github.com/ashardiyan/test/blob/main/icons/image-placeholder.svg" class="prod-photo-thumb" alt="Image Placeholder">`;
       const nameSafe = escapeHTML(product.name || "Unnamed");
       const cat = product.category ? `<span class="prod-cat">${escapeHTML(String(product.category)).slice(0,18)}</span>` : '';
       const qtyNum = Number(product.qty) || 0;
