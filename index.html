@@ -13,7 +13,6 @@
   <link rel="apple-touch-icon" type="image/png" sizes="192x192" href="https://github.com/ashardiyan/test/blob/main/Al%20Rahman%20Electronics-02.png?raw=true">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
-
   <style>
     :root {
       --bg1: #0C1220;
@@ -27,17 +26,14 @@
       --text: #F3F7FF;
       --text-muted: #B0B9C6;
       --radius: 16px;
-      --radius-card: 22px;
+      --radius-card: 13px;
       --shadow: 0 8px 32px 0 rgba(60,120,220,0.17);
-      --shadow-soft: 0 2px 8px rgba(40,98,180,.10);
-      --shadow-strong: 0 10px 26px 0 rgba(4,19,60,0.04);
+      --shadow-soft: 0 2px 8px rgba(40,98,180,.11);
       --danger: #ef4444;
       --success: #10b981;
       --rounded-btn: 10px;
       --button-skyblue: #06B6D4;
       --button-gradient: linear-gradient(90deg, #06B6D4 40%, #2563EB 100%);
-      --card-glass: rgba(30, 39, 56, 0.70);
-      --card-border: #11d3ff22;
     }
     html, body {
       padding: 0;
@@ -49,250 +45,164 @@
       min-height: 100vh;
     }
     body { display:flex; flex-direction:column; min-height:100vh; }
-    .container { max-width:670px; margin:0 auto; padding:34px 12px 54px; width:100%; box-sizing:border-box; }
+    .container { max-width:640px; margin:0 auto; padding:34px 12px 54px; width:100%; box-sizing:border-box; }
     header { display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:20px; gap:10px; }
     .logo-wrap { display:flex; align-items:center; gap:14px; }
     .app-logo { width:50px; height:50px; border-radius:18px; background:linear-gradient(135deg,var(--accent),var(--accent2)75%); display:flex; align-items:center; justify-content:center; font-size:2.11rem; box-shadow:var(--shadow-soft); color:#fff; font-weight:700; overflow: hidden; }
     .app-title { font-weight:900; font-size:1.7rem; line-height:1.13; letter-spacing:-1px; color:var(--text); margin-left:2px; }
     .top-controls { display:flex; align-items:center; gap:10px; }
+    button.icon-btn { background:none; border:none; color:var(--accent2); font-size:1.23rem; padding:8px 10px; border-radius:9px; cursor:pointer; outline:none; }
+    button#settingsBtn { font-size:1.33rem; color:var(--text); background:#1b2430; padding:8px 11px; border-radius:9px; box-shadow:0 1px 6px #0008; }
+    #installPromptBtn, #installAsAppBtn { display:none; margin-left:12px; font-size:.99em; padding:8px 14px; border-radius:8px; background:linear-gradient(91deg,var(--accent2),var(--accent)); color:#fff; font-weight:700; border:none; cursor:pointer; box-shadow:0 1px 11px #2e5fad23; }
+    #mobileInstallInstructions { display:none; margin-left:10px; padding:8px 10px; border-radius:8px; background:#1a2233; color:var(--accent2); font-size:.93em; font-style:italic; box-shadow:0 2px 8px #222c3d22; max-width:310px; line-height:1.45; }
 
-    /* Custom modern product card design */
-    .product-list {
-      margin:0; padding:0; list-style:none;
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
-      gap: 24px 19px;
+    .main-content { display:flex; flex-direction:column; gap:0; align-items:stretch; width:100%; }
+    .card { background:var(--bg2); border-radius:var(--radius-card); box-shadow:var(--shadow); margin-bottom:32px; padding:1.6rem 1.6rem 1.3rem; animation:fadeUp .7s cubic-bezier(.43,.8,.52,1.18); opacity:0; transform:translateY(36px); animation-fill-mode:forwards; border:none; transition:box-shadow .15s, background .16s; }
+    .card.show { opacity:1; transform:none; }
+    @keyframes fadeUp { 0%{opacity:0;transform:translateY(45px);}65%{opacity:.6;}100%{opacity:1;transform:translateY(0);} }
+    .products-top-actions { display:flex; align-items:flex-end; gap:11px; margin-bottom:17px; flex-wrap:wrap; }
+    .product-search-wrap { position:relative; flex:1 1 192px; max-width:370px; margin-bottom:0; }
+    #productSearch { width:100%; border-radius:8px; border:none; background:var(--bg3); color:var(--text); font-size:1.06em; padding:9px 38px 9px 15px; outline:none; box-shadow:0 1.5px 6px #35455a23; transition:border .13s; border:1.5px solid #23314a; }
+    #productSearch:focus { border-color:var(--accent); }
+    .search-icon { position:absolute; right:13px; top:50%; transform:translateY(-50%); color:var(--accent2); font-size:1.15em; opacity:0.7; pointer-events:none; }
+
+    /* Multi-select controls */
+    #multiSelectControls {
+      display: none;
+      gap: 10px;
+      margin-top: 6px;
+      margin-left: 2px;
+      align-items: center;
     }
-    .prod-card {
-      background: var(--card-glass);
-      border-radius: 22px;
-      box-shadow: var(--shadow), var(--shadow-strong);
-      border: 2px solid var(--card-border);
-      padding: 0;
-      margin: 0;
-      position: relative;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      align-items: stretch;
-      min-height: 176px;
-      transition: box-shadow .19s, border-color .17s, background .19s, scale .13s;
-      opacity:0; 
-      transform: translateY(25px) scale(.97); 
-      animation: fadeUp .48s cubic-bezier(.49,.85,.55,1.18); 
-      animation-fill-mode:forwards;
+    #multiSelectControls.active { display: flex; }
+    #deleteSelectedBtn {
+      background: var(--danger);
+      color: #fff;
+      border: none;
+      border-radius: var(--rounded-btn);
+      padding: 10px 18px;
+      font-size: 0.97em;
+      font-weight: 700;
       cursor: pointer;
-      will-change: box-shadow, transform, background;
+      box-shadow: 0 1px 7px #ef444433;
+      transition: background .14s, box-shadow .13s;
+      margin-left: 6px;
     }
-    .prod-card.show {
-      opacity: 1;
-      transform: none;
+    #deleteSelectedBtn:disabled { background: #ce5353a0; cursor: not-allowed; }
+    #selectAllCheckbox { accent-color: var(--accent2); margin-left:4px; margin-right:0; transform: scale(1.1); }
+
+    .product-list { margin:0; padding:0; list-style:none; }
+
+    /* Stylish Skyblue Buttons (for add/export/import/cancel and file uploads) */
+    .rounded-sky-btn {
+      background: var(--button-gradient);
+      color: #fff;
+      border: none;
+      border-radius: var(--rounded-btn);
+      padding: 10px 20px;
+      font-size: 1em;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 1.5px 10px #2eb9f733;
+      transition: background .15s, box-shadow .14s, transform .10s;
+      outline: none;
+      margin: 2px 0;
+      letter-spacing: 0.02em;
+      position: relative;
+      /* for file input overlays */
+      overflow: hidden;
     }
-    .prod-card:hover {
-      box-shadow: 0 8px 34px #16cefe1b, 0 0 0 2.2px var(--accent2-hover);
-      border-color: var(--accent2-hover);
-      background: linear-gradient(120deg, #162340b0 55%, #1e395f66 180%);
-      scale:1.013;
+    .rounded-sky-btn:hover,
+    .rounded-sky-btn:active {
+      background: linear-gradient(90deg, #0e9fec, #2563EB 95%);
+      box-shadow: 0 3px 16px #43c7fc43;
+      transform: translateY(-1.5px) scale(1.03);
     }
-    .prod-card.selected {
-      border-color: var(--danger);
-      box-shadow: 0 8px 32px #ef444438, 0 0 0 3px var(--danger);
-      background: linear-gradient(110deg, #241a33 60%, #362232 100%);
+    .rounded-sky-btn.cancel {
+      background: #18313c;
+      color: var(--button-skyblue);
+      border: 1.5px solid var(--button-skyblue);
+      font-weight: 600;
+    }
+    .rounded-sky-btn.cancel:hover, .rounded-sky-btn.cancel:active {
+      background: #22384a;
+      color: #fff;
+      border-color: #1095b7;
     }
 
-    .prod-card-top {
-      display: flex; align-items: flex-start; gap: 18px; padding: 20px 19px 8px 19px;
+    /* NEW: For the styled file button in modal */
+    .modal-file-upload-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 13px;
+      margin-top: 2px;
     }
+    .modal-file-label {
+      font-weight: 600;
+      font-size: .96em;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+      display: block;
+    }
+    .modal-file-upload-btn {
+      display: inline-block;
+      position: relative;
+    }
+    /* Hide the original input */
+    .modal-file-upload-btn input[type="file"] {
+      position: absolute;
+      left: 0; right: 0; top: 0; bottom: 0;
+      opacity: 0;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+    }
+
+    .prod-card { background:var(--bg3); border-radius:13px; margin-bottom:16px; box-shadow:0 2px 10px #2c345128; display:flex; gap:19px; align-items:center; padding:18px 20px; position:relative; animation:fadeUp .35s; opacity:0; transform:translateY(25px); animation-fill-mode:forwards; cursor:pointer; border:2px solid transparent; transition:box-shadow .14s, border-color .16s; }
+    .prod-card.show { opacity:1; transform:none; }
+    .prod-card:hover { border-color:var(--accent2); box-shadow:0 6px 24px #18346023; }
+    .prod-img { min-width:43px; width:43px; height:43px; border-radius:10px; background:#21293f; flex-shrink:0; display:flex; align-items:center; justify-content:center; color:var(--accent2); font-size:1.45em; overflow:hidden; }
+    .prod-photo-thumb { max-width:100%; max-height:43px; border-radius:8px; object-fit:cover; background:#232b36; display:block; }
+    .prod-name { font-weight:700; font-size:1.15em; color:var(--text); letter-spacing:-0.5px; margin-bottom:1.5px; }
+    .prod-details { color:var(--gray); font-size:.97em; margin-top:2px; margin-bottom:2px; }
+    .prod-actions { margin-left:auto; display:flex; gap:7px; align-items:center; }
+    .prod-actions button { background:none; border:none; color:var(--accent2); font-size:1.32em; cursor:pointer; transition:color .13s; border-radius:5px; padding:3px 5px; outline:none; }
     .prod-select-checkbox {
-      margin-right: 4px;
-      transform: scale(1.19);
+      margin-right: 18px;
+      transform: scale(1.25);
       accent-color: var(--accent2);
       cursor:pointer;
-      margin-top: 2px;
-      margin-left: 0;
-      flex-shrink: 0;
     }
-    .prod-img {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-width:54px;
-      width:54px;
-      height:54px;
-      border-radius:15px;
-      background:linear-gradient(120deg,#0ca1ec 0%, #233d54 60%, #1dade4 100%);
-      box-shadow: 0 2.5px 13px #24c5ff35;
-      color: #fff;
-      font-size:2.16em;
-      font-weight: 900;
-      overflow: hidden;
-      flex-shrink: 0;
-      border:2.7px solid #233d54;
-    }
-    .prod-photo-thumb { max-width:100%; max-height:54px; border-radius:13px; object-fit:cover; display:block; background:#232b36;}
-    .prod-main-details { 
-      flex: 1;
-      min-width: 0;
-      padding-right: 2px;
-    }
-    .prod-name {
-      font-weight: 750;
-      font-size: 1.17em;
-      color: var(--accent2);
-      letter-spacing: -0.5px;
-      margin-bottom:3px;
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      word-break: break-word;
-    }
-    .prod-cat {
-      background: #1e405bf2;
-      color: var(--accent2);
-      font-size: .93em;
-      padding: .17em .74em;
-      border-radius: 12px;
-      font-weight: 600;
-      margin-left: 5px;
-      letter-spacing: 0.05em;
-      user-select: none;
-      box-shadow: 0 1px 5px #234f7622;
-      display: inline-block;
-      max-width: 118px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      vertical-align: middle;
-    }
-    .prod-details {
-      color: var(--gray);
-      font-size: .965em;
-      margin-top:2px;
-      margin-bottom:2px;
-      display:flex;
-      align-items:center;
-      gap:6px;
-      flex-wrap: wrap;
-    }
-    .prod-card-bottom {
-      border-top: 1.5px solid #273b53ad;
-      margin: 0 19px 0 19px;
-      padding: 10px 0 6px 0;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 14px;
-    }
-    .prod-actions {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      margin-left: 0;
-      z-index:2;
-    }
-    .prod-actions button {
-      background: none;
-      border: none;
-      color: var(--accent2);
-      font-size: 1.28em;
-      cursor: pointer;
-      transition: color .11s, background .11s;
-      border-radius: 7px;
-      padding: 3.5px 6px;
-      outline: none;
-    }
-    .prod-actions button:active, .prod-actions button:focus { background: #192b36; }
+    .prod-card.selected { border-color: var(--danger); background: #1b1d2d; box-shadow: 0 4px 16px #ef44441a;}
+    .prod-card .prod-select-checkbox:focus { outline: 2px solid var(--accent2); outline-offset:1px;}
 
-    .prod-stock {
-      font-weight: 700;
-      color: var(--success);
-      padding-right: 6px;
-    }
-    .prod-mrp {
-      font-weight: 600;
-      color: #23c4e7;
-      background:rgba(4,20,38,.15);
-      border-radius:8px;
-      padding:2px 9px;
-      margin-right: 0;
-      font-size:.97em;
-      letter-spacing: 0.01em;
-      display: inline-block;
-    }
-    .prod-cost {
-      font-size:.96em;
-      color:var(--text-muted);
-      margin-left:3.5px;
-      letter-spacing:0.01em;
-    }
-    .prod-note {
-      margin-top:3px;
-      color:var(--text-muted);
-      font-size:.958em;
-      background:#232b40e0;
-      border-radius:8px;
-      padding:4px 11px 5px 11px;
-      min-height: 23px;
-      word-break: break-word;
-    }
-    .prod-card .prod-select-checkbox:focus {
-       outline: 2px solid var(--accent2);
-       outline-offset:1.5px;
-    }
-
-    .no-products {
-      text-align:center;
-      color:var(--text-muted);
-      font-size:1.12em;
-      margin:34px 0 14px 0;
-      letter-spacing:.01em;
-    }
-
-    @media (max-width: 750px){
-      .container{padding:13px 1vw 22px 1vw;}
-      .product-list { grid-template-columns: 1fr; gap: 19px;}
+    .no-products { text-align:center; color:var(--text-muted); font-size:1.12em; margin:34px 0 14px 0; letter-spacing:.01em; }
+    .modal-backdrop { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(18,23,32,0.92); z-index:4999; display:flex; align-items:center; justify-content:center; opacity:1; visibility:visible; transition:opacity .21s; }
+    .modal-backdrop.hide { opacity:0; visibility:hidden; pointer-events:none; }
+    .modal { min-width:320px; max-width:98vw; background:var(--bg2); border-radius:var(--radius-card); box-shadow:var(--shadow); z-index:6000; padding:36px 22px 23px 22px; animation:fadeUp .4s; display:flex; flex-direction:column; align-items:stretch; position:relative; }
+    .modal h3 { margin:0 0 18px 0; color:var(--accent2); text-align:center; font-weight:800; font-size:1.26em; letter-spacing:-.2px; }
+    .modal-close { position:absolute; top:13px; right:14px; background:none; border:none; color:var(--accent2); font-size:1.24em; cursor:pointer; font-weight:bold; outline:none; }
+    .modal label { font-weight:600; font-size:.96em; color:var(--text-muted); margin-bottom:4px; }
+    .modal input[type=text], .modal input[type=number], .modal input[type=file], .modal input[type=password], .modal textarea { border-radius:7px; border:1.5px solid #253048; background:var(--bg3); color:var(--text); font-size:1em; padding:8px 11px; margin-bottom:13px; margin-top:2px; outline:none; width:100%; box-sizing:border-box; transition:border .13s; }
+    .modal textarea { min-height:54px; resize:vertical; }
+    .modal-btnbar { display:flex; align-items:center; justify-content:flex-end; gap:13px; margin-top:6px; }
+    .modal button[type=submit] { background:linear-gradient(95deg,var(--accent2),var(--accent)); color:#fff; padding:11px 22px; font-size:1em; border:none; border-radius:8px; font-weight:700; cursor:pointer; box-shadow:0 2px 10px #1b314e28; margin:6px 0; transition:background .14s; outline:none; }
+    .modal .error { font-size:.98em; color:var(--danger); margin-bottom:7px; min-height:18px; text-align:left; }
+    #detailModal .prod-detail-photo { display:block; width:124px; height:124px; object-fit:cover; border-radius:19px; margin:6px auto 0 auto; box-shadow:0 2px 12px #1b314e22; background:#21293f; }
+    @media (max-width:650px){
+      .container{padding:14px 1vw 23px 1vw;}
       .card{padding:.8rem .4rem 1.05rem .75rem;}
       .app-title{font-size:1.2rem;}
-      .prod-card{min-height:160px;}
-      .prod-card-top{padding:12px 9px 5px 11px;}
-      .prod-card-bottom{margin:0 10px 0 10px; padding:7px 0 5px 0;}
+      .prod-card{padding:12px 7px;}
+      .modal{padding:14vw 3vw 7vw 3vw; min-width:unset;}
+      #detailModal .prod-detail-photo{ width:74px; height:74px;}
+      #mobileInstallInstructions{max-width:94vw;font-size:0.96em;}
+      #multiSelectControls{font-size:0.99em; flex-wrap:wrap;}
     }
     ::selection{background:var(--accent2); color:#fff;}
     a{color:var(--accent);}
     .hidden { display:none !important; }
-    /* Fingerprint icon for unlock button */
-    .fingerprint-btn {
-      display:inline-flex;
-      align-items:center;
-      background: #183345;
-      color: var(--accent2);
-      border: none;
-      border-radius: 9px;
-      padding: 7px 15px 7px 7px;
-      font-size:1.13em;
-      font-family:inherit;
-      font-weight:600;
-      gap:7px;
-      box-shadow: 0 2px 10px #12e8ff22;
-      cursor: pointer;
-      margin-top:10px;
-      margin-bottom:2px;
-      transition:background .16s;
-    }
-    .fingerprint-btn:hover, .fingerprint-btn:active { background:#1e4967; }
-    .fingerprint-btn svg {
-      margin-right:2px;
-      display:inline-block;
-      vertical-align:middle;
-    }
-    #login-fingerprint-status {
-      display: block;
-      color: var(--text-muted);
-      margin-top:2px;
-      font-size:.98em;
-      min-height:18px;
-      text-align:center;
-    }
   </style>
 </head>
 <body>
@@ -310,9 +220,7 @@
         <button type="submit" id="loginBtn" style="flex:1;">Set PIN</button>
         <button type="button" id="forgotBtn" style="display:none; background:transparent; border:1px solid #253048; color:var(--text); padding:9px 12px; border-radius:8px; cursor:pointer;">Forgot</button>
       </div>
-      <!-- Fingerprint unlock UI will be inserted here dynamically -->
-      <div id="fingerprint-unlock-container" style="width:100%;text-align:center;"></div>
-      <span id="login-fingerprint-status"></span>
+
       <small style="display:block;margin-top:12px;color:var(--text-muted);">All data is stored locally in your browser. PIN is hashed before saving.</small>
     </form>
   </div>
@@ -633,101 +541,6 @@
     });
 
     /**************************************************************
-     * Fingerprint Unlock (Android app mode via Chrome)
-     **************************************************************/
-    async function isFingerprintAvailable() {
-      // For Chrome on Android and only when standalone
-      if (!window.PublicKeyCredential) return false;
-      const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
-      const isAndroid = /Android/i.test(navigator.userAgent);
-      const isChrome = /Chrome\//i.test(navigator.userAgent);
-      let hasPIN = !!window.localStorage.getItem('dealer-hash');
-      // Only show fingerprint if dealer PIN is set (prevents first time users from confusion)
-      return isStandalone && isAndroid && isChrome && hasPIN;
-    }
-
-    function displayFingerprintButton() {
-      const fpDiv = document.getElementById('fingerprint-unlock-container');
-      if (!fpDiv) return;
-
-      if (document.getElementById('fingerprintUnlockBtn')) return; // Prevent double
-      const btn = document.createElement('button');
-      btn.type = "button";
-      btn.className = "fingerprint-btn";
-      btn.id = "fingerprintUnlockBtn";
-      btn.innerHTML = `<svg width="21" height="21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 11V17"/></svg>Unlock with Fingerprint`;
-      fpDiv.appendChild(btn);
-      btn.onclick = doFingerprintUnlock;
-    }
-    function removeFingerprintButton() {
-      const fpDiv = document.getElementById('fingerprint-unlock-container');
-      if(fpDiv) fpDiv.innerHTML = "";
-      document.getElementById('login-fingerprint-status').textContent = "";
-    }
-
-    async function doFingerprintUnlock() {
-      const statusElem = document.getElementById('login-fingerprint-status');
-      statusElem.textContent = "Waiting for fingerprint...";
-      // Create a dummy challenge value (could use PIN hash's salt, but value doesn't matter)
-      const challenge = new Uint8Array(24);
-      window.crypto.getRandomValues(challenge);
-      try {
-        // These options are purely for authentication prompt; credentialId is not needed for local scenarios
-        // In a full FIDO implementation, you would store credentialId per user, but for local
-        // unlock (where simply verifying a local safe login is enough) this suffices
-        let publicKeyOptions = {
-          publicKey: {
-            challenge,
-            timeout: 15000,
-            userVerification: "required"
-          }
-        };
-
-        await navigator.credentials.get(publicKeyOptions);
-        // If no error, fingerprint verified
-        statusElem.style.color = "var(--success)";
-        statusElem.textContent = "Fingerprint verified! Unlocking...";
-        setTimeout(()=>{
-          statusElem.textContent = '';
-          statusElem.style.color = '';
-          showDealerApp();
-        }, 370);
-      } catch (err) {
-        // Possible errors: NotAllowedError (canceled/timeout), NotSupportedError, SecurityError, etc.
-        statusElem.style.color = "var(--danger)";
-        if (err && err.name === "NotAllowedError") {
-          statusElem.textContent = "Fingerprint was cancelled or timed out.";
-        } else if (err && err.name === "NotSupportedError") {
-          statusElem.textContent = "No biometric method is enrolled or found.";
-        } else {
-          statusElem.textContent = "Fingerprint unavailable: " + (err && err.message ? err.message : "Unknown error");
-        }
-        setTimeout(()=>{
-          statusElem.textContent = '';
-          statusElem.style.color = '';
-        }, 1850);
-      }
-    }
-
-    // Run on page load, show button if available
-    window.addEventListener('DOMContentLoaded', async function(){
-      if (await isFingerprintAvailable()) {
-        displayFingerprintButton();
-      }
-    });
-
-    // Update fingerprint UI on PIN set/removed
-    function fingerprintUpdateWatcher(){
-      setTimeout(async function() {
-        if(await isFingerprintAvailable()) displayFingerprintButton();
-        else removeFingerprintButton();
-      },100);
-    }
-
-    // Whenever PIN status changes
-    window.addEventListener('storage', fingerprintUpdateWatcher);
-
-    /**************************************************************
      * Handle Android back button in PWA (prevent full exit)
      **************************************************************/
     (function handleAndroidBackButton() {
@@ -771,7 +584,6 @@
             document.getElementById('login-modal').style.display = 'flex';
             window.setTimeout(()=>document.getElementById('loginPIN').focus(),150);
             pushDummyHistory();
-            fingerprintUpdateWatcher();
           } else {
             // On login screen, allow exit with back (one level)
             // But push dummy to at least prevent double-tap accidental exits
@@ -824,7 +636,6 @@
       if (msg) { document.getElementById('login-error').textContent = msg; } else { document.getElementById('login-error').textContent = ''; }
       document.getElementById('loginPIN').value = '';
       setTimeout(()=>document.getElementById('loginPIN').focus(),120);
-      fingerprintUpdateWatcher();
     }
 
     // Always require PIN on load -> do not auto-unlock
@@ -860,7 +671,6 @@
         loginPIN.autocomplete = "new-password";
       }
       loginError.textContent = '';
-      fingerprintUpdateWatcher();
     }
 
     loginForm.onsubmit = async function(e) {
@@ -883,7 +693,6 @@
           setTimeout(()=>{ loginError.textContent = ''; loginError.style.color=''; },1500);
           loginBtn.disabled = false;
           loginPIN.value = '';
-          fingerprintUpdateWatcher();
           return;
         }
         const userHash = window.localStorage.getItem('dealer-hash');
@@ -928,13 +737,11 @@
       settingsBackdrop.classList.add('hide');
       showLoginModal('You have been logged out.');
       updatePINUI(getHasPIN());
-      fingerprintUpdateWatcher();
     };
 
     resetPinCancel.onclick = () => {
       resetPinError.textContent = '';
       settingsBackdrop.classList.add('hide');
-      fingerprintUpdateWatcher();
     };
 
     resetPinSubmit.onclick = async function() {
@@ -965,7 +772,6 @@
           resetPinError.textContent = '';
           resetPinError.style.color = '';
           settingsBackdrop.classList.add('hide');
-          fingerprintUpdateWatcher();
         }, 1000);
       } catch (err) {
         resetPinError.textContent = "Failed to update PIN.";
@@ -1046,19 +852,10 @@
       const li = document.createElement('li');
       li.className = 'prod-card';
       li.setAttribute('tabindex','0');
-      setTimeout(()=>li.classList.add('show'), 121+idx*54);
-
-      // Modernized inner layout:
-      // product, image, grid, color badges, bottom bar for actions + highlight
-
-      let imgHTML = product.photo
-        ? `<img src="${escapeHTML(product.photo)}" class="prod-photo-thumb" alt="Product Photo">`
-        : `<span>📦</span>`;
-
+      setTimeout(()=>li.classList.add('show'), 121+idx*64);
+      let imgHTML = product.photo ? `<img src="${escapeHTML(product.photo)}" class="prod-photo-thumb" alt="Product Photo">` : `<span>📦</span>`;
       const nameSafe = escapeHTML(product.name || "Unnamed");
-      const cat = product.category
-        ? `<span class="prod-cat">${escapeHTML(String(product.category)).slice(0,18)}</span>`
-        : '';
+      const cat = product.category ? `<span class="prod-cat">${escapeHTML(String(product.category)).slice(0,18)}</span>` : '';
       const qtyNum = Number(product.qty) || 0;
       const mrpNum = Number(product.mrp) || 0;
       const costNum = (product.cost !== undefined && product.cost !== null) ? Number(product.cost) : null;
@@ -1066,46 +863,32 @@
       // Multi-select checkbox
       let checkboxHTML = `<input type="checkbox" class="prod-select-checkbox" title="Select" data-id="${product.id}" tabindex="0" ${selectedProductIds.has(product.id) ? "checked" : ""}/>`;
 
-      // Product note preview
-      const noteHtml = product.notes
-        ? `<div class="prod-note">${escapeHTML(String(product.notes)).slice(0,72)}</div>`
-        : "";
-
       li.innerHTML = `
-        <div class="prod-card-top">
-          ${checkboxHTML}
-          <div class="prod-img">${imgHTML}</div>
-          <div class="prod-main-details">
-            <div class="prod-name">${nameSafe}${cat}</div>
-            <div class="prod-details">
-              <span class="prod-stock">Stock: <b>${qtyNum}</b></span>
-              <span class="prod-mrp">₨${mrpNum.toLocaleString(undefined,{maximumFractionDigits:2})}</span>
-              ${costNum !== null ? `<span class="prod-cost">(Cost: ₨${costNum.toLocaleString(undefined,{maximumFractionDigits:2})})</span>` : ""}
-            </div>
-            ${noteHtml}
-          </div>
+        ${checkboxHTML}
+        <div class="prod-img">${imgHTML}</div>
+        <div class="prod-main-details">
+          <div class="prod-name">${nameSafe}${cat}</div>
+          <div class="prod-details">Stock: <b style="color:var(--success);font-weight:600">${qtyNum}</b> • ₨${mrpNum.toLocaleString(undefined,{maximumFractionDigits:2})}${costNum!==null?` <span style="color:var(--text-muted);font-size:.928em;">(Cost: ₨${costNum.toLocaleString(undefined,{maximumFractionDigits:2})})</span>`:""}</div>
+          ${product.notes?`<div class="prod-details">${escapeHTML(String(product.notes)).slice(0,55)}</div>`:""}
         </div>
-        <div class="prod-card-bottom">
-          <span></span>
-          <div class="prod-actions">
-            <button type="button" title="Edit" class="edit" data-id="${product.id}">✏️</button>
-          </div>
+        <div class="prod-actions">
+          <button type="button" title="Edit" class="edit" data-id="${product.id}">✏️</button>
         </div>
       `;
 
+      // highlight selection
       if (selectedProductIds.has(product.id)) li.classList.add('selected');
 
-      // Checkbox event
+      // Checkboxes
       const checkbox = li.querySelector('.prod-select-checkbox');
       if (checkbox) {
         checkbox.addEventListener('change', (e) => {
           handleCheckboxChange(product.id, checkbox.checked);
         });
-        checkbox.addEventListener('click', (e)=>e.stopPropagation());
+        checkbox.addEventListener('click', (e)=>e.stopPropagation()); // don't fire detail modal
         checkbox.addEventListener('keydown', (e)=>e.stopPropagation());
       }
 
-      // Edit event
       const editBtn = li.querySelector('.edit');
       if (editBtn) editBtn.onclick = (e)=>{ e.stopPropagation(); showProductModal('edit', product); };
 
@@ -1119,7 +902,273 @@
       return li;
     }
 
-    // ... the rest is unchanged ...
+    /**************************************************************
+     * Multi-select controls
+     **************************************************************/
+
+    document.getElementById("selectAllCheckbox").addEventListener("change", function() {
+      if (this.checked) {
+        products.forEach(prod => selectedProductIds.add(prod.id));
+      } else {
+        selectedProductIds.clear();
+      }
+      refreshProductList();
+      updateMultiSelectControls();
+    });
+
+    document.getElementById("deleteSelectedBtn").onclick = function() {
+      if (selectedProductIds.size === 0) return;
+      if (!confirm(`Are you sure you want to delete ${selectedProductIds.size} selected item(s)?`)) return;
+      products = products.filter(p => !selectedProductIds.has(p.id));
+      selectedProductIds.clear();
+      saveProducts();
+      updateMultiSelectControls();
+    };
+
+    /**************************************************************
+     * Detail modal
+     **************************************************************/
+    const detailModalBackdrop = document.getElementById('detailModalBackdrop');
+    const detailModalBody = document.getElementById('detailModalBody');
+
+    function showDetailModal(product) {
+      const nameSafe = escapeHTML(product.name || 'Unnamed');
+      const photoBlock = product.photo ? `<img src="${escapeHTML(product.photo)}" class="prod-detail-photo" alt="${nameSafe}"/>` : `<div class="prod-detail-photo" style="font-size:60px;padding:22px 0 12px 0;">📦</div>`;
+      const mrpNum = Number(product.mrp) || 0;
+      const costNum = (product.cost !== undefined && product.cost !== null) ? Number(product.cost) : null;
+
+      detailModalBody.innerHTML = `
+        <div style="text-align:center;">${photoBlock}</div>
+        <ul style="list-style:none;padding:0;margin:10px 0 0 0;display:flex;flex-direction:column;gap:.57em;">
+          <li><b>Name:</b> <span style="color:var(--accent2);font-weight:600">${nameSafe}</span></li>
+          ${product.category?`<li><b>Category:</b> <span style="color:var(--accent2);font-weight:600">${escapeHTML(String(product.category))}</span></li>`:""}
+          <li><b>Stock:</b> <span style="color:var(--accent2);font-weight:600">${Number(product.qty)||0}</span></li>
+          <li><b>MRP:</b> <span style="color:var(--accent2);font-weight:600">₨${mrpNum.toLocaleString(undefined,{maximumFractionDigits:2})}</span></li>
+          ${costNum!==null?`<li><b>Cost:</b> <span style="color:var(--accent2);font-weight:600">₨${costNum.toLocaleString(undefined,{maximumFractionDigits:2})}</span></li>`:""}
+        </ul>
+        ${product.notes?`<div style="margin-top:.8em;color:var(--text-muted);background:#213047;border-radius:8px;padding:.7em .9em">${escapeHTML(String(product.notes))}</div>`:""}
+      `;
+      detailModalBackdrop.classList.remove('hide');
+      setTimeout(()=>document.getElementById('closeDetailModalBtn').focus(),100);
+    }
+
+    document.getElementById('closeDetailModalBtn').onclick = function(){ detailModalBackdrop.classList.add('hide'); detailModalBody.innerHTML = ''; };
+
+    document.addEventListener('keydown', function(e){
+      if (e.key === "Escape") {
+        if (!detailModalBackdrop.classList.contains('hide')) { detailModalBackdrop.classList.add('hide'); detailModalBody.innerHTML=''; }
+        if (!productModalBackdrop.classList.contains('hide')) productModalBackdrop.classList.add('hide');
+        if (!deleteModalBackdrop.classList.contains('hide')) deleteModalBackdrop.classList.add('hide');
+        if (!settingsBackdrop.classList.contains('hide')) settingsBackdrop.classList.add('hide');
+      }
+    });
+
+    /**************************************************************
+     * Search
+     **************************************************************/
+    const searchInput = document.getElementById('productSearch');
+    searchInput.addEventListener('input', function(){ refreshProductList(); });
+    searchInput.addEventListener('keydown', function(e){ if(e.key==='Escape'){ searchInput.value=''; refreshProductList(); } });
+
+    /**************************************************************
+     * Refresh product list
+     **************************************************************/
+    function refreshProductList() {
+      loadProducts();
+      productListElem.innerHTML = '';
+      let q = (searchInput.value || '').trim().toLowerCase();
+      let filtered = !q ? products : products.filter(prod =>
+        (String(prod.name||"").toLowerCase().includes(q)) ||
+        (String(prod.category||"").toLowerCase().includes(q)) ||
+        (String(prod.notes||"").toLowerCase().includes(q))
+      );
+      if (!filtered.length) {
+        noProductsElem.style.display = "";
+        document.getElementById('multiSelectControls').classList.remove('active');
+        return;
+      }
+      noProductsElem.style.display = "none";
+      filtered.sort((a,b) => (Number(b.qty)-Number(a.qty)) || (String(a.name||'').localeCompare(String(b.name||''))));
+      filtered.forEach((prod,i)=>productListElem.appendChild(createProductCard(prod,i)));
+      updateMultiSelectControls();
+    }
+
+    /**************************************************************
+     * Add / Edit product modal
+     **************************************************************/
+    let productEditing = null;
+    const prodName = document.getElementById('prodName');
+    const prodMrp = document.getElementById('prodMrp');
+    const prodCost = document.getElementById('prodCost');
+    const prodQty = document.getElementById('prodQty');
+    const prodCategory = document.getElementById('prodCategory');
+    const prodNotes = document.getElementById('prodNotes');
+    const prodPhoto = document.getElementById('prodPhoto');
+    const productModalBackdrop = document.getElementById('productModalBackdrop');
+    const productModal = document.getElementById('productModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalError = document.getElementById('modalError');
+    const prodPhotoFileName = document.getElementById('prodPhotoFileName');
+    const uploadBtnInnerText = document.getElementById('uploadBtnInnerText');
+
+    function showProductModal(mode, product) {
+      productModal.reset();
+      modalError.textContent = '';
+      // Clear the file input display
+      prodPhotoFileName.textContent = '';
+      uploadBtnInnerText.textContent = 'Choose Image';
+      if (mode === 'add') {
+        modalTitle.textContent = "Add Product";
+        productEditing = null;
+        prodName.value = ""; prodMrp.value = ""; prodCost.value = ""; prodQty.value = ""; prodCategory.value = ""; prodNotes.value = ""; prodPhoto.value = "";
+      } else {
+        modalTitle.textContent = "Edit Product";
+        productEditing = product;
+        prodName.value = product.name || ""; prodMrp.value = product.mrp !== undefined ? product.mrp : ""; prodCost.value = product.cost !== undefined ? product.cost : ""; prodQty.value = product.qty !== undefined ? product.qty : ""; prodCategory.value = product.category || ""; prodNotes.value = product.notes || ""; prodPhoto.value = "";
+      }
+      productModalBackdrop.classList.remove('hide');
+      setTimeout(()=>prodName.focus(),150);
+    }
+
+    // Show file chosen name (if any)
+    prodPhoto.addEventListener('change', function() {
+      if (prodPhoto.files && prodPhoto.files.length) {
+        prodPhotoFileName.textContent = prodPhoto.files[0].name;
+        uploadBtnInnerText.textContent = "Image Selected";
+      } else {
+        prodPhotoFileName.textContent = '';
+        uploadBtnInnerText.textContent = 'Choose Image';
+      }
+    });
+
+    document.getElementById('addProductBtn').onclick = ()=>showProductModal('add');
+    document.getElementById('closeModalBtn').onclick = ()=>productModalBackdrop.classList.add('hide');
+
+    productModal.onsubmit = async function(e) {
+      e.preventDefault();
+      modalError.textContent = "";
+      const name = (prodName.value || '').trim();
+      const mrpVal = prodMrp.value;
+      const costVal = prodCost.value;
+      const qtyVal = prodQty.value;
+      const category = (prodCategory.value || '').trim();
+      const notes = (prodNotes.value || '').trim();
+
+      if (!name) { modalError.textContent = "Name required."; return; }
+      if (mrpVal === "" || isNaN(Number(mrpVal)) || Number(mrpVal) < 0) { modalError.textContent = "Valid MRP required."; return; }
+      if (qtyVal === "" || isNaN(Number(qtyVal)) || Number(qtyVal) < 0) { modalError.textContent = "Valid quantity required."; return; }
+
+      let photoData = null;
+      if (prodPhoto && prodPhoto.files && prodPhoto.files[0]) {
+        try { photoData = await readFileAsDataURL(prodPhoto.files[0]); } catch (err) {}
+      } else if (productEditing && productEditing.photo) {
+        photoData = productEditing.photo;
+      }
+
+      const productObj = {
+        id: productEditing ? productEditing.id : genID(),
+        name,
+        mrp: Number(mrpVal),
+        cost: costVal !== "" ? Number(costVal) : null,
+        qty: Number(qtyVal),
+        category,
+        notes,
+        photo: photoData
+      };
+
+      if (!productEditing) products.push(productObj);
+      else {
+        const idx = products.findIndex(p => p.id === productEditing.id);
+        if (idx >= 0) products[idx] = productObj; else products.push(productObj);
+      }
+      saveProducts();
+      productModalBackdrop.classList.add('hide');
+      // Exit multi-select
+      selectedProductIds.clear();
+      updateMultiSelectControls();
+    };
+
+    function readFileAsDataURL(file) {
+      return new Promise((resolve,reject)=>{
+        const reader = new FileReader();
+        reader.onload = e => resolve(e.target.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    /**************************************************************
+     * Delete modal
+     **************************************************************/
+    const deleteModalBackdrop = document.getElementById('deleteModalBackdrop');
+    const deleteModal = document.getElementById('deleteModal');
+    const deleteName = document.getElementById('deleteName');
+    let productToDelete = null;
+
+    function showDeleteModal(product) {
+      deleteModalBackdrop.classList.remove('hide');
+      deleteName.textContent = product.name || '';
+      productToDelete = product;
+      setTimeout(()=>document.getElementById('cancelDeleteBtn').focus(),60);
+    }
+
+    document.getElementById('closeDeleteBtn').onclick =
+    document.getElementById('cancelDeleteBtn').onclick = () => {
+      deleteModalBackdrop.classList.add('hide'); productToDelete = null;
+    };
+
+    deleteModal.onsubmit = function(e){
+      e.preventDefault();
+      if (!productToDelete) return;
+      products = products.filter(p => p.id !== productToDelete.id);
+      saveProducts();
+      deleteModalBackdrop.classList.add('hide'); productToDelete = null;
+      // Remove from multi-select, if any
+      selectedProductIds.delete(productToDelete.id);
+      updateMultiSelectControls();
+    };
+
+    function genID() { return 'p' + (Date.now() + ('' + Math.random()).slice(2,7)); }
+
+    /**************************************************************
+     * Export / Import
+     **************************************************************/
+    document.getElementById('exportBtn').onclick = function() {
+      const dataStr = JSON.stringify(products || [], null, 2);
+      const blob = new Blob([dataStr], {type:"application/json"});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.style.display='none'; a.href = url; a.download = 'dealer-products-backup.json'; document.body.appendChild(a); a.click(); URL.revokeObjectURL(url);
+      setTimeout(()=>{ document.body.removeChild(a); },200);
+    };
+
+    document.getElementById('importBtn').onclick = ()=>document.getElementById('importFile').click();
+    document.getElementById('importFile').onchange = function(evt) {
+      let file = evt.target.files[0];
+      if (!file) return;
+      let reader = new FileReader();
+      reader.onload = function(e){
+        try {
+          let arr = JSON.parse(e.target.result);
+          if (Array.isArray(arr)) {
+            arr.forEach(prod => { if (!prod.id) prod.id = genID(); });
+            products = arr;
+            saveProducts();
+          } else throw new Error("Not an array");
+        } catch (err) {
+          alert("Invalid file - import failed.");
+        }
+      };
+      reader.readAsText(file);
+      evt.target.value = '';
+    };
+
+    /**************************************************************
+     * Initial load
+     **************************************************************/
+    window.addEventListener('load', function() {
+      loadProducts();
+      // do not auto-show app; user must login each time
+    });
   </script>
 </body>
 </html>
