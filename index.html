@@ -944,6 +944,7 @@
       }
     }
 
+    // --- PATCH: Removed category display from product name in product list ---
     function createProductCard(product, idx) {
       const li = document.createElement('li');
       li.className = 'prod-card';
@@ -951,7 +952,7 @@
       setTimeout(()=>li.classList.add('show'), 121+idx*64);
       let imgHTML = product.photo ? `<img src="${escapeHTML(product.photo)}" class="prod-photo-thumb" alt="Product Photo">` : `<span>📦</span>`;
       const nameSafe = escapeHTML(product.name || "Unnamed");
-      const cat = product.category ? `<span class="prod-cat">${escapeHTML(String(product.category)).slice(0,18)}</span>` : '';
+      // Removed the cat variable and its use below
       const qtyNum = Number(product.qty) || 0;
       const mrpNum = Number(product.mrp) || 0;
       // costNum not needed for product list display
@@ -963,7 +964,7 @@
         ${checkboxHTML}
         <div class="prod-img">${imgHTML}</div>
         <div class="prod-main-details">
-          <div class="prod-name">${nameSafe}${cat}</div>
+          <div class="prod-name">${nameSafe}</div>
           <div class="prod-details">Stock: <b style="color:var(--success);font-weight:600">${qtyNum}</b> • ₨${mrpNum.toLocaleString(undefined,{maximumFractionDigits:2})}</div>
           ${product.notes?`<div class="prod-details">${escapeHTML(String(product.notes)).slice(0,55)}</div>`:""}
         </div>
@@ -997,6 +998,7 @@
       });
       return li;
     }
+    // --- END PATCH ---
 
     /**************************************************************
      * Multi-select controls
