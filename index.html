@@ -14,6 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
   <style>
+    /* ...styles unchanged... */
     :root {
       --bg1: #0C1220;
       --bg2: #161B22;
@@ -265,7 +266,7 @@
   <!-- LOGIN / SET PIN modal - always shown on load (no auto login) -->
   <div id="login-modal" style="position:fixed; inset:0; z-index:7000; background:rgba(22,27,34,0.89); display:flex; justify-content:center; align-items:center;">
     <form class="login-dialog modal" id="loginForm" autocomplete="off" novalidate style="max-width:380px;">
-      <button class="modal-close" type="button" id="loginCloseBtn" title="Close" style="display:none">✖</button>
+      <button class="modal-close" type="button" id="loginCloseBtn" title="Close" aria-label="Close dialog" role="button" style="display:none">✖</button>
       <h3 style="text-align:center;color:var(--accent2);margin-bottom:12px">🔐 Dealer Login</h3>
       <div class="error input-error" id="login-error" style="min-height:18px;margin-bottom:8px"></div>
 
@@ -329,7 +330,7 @@
   <!-- Product Add/Edit Modal -->
   <div class="modal-backdrop hide" id="productModalBackdrop">
     <form class="modal" id="productModal" autocomplete="off">
-      <button class="modal-close" type="button" id="closeModalBtn" title="Close">✖</button>
+      <button class="modal-close" type="button" id="closeModalBtn" title="Close" aria-label="Close dialog" role="button">✖</button>
       <h3 id="modalTitle">Add Product</h3>
       <div class="error" id="modalError" style="min-height:18px"></div>
       <label for="prodName">Name</label>
@@ -364,7 +365,7 @@
   <!-- Delete confirmation modal -->
   <div class="modal-backdrop hide" id="deleteModalBackdrop">
     <form class="modal" id="deleteModal">
-      <button class="modal-close" type="button" id="closeDeleteBtn" title="Close">✖</button>
+      <button class="modal-close" type="button" id="closeDeleteBtn" title="Close" aria-label="Close dialog" role="button">✖</button>
       <h3>Delete Product</h3>
       <div style="margin:11px 0 17px 0">Are you sure you want to delete <b id="deleteName"></b>?</div>
       <div class="modal-btnbar">
@@ -377,7 +378,7 @@
   <!-- Product Detail Modal -->
   <div class="modal-backdrop hide" id="detailModalBackdrop">
     <div class="modal" id="detailModal" tabindex="-1">
-      <button class="modal-close" type="button" id="closeDetailModalBtn" title="Close">✖</button>
+      <button class="modal-close" type="button" id="closeDetailModalBtn" title="Close" aria-label="Close dialog" role="button">✖</button>
       <h3>Product Details</h3>
       <div id="detailModalBody"></div>
     </div>
@@ -386,7 +387,7 @@
   <!-- Settings Modal (contains Logout + Reset PIN) -->
   <div class="modal-backdrop hide" id="settingsBackdrop">
     <div class="modal" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
-      <button class="modal-close" type="button" id="closeSettingsBtn" title="Close">✖</button>
+      <button class="modal-close" type="button" id="closeSettingsBtn" title="Close" aria-label="Close dialog" role="button">✖</button>
       <h3 id="settingsTitle">Settings</h3>
 
       <div style="display:flex;flex-direction:column;gap:10px;">
@@ -954,7 +955,6 @@
       // Removed the cat variable and its use below
       const qtyNum = Number(product.qty) || 0;
       const mrpNum = Number(product.mrp) || 0;
-      // costNum not needed for product list display
 
       // Multi-select checkbox
       let checkboxHTML = `<input type="checkbox" class="prod-select-checkbox" title="Select" data-id="${product.id}" tabindex="0" ${selectedProductIds.has(product.id) ? "checked" : ""}/>`;
@@ -968,7 +968,7 @@
           ${product.notes?`<div class="prod-details">${escapeHTML(String(product.notes)).slice(0,55)}</div>`:""}
         </div>
         <div class="prod-actions">
-          <button type="button" title="Edit" class="edit" data-id="${product.id}">✏️</button>
+          <button type="button" title="Edit" aria-label="Edit product" role="button" class="edit" data-id="${product.id}">✏️</button>
         </div>
       `;
 
