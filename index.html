@@ -954,7 +954,7 @@
       const cat = product.category ? `<span class="prod-cat">${escapeHTML(String(product.category)).slice(0,18)}</span>` : '';
       const qtyNum = Number(product.qty) || 0;
       const mrpNum = Number(product.mrp) || 0;
-      const costNum = (product.cost !== undefined && product.cost !== null) ? Number(product.cost) : null;
+      // costNum not needed for product list display
 
       // Multi-select checkbox
       let checkboxHTML = `<input type="checkbox" class="prod-select-checkbox" title="Select" data-id="${product.id}" tabindex="0" ${selectedProductIds.has(product.id) ? "checked" : ""}/>`;
@@ -964,7 +964,7 @@
         <div class="prod-img">${imgHTML}</div>
         <div class="prod-main-details">
           <div class="prod-name">${nameSafe}${cat}</div>
-          <div class="prod-details">Stock: <b style="color:var(--success);font-weight:600">${qtyNum}</b> • ₨${mrpNum.toLocaleString(undefined,{maximumFractionDigits:2})}${costNum!==null?` <span style="color:var(--text-muted);font-size:.928em;">(Cost: ₨${costNum.toLocaleString(undefined,{maximumFractionDigits:2})})</span>`:""}</div>
+          <div class="prod-details">Stock: <b style="color:var(--success);font-weight:600">${qtyNum}</b> • ₨${mrpNum.toLocaleString(undefined,{maximumFractionDigits:2})}</div>
           ${product.notes?`<div class="prod-details">${escapeHTML(String(product.notes)).slice(0,55)}</div>`:""}
         </div>
         <div class="prod-actions">
