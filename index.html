@@ -159,6 +159,46 @@
       cursor: pointer;
     }
 
+    /* --- Photo REMOVE X button --- */
+    .remove-photo-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--danger);
+      color: #fff;
+      border: none;
+      border-radius: 50%;
+      width: 26px;
+      height: 26px;
+      font-size: 1.18em;
+      font-weight: bold;
+      margin-left: 4px;
+      cursor: pointer;
+      transition: background 0.14s, color 0.12s;
+      box-shadow: 0 1px 5px #ef444433;
+      z-index: 2;
+      vertical-align: middle;
+    }
+    .remove-photo-btn:hover, .remove-photo-btn:focus {
+      background: #ce3737;
+      color: #fff;
+    }
+    .photo-preview-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+    }
+    .photo-preview-img-thumb {
+      max-width: 42px;
+      max-height: 42px;
+      border-radius: 7px;
+      object-fit: cover;
+      border: 2px solid var(--accent2-hover);
+      margin-right: 2px;
+      background: #273855;
+      display: block;
+    }
+
     .prod-card { background:var(--bg3); border-radius:13px; margin-bottom:16px; box-shadow:0 2px 10px #2c345128; display:flex; gap:19px; align-items:center; padding:18px 20px; position:relative; animation:fadeUp .35s; opacity:0; transform:translateY(25px); animation-fill-mode:forwards; cursor:pointer; border:2px solid transparent; transition:box-shadow .14s, border-color .16s; }
     .prod-card.show { opacity:1; transform:none; }
     .prod-card:hover { border-color:var(--accent2); box-shadow:0 6px 24px #18346023; }
@@ -190,6 +230,20 @@
     .modal button[type=submit] { background:linear-gradient(95deg,var(--accent2),var(--accent)); color:#fff; padding:11px 22px; font-size:1em; border:none; border-radius:8px; font-weight:700; cursor:pointer; box-shadow:0 2px 10px #1b314e28; margin:6px 0; transition:background .14s; outline:none; }
     .modal .error { font-size:.98em; color:var(--danger); margin-bottom:7px; min-height:18px; text-align:left; }
     #detailModal .prod-detail-photo { display:block; width:124px; height:124px; object-fit:cover; border-radius:19px; margin:6px auto 0 auto; box-shadow:0 2px 12px #1b314e22; background:#21293f; }
+
+    /* Prevent background scrolling when modal is open */
+    body.modal-open {
+      overflow: hidden !important;
+      position: fixed !important;
+      width: 100vw;
+    }
+
+    /* Custom class to prevent background scrolling when product detail is open */
+    body.detail-modal-open {
+      overflow: hidden !important;
+      /* Don't use position:fixed because it causes iOS bugs and scroll jumps, just hide overflow */
+    }
+
     @media (max-width:650px){
       .container{padding:14px 1vw 23px 1vw;}
       .card{padding:.8rem .4rem 1.05rem .75rem;}
@@ -199,6 +253,8 @@
       #detailModal .prod-detail-photo{ width:74px; height:74px;}
       #mobileInstallInstructions{max-width:94vw;font-size:0.96em;}
       #multiSelectControls{font-size:0.99em; flex-wrap:wrap;}
+      .photo-preview-img-thumb { max-width:32px; max-height:32px; }
+      .remove-photo-btn { width:22px; height:22px; font-size:1em;}
     }
     ::selection{background:var(--accent2); color:#fff;}
     a{color:var(--accent);}
@@ -289,11 +345,14 @@
       <label for="prodNotes">Notes</label>
       <textarea id="prodNotes" maxlength="120" placeholder=""></textarea>
       <span class="modal-file-label">Photo</span>
-      <div class="modal-file-upload-wrap">
+      <div class="modal-file-upload-wrap" id="fileUploadWrap">
         <span class="modal-file-upload-btn rounded-sky-btn" id="uploadBtnText">
           <svg width="18" height="18" style="margin-right:6px;vertical-align:-4px" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
           <span id="uploadBtnInnerText">Choose Image</span>
           <input type="file" id="prodPhoto" accept="image/*" style="opacity:0;position:absolute;left:0;top:0;width:100%;height:100%;cursor:pointer;"/>
+        </span>
+        <span id="prodPhotoFileContainer" class="photo-preview-wrap" style="min-width:1em;">
+          <!-- Will dynamically insert img and remove btn -->
         </span>
         <span id="prodPhotoFileName" style="color:var(--text-muted);font-size:.99em;"></span>
       </div>
@@ -368,6 +427,58 @@
 
   <input type="file" id="hiddenImport" accept="application/json" style="display:none">
 
+  <script>
+    /****************************************************************
+     * Modal background scroll lock
+     ****************************************************************/
+    (function() {
+      // Utility functions to apply and remove body scroll lock
+      function lockBodyScroll() {
+        if (!document.body.classList.contains('modal-open')) {
+          // Prevent fixed position from "jumping" page, keep current scroll position
+          document.body.dataset.scrollY = window.scrollY;
+          document.body.style.top = `-${window.scrollY}px`;
+          document.body.classList.add('modal-open');
+        }
+      }
+      function unlockBodyScroll() {
+        if (document.body.classList.contains('modal-open')) {
+          document.body.classList.remove('modal-open');
+          // Restore scroll position
+          const scrollY = document.body.dataset.scrollY ? parseInt(document.body.dataset.scrollY, 10) : 0;
+          document.body.style.top = '';
+          window.scrollTo(0, scrollY);
+          delete document.body.dataset.scrollY;
+        }
+      }
+
+      // Watch for changes to modal visibility and lock body scroll (for add/edit, NOT for product details modal!)
+      function observeProductModalOpen() {
+        const productModalBackdrop = document.getElementById('productModalBackdrop');
+        if (!productModalBackdrop) return;
+        const config = { attributes: true, attributeFilter: ['class'] };
+        const observer = new MutationObserver(() => {
+          // If add/edit modal is open (not has class 'hide')
+          if (!productModalBackdrop.classList.contains('hide')) {
+            lockBodyScroll();
+          } else {
+            unlockBodyScroll();
+          }
+        });
+        observer.observe(productModalBackdrop, config);
+        // Also cleanup on page unload
+        window.addEventListener('beforeunload', unlockBodyScroll);
+      }
+      window.addEventListener('DOMContentLoaded', observeProductModalOpen);
+
+      // Fallback: ensure closing modal via code/path also unlocks scroll (add/edit only)
+      window.addEventListener('keydown', function(e) {
+        if (e.key === "Escape") {
+          unlockBodyScroll();
+        }
+      });
+    })();
+  </script>
   <script>
     /****************************************************************
      * PWA manifest & service worker (dynamically created)
@@ -785,7 +896,6 @@
     const productListElem = document.getElementById('productList');
     const noProductsElem = document.getElementById('noProducts');
     let products = [];
-
     // -- Multi-select state
     let multiSelectMode = false;
     let selectedProductIds = new Set();
@@ -931,6 +1041,14 @@
     const detailModalBackdrop = document.getElementById('detailModalBackdrop');
     const detailModalBody = document.getElementById('detailModalBody');
 
+    function disableDetailBackgroundScroll() {
+      document.body.classList.add('detail-modal-open');
+      // Optionally also store scroll position if you ever want to restore it (not necessary with overflow:hidden)
+    }
+    function enableDetailBackgroundScroll() {
+      document.body.classList.remove('detail-modal-open');
+    }
+
     function showDetailModal(product) {
       const nameSafe = escapeHTML(product.name || 'Unnamed');
       const photoBlock = product.photo ? `<img src="${escapeHTML(product.photo)}" class="prod-detail-photo" alt="${nameSafe}"/>` : `<div class="prod-detail-photo" style="font-size:60px;padding:22px 0 12px 0;">📦</div>`;
@@ -949,19 +1067,49 @@
         ${product.notes?`<div style="margin-top:.8em;color:var(--text-muted);background:#213047;border-radius:8px;padding:.7em .9em">${escapeHTML(String(product.notes))}</div>`:""}
       `;
       detailModalBackdrop.classList.remove('hide');
+      disableDetailBackgroundScroll();
       setTimeout(()=>document.getElementById('closeDetailModalBtn').focus(),100);
     }
 
-    document.getElementById('closeDetailModalBtn').onclick = function(){ detailModalBackdrop.classList.add('hide'); detailModalBody.innerHTML = ''; };
+    document.getElementById('closeDetailModalBtn').onclick = function(){
+      detailModalBackdrop.classList.add('hide');
+      detailModalBody.innerHTML = '';
+      enableDetailBackgroundScroll();
+    };
+
+    // Prevent scroll when detail modal is open (background locked when detail modal is NOT .hide)
+    // Also ensure it unlocks on other modal closes and Escape, and on navigation/back
 
     document.addEventListener('keydown', function(e){
       if (e.key === "Escape") {
-        if (!detailModalBackdrop.classList.contains('hide')) { detailModalBackdrop.classList.add('hide'); detailModalBody.innerHTML=''; }
-        if (!productModalBackdrop.classList.contains('hide')) productModalBackdrop.classList.add('hide');
-        if (!deleteModalBackdrop.classList.contains('hide')) deleteModalBackdrop.classList.add('hide');
-        if (!settingsBackdrop.classList.contains('hide')) settingsBackdrop.classList.add('hide');
+        let closedAModal = false;
+        if (!detailModalBackdrop.classList.contains('hide')) { 
+          detailModalBackdrop.classList.add('hide'); detailModalBody.innerHTML='';
+          enableDetailBackgroundScroll();
+          closedAModal = true;
+        }
+        if (!productModalBackdrop.classList.contains('hide')) { productModalBackdrop.classList.add('hide'); closedAModal = true; }
+        if (!deleteModalBackdrop.classList.contains('hide')) { deleteModalBackdrop.classList.add('hide'); closedAModal = true; }
+        if (!settingsBackdrop.classList.contains('hide')) { settingsBackdrop.classList.add('hide'); closedAModal = true; }
+        // when closing detail modal, always enable scroll
+        if (closedAModal) enableDetailBackgroundScroll();
       }
     });
+
+    // Defensive: re-enable scroll on any click in the body if all modals are shut (e.g. browser back, unusual nav)
+    function maybeResetBodyScroll() {
+      if (
+        detailModalBackdrop.classList.contains('hide') &&
+        (!productModalBackdrop || productModalBackdrop.classList.contains('hide')) &&
+        (!settingsBackdrop || settingsBackdrop.classList.contains('hide')) &&
+        (!deleteModalBackdrop || deleteModalBackdrop.classList.contains('hide'))
+      ) {
+        enableDetailBackgroundScroll();
+      }
+    }
+    detailModalBackdrop.addEventListener('transitionend', maybeResetBodyScroll);
+    detailModalBackdrop.addEventListener('animationend', maybeResetBodyScroll);
+    window.addEventListener('popstate', maybeResetBodyScroll);
 
     /**************************************************************
      * Search
@@ -1010,13 +1158,51 @@
     const modalError = document.getElementById('modalError');
     const prodPhotoFileName = document.getElementById('prodPhotoFileName');
     const uploadBtnInnerText = document.getElementById('uploadBtnInnerText');
+    const prodPhotoFileContainer = document.getElementById('prodPhotoFileContainer');
+    const fileUploadWrap = document.getElementById('fileUploadWrap');
+
+    // Store current selected photo preview (dataurl or null)
+    let currentProductPhotoDataUrl = null;
+
+    function updatePhotoPreviewUI() {
+      // Clear previous content
+      prodPhotoFileContainer.innerHTML = '';
+
+      if (currentProductPhotoDataUrl) {
+        // Show thumbnail and remove button
+        const img = document.createElement('img');
+        img.src = currentProductPhotoDataUrl;
+        img.alt = "Product Photo";
+        img.className = 'photo-preview-img-thumb';
+
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'remove-photo-btn';
+        removeBtn.title = 'Remove image';
+        removeBtn.innerHTML = '✖';
+        removeBtn.onclick = function() {
+          currentProductPhotoDataUrl = null;
+          prodPhoto.value = '';
+          prodPhotoFileName.textContent = '';
+          uploadBtnInnerText.textContent = 'Choose Image';
+          updatePhotoPreviewUI();
+        };
+
+        prodPhotoFileContainer.appendChild(img);
+        prodPhotoFileContainer.appendChild(removeBtn);
+      }
+    }
 
     function showProductModal(mode, product) {
       productModal.reset();
       modalError.textContent = '';
-      // Clear the file input display
       prodPhotoFileName.textContent = '';
       uploadBtnInnerText.textContent = 'Choose Image';
+
+      // Clear preview and selected photo state
+      currentProductPhotoDataUrl = null;
+      updatePhotoPreviewUI();
+
       if (mode === 'add') {
         modalTitle.textContent = "Add Product";
         productEditing = null;
@@ -1025,24 +1211,53 @@
         modalTitle.textContent = "Edit Product";
         productEditing = product;
         prodName.value = product.name || ""; prodMrp.value = product.mrp !== undefined ? product.mrp : ""; prodCost.value = product.cost !== undefined ? product.cost : ""; prodQty.value = product.qty !== undefined ? product.qty : ""; prodCategory.value = product.category || ""; prodNotes.value = product.notes || ""; prodPhoto.value = "";
+
+        // If photo exists
+        if (product.photo) {
+          currentProductPhotoDataUrl = product.photo;
+          updatePhotoPreviewUI();
+        }
       }
       productModalBackdrop.classList.remove('hide');
+      // Lock body scroll when opening modal
+      if (!document.body.classList.contains('modal-open')) {
+        document.body.dataset.scrollY = window.scrollY;
+        document.body.style.top = `-${window.scrollY}px`;
+        document.body.classList.add('modal-open');
+      }
       setTimeout(()=>prodName.focus(),150);
     }
 
-    // Show file chosen name (if any)
+    // Show file chosen name (if any) and update thumbnail preview
     prodPhoto.addEventListener('change', function() {
       if (prodPhoto.files && prodPhoto.files.length) {
         prodPhotoFileName.textContent = prodPhoto.files[0].name;
         uploadBtnInnerText.textContent = "Image Selected";
+        // Get file and preview
+        readFileAsDataURL(prodPhoto.files[0]).then(dataUrl => {
+          currentProductPhotoDataUrl = dataUrl;
+          updatePhotoPreviewUI();
+        });
       } else {
         prodPhotoFileName.textContent = '';
         uploadBtnInnerText.textContent = 'Choose Image';
+        currentProductPhotoDataUrl = null;
+        updatePhotoPreviewUI();
       }
     });
 
     document.getElementById('addProductBtn').onclick = ()=>showProductModal('add');
-    document.getElementById('closeModalBtn').onclick = ()=>productModalBackdrop.classList.add('hide');
+    document.getElementById('closeModalBtn').onclick = ()=>{
+      productModalBackdrop.classList.add('hide');
+      // Unlock body scroll when closing modal
+      if (document.body.classList.contains('modal-open')) {
+        document.body.classList.remove('modal-open');
+        const scrollY = document.body.dataset.scrollY ? parseInt(document.body.dataset.scrollY, 10) : 0;
+        document.body.style.top = '';
+        window.scrollTo(0, scrollY);
+        delete document.body.dataset.scrollY;
+      }
+    };
 
     productModal.onsubmit = async function(e) {
       e.preventDefault();
@@ -1059,10 +1274,9 @@
       if (qtyVal === "" || isNaN(Number(qtyVal)) || Number(qtyVal) < 0) { modalError.textContent = "Valid quantity required."; return; }
 
       let photoData = null;
-      if (prodPhoto && prodPhoto.files && prodPhoto.files[0]) {
-        try { photoData = await readFileAsDataURL(prodPhoto.files[0]); } catch (err) {}
-      } else if (productEditing && productEditing.photo) {
-        photoData = productEditing.photo;
+      // Use the dataUrl from preview
+      if (currentProductPhotoDataUrl) {
+        photoData = currentProductPhotoDataUrl;
       }
 
       const productObj = {
@@ -1083,6 +1297,14 @@
       }
       saveProducts();
       productModalBackdrop.classList.add('hide');
+      // Unlock body scroll when closing modal
+      if (document.body.classList.contains('modal-open')) {
+        document.body.classList.remove('modal-open');
+        const scrollY = document.body.dataset.scrollY ? parseInt(document.body.dataset.scrollY, 10) : 0;
+        document.body.style.top = '';
+        window.scrollTo(0, scrollY);
+        delete document.body.dataset.scrollY;
+      }
       // Exit multi-select
       selectedProductIds.clear();
       updateMultiSelectControls();
