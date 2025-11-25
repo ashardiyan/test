@@ -928,24 +928,18 @@
       const selectedCountText = document.getElementById('selectedCountText');
       const selectAllCheckbox = document.getElementById('selectAllCheckbox');
 
+      // Show/hide controls only if there is at least 1 selected item
       if (selectedProductIds.size > 0) {
-        multiSelectMode = true;
         multiSelectControls.classList.add('active');
         deleteSelectedBtn.disabled = false;
         selectedCountText.textContent = `${selectedProductIds.size} selected`;
       } else {
+        multiSelectControls.classList.remove('active');
         deleteSelectedBtn.disabled = true;
         selectedCountText.textContent = "";
       }
 
-      // Decide whether hide controls if none selected
-      if (!multiSelectMode && selectedProductIds.size === 0) {
-        multiSelectControls.classList.remove('active');
-      } else {
-        multiSelectControls.classList.add('active');
-      }
-
-      // Select all checkbox indeterminate
+      // Set "selectAllCheckbox" state
       if (products.length && selectedProductIds.size === products.length) {
         selectAllCheckbox.checked = true;
         selectAllCheckbox.indeterminate = false;
