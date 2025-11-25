@@ -112,6 +112,10 @@
       position: relative;
       /* for file input overlays */
       overflow: hidden;
+      /* Remove blue highlight on tap/focus in mobile Safari/Chrome */
+      -webkit-tap-highlight-color: transparent; /* iOS Safari */
+      -webkit-user-select: none;
+      user-select: none;
     }
     .rounded-sky-btn:hover,
     .rounded-sky-btn:active {
@@ -131,7 +135,42 @@
       border-color: #1095b7;
     }
 
-    /* NEW: For the styled file button in modal */
+    /* Remove tap highlight globally from touch targets/buttons for mobile! */
+    button, .rounded-sky-btn, .prod-actions button, .modal-close, input[type="button"], input[type="submit"], .remove-photo-btn {
+      -webkit-tap-highlight-color: transparent !important;
+      tap-highlight-color: transparent !important;
+      /* Remove default mobile focus outline/box */
+      outline: none !important;
+    }
+    /* Remove strange mobile blue box after click */
+    button:focus, .rounded-sky-btn:focus, .prod-actions button:focus, .modal-close:focus, .remove-photo-btn:focus {
+      outline: none !important;
+      box-shadow: none !important;
+    }
+    /* Remove Safari's inner highlight for tap targets */
+    input[type="button"]:focus, input[type="submit"]:focus { outline:none !important; box-shadow:none !important; }
+    /* Prevent webkit highlight after tap for all clickable controls inside main card list */
+    .card button:focus-visible, .card button:focus, .prod-actions button:focus, .rounded-sky-btn:focus, .remove-photo-btn:focus {
+      outline: none !important;
+      box-shadow: none !important;
+      border-color: inherit !important;
+      background-clip: padding-box;
+    }
+
+    /* NEW: Remove "ghost highlight" when tapping on li/prod-card in mobile browser */
+    .prod-card, .prod-card * {
+      -webkit-tap-highlight-color: transparent !important;
+      tap-highlight-color: transparent !important;
+    }
+
+    /* NEW: Remove focus ring box for icon-btns/buttons everywhere on focus except for keyboard. Keep accessibility for tab, not mouse/touch. */
+    button:focus:not(:focus-visible), .rounded-sky-btn:focus:not(:focus-visible), .modal-close:focus:not(:focus-visible), .remove-photo-btn:focus:not(:focus-visible) {
+      outline: none !important;
+      box-shadow: none !important;
+    }
+
+    /* THE REST of your original styles unchanged... */
+
     .modal-file-upload-wrap {
       display: flex;
       align-items: center;
@@ -150,7 +189,6 @@
       display: inline-block;
       position: relative;
     }
-    /* Hide the original input */
     .modal-file-upload-btn input[type="file"] {
       position: absolute;
       left: 0; right: 0; top: 0; bottom: 0;
@@ -260,10 +298,37 @@
     ::selection{background:var(--accent2); color:#fff;}
     a{color:var(--accent);}
     .hidden { display:none !important; }
+    /* Style for keep-logged-in toggle */
+    .keep-logged-toggle {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      margin-top: 8px;
+      user-select: none;
+      font-size: .99em;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+    .keep-logged-toggle input[type="checkbox"] {
+      accent-color: var(--accent2);
+      transform: scale(1.13);
+      margin-right: 2px;
+    }
+    #timeoutNotice {
+      font-size: .97em;
+      color: var(--accent2);
+      margin-top: 11px;
+      text-align: center;
+      display: none;
+      font-weight: 600;
+      background: #122447;
+      padding: 8px 10px;
+      border-radius: 10px;
+    }
   </style>
 </head>
 <body>
-  <!-- LOGIN / SET PIN modal - always shown on load (no auto login) -->
+  <!-- LOGIN / SET PIN modal - now has a “Keep me logged in for 5 Minutes” toggle -->
   <div id="login-modal" style="position:fixed; inset:0; z-index:7000; background:rgba(22,27,34,0.89); display:flex; justify-content:center; align-items:center;">
     <form class="login-dialog modal" id="loginForm" autocomplete="off" novalidate style="max-width:380px;">
       <button class="modal-close" type="button" id="loginCloseBtn" title="Close" aria-label="Close dialog" role="button" style="display:none">✖</button>
@@ -272,6 +337,12 @@
 
       <label id="pinLabel" for="loginPIN">Create a secure PIN / Password</label>
       <input type="password" id="loginPIN" minlength="4" maxlength="32" required placeholder="Set PIN or password" autocomplete="new-password" />
+
+      <label class="keep-logged-toggle" title="If checked, you stay logged in for 5 minutes unless the app is closed or device is locked.">
+        <input type="checkbox" id="keepLoggedInToggle" />
+        <span>Keep me logged in for 5 Minutes</span>
+      </label>
+      <div id="timeoutNotice"></div>
 
       <div style="display:flex; gap:8px; align-items:center;">
         <button type="submit" id="loginBtn" style="flex:1;">Set PIN</button>
@@ -470,6 +541,107 @@
         }
       });
     })();
+  </script>
+  <script>
+    /****************************************************************
+     * Keep-logged-in authentication logic
+     ****************************************************************/
+    // Configuration
+    const KEEP_LOGGED_TIMEOUT_MS = 5*60*1000; // 5 minutes
+
+    // Helpers to store and retrieve session expiry (use sessionStorage so closes/logouts always expire it!)
+    function setKeepSessionActive(expiresAt) {
+      try {
+        sessionStorage.setItem('dealer-keep-expires', String(expiresAt));
+      } catch(e) {}
+    }
+    function getKeepSessionActive() {
+      try {
+        const val = sessionStorage.getItem('dealer-keep-expires');
+        return val && /^\d+$/.test(val) ? parseInt(val, 10) : null;
+      } catch(e) { return null; }
+    }
+    function clearKeepSession() {
+      try { sessionStorage.removeItem('dealer-keep-expires'); } catch(e) {}
+    }
+
+    // Notice about session expiry
+    function showTimeoutNotice(msg) {
+      const t = document.getElementById('timeoutNotice');
+      t.textContent = msg || '';
+      t.style.display = msg ? 'block' : 'none';
+    }
+
+    // Check if we're still within the "keep me logged in" window
+    function isSessionStillActive() {
+      const expiresAt = getKeepSessionActive();
+      return expiresAt && Date.now() < expiresAt;
+    }
+    // Show friendly reminder how much time is left
+    function showTimeoutCountdownIfAny() {
+      const expiresAt = getKeepSessionActive();
+      if (expiresAt && Date.now() < expiresAt) {
+        const secs = Math.max(0, Math.round((expiresAt-Date.now())/1000));
+        if(secs<60) showTimeoutNotice("Session will auto-lock in "+secs+" sec" + (secs===1?"":"s") + ".");
+        else if(secs<90) showTimeoutNotice("Session will auto-lock in about 1 min.");
+        else showTimeoutNotice("Session will auto-lock in about "+Math.ceil(secs/60)+" min.");
+      } else {
+        showTimeoutNotice("");
+      }
+    }
+    // Timer for updating countdown message
+    let timeoutCountdownInterval = null;
+
+    // When showing login, if session still active, skip PIN step and unlock
+    function checkQuickAutoUnlock() {
+      if (isSessionStillActive()) {
+        showDealerApp();
+        startSessionTimeoutMonitor();
+        return true;
+      }
+      return false;
+    }
+    // Monitor for session auto-timeout while unlocked
+    function startSessionTimeoutMonitor() {
+      // When app is open (dealerApp visible), warn as session nears expiry, and auto-lock if expired
+      if (timeoutCountdownInterval) clearInterval(timeoutCountdownInterval);
+      function check() {
+        showTimeoutCountdownIfAny();
+        if (!isSessionStillActive()) {
+          showTimeoutNotice("Session expired for security. Please login again.");
+          setTimeout(()=>manualLogoutDueToTimeout(), 1100); // Slight delay for message
+        }
+      }
+      timeoutCountdownInterval = setInterval(check, 800);
+      check();
+    }
+    function stopSessionTimeoutMonitor() {
+      if (timeoutCountdownInterval) clearInterval(timeoutCountdownInterval);
+      showTimeoutNotice(""); // Clear
+    }
+    function manualLogoutDueToTimeout() {
+      stopSessionTimeoutMonitor();
+      clearKeepSession();
+      document.getElementById('dealerApp').style.display = 'none';
+      showLoginModal("Session expired for security. Please login again.");
+    }
+
+    // Also want to clean session on tab close, reload, or if screen/device gets locked!
+    // Try to use Page Visibility & pagehide/unload events for maximum security.
+    function addSessionAutoLogoutHandlers() {
+      // On tab close/reload
+      window.addEventListener('pagehide', function(e) {
+        // Always clear the keep session on true pagehide, so only new PIN auth reactivates it
+        clearKeepSession();
+      });
+      // On screen lock, if available (visibility API)
+      document.addEventListener('visibilitychange', function() {
+        if (document.hidden) {
+          clearKeepSession();
+        }
+      });
+    }
+    addSessionAutoLogoutHandlers();
   </script>
   <script>
     /****************************************************************
