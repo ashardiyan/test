@@ -432,10 +432,8 @@
      * Modal background scroll lock
      ****************************************************************/
     (function() {
-      // Utility functions to apply and remove body scroll lock
       function lockBodyScroll() {
         if (!document.body.classList.contains('modal-open')) {
-          // Prevent fixed position from "jumping" page, keep current scroll position
           document.body.dataset.scrollY = window.scrollY;
           document.body.style.top = `-${window.scrollY}px`;
           document.body.classList.add('modal-open');
@@ -444,7 +442,6 @@
       function unlockBodyScroll() {
         if (document.body.classList.contains('modal-open')) {
           document.body.classList.remove('modal-open');
-          // Restore scroll position
           const scrollY = document.body.dataset.scrollY ? parseInt(document.body.dataset.scrollY, 10) : 0;
           document.body.style.top = '';
           window.scrollTo(0, scrollY);
@@ -452,13 +449,11 @@
         }
       }
 
-      // Watch for changes to modal visibility and lock body scroll (for add/edit, NOT for product details modal!)
       function observeProductModalOpen() {
         const productModalBackdrop = document.getElementById('productModalBackdrop');
         if (!productModalBackdrop) return;
         const config = { attributes: true, attributeFilter: ['class'] };
         const observer = new MutationObserver(() => {
-          // If add/edit modal is open (not has class 'hide')
           if (!productModalBackdrop.classList.contains('hide')) {
             lockBodyScroll();
           } else {
@@ -466,12 +461,9 @@
           }
         });
         observer.observe(productModalBackdrop, config);
-        // Also cleanup on page unload
         window.addEventListener('beforeunload', unlockBodyScroll);
       }
       window.addEventListener('DOMContentLoaded', observeProductModalOpen);
-
-      // Fallback: ensure closing modal via code/path also unlocks scroll (add/edit only)
       window.addEventListener('keydown', function(e) {
         if (e.key === "Escape") {
           unlockBodyScroll();
@@ -483,6 +475,7 @@
     /****************************************************************
      * PWA manifest & service worker (dynamically created)
      ****************************************************************/
+    // ... (PWA manifest/service worker unchanged) ...
     (function createManifestAndServiceWorker() {
       // Using a PNG icon as requested
       const imgIcon = "https://github.com/ashardiyan/test/blob/main/Al%20Rahman%20Electronics-02.png?raw=true";
@@ -896,7 +889,6 @@
     const productListElem = document.getElementById('productList');
     const noProductsElem = document.getElementById('noProducts');
     let products = [];
-    // -- Multi-select state
     let multiSelectMode = false;
     let selectedProductIds = new Set();
 
@@ -1159,11 +1151,8 @@
     let currentProductPhotoDataUrl = null;
 
     function updatePhotoPreviewUI() {
-      // Clear previous content
       prodPhotoFileContainer.innerHTML = '';
-
       if (currentProductPhotoDataUrl) {
-        // Show thumbnail and remove button
         const img = document.createElement('img');
         img.src = currentProductPhotoDataUrl;
         img.alt = "Product Photo";
@@ -1192,8 +1181,6 @@
       modalError.textContent = '';
       prodPhotoFileName.textContent = '';
       uploadBtnInnerText.textContent = 'Choose Image';
-
-      // Clear preview and selected photo state
       currentProductPhotoDataUrl = null;
       updatePhotoPreviewUI();
 
@@ -1206,7 +1193,6 @@
         productEditing = product;
         prodName.value = product.name || ""; prodMrp.value = product.mrp !== undefined ? product.mrp : ""; prodCost.value = product.cost !== undefined ? product.cost : ""; prodQty.value = product.qty !== undefined ? product.qty : ""; prodCategory.value = product.category || ""; prodNotes.value = product.notes || ""; prodPhoto.value = "";
 
-        // If photo exists
         if (product.photo) {
           currentProductPhotoDataUrl = product.photo;
           updatePhotoPreviewUI();
@@ -1220,30 +1206,41 @@
         document.body.classList.add('modal-open');
       }
       setTimeout(()=>prodName.focus(),150);
+      // --- PATCH: Reset firstSubmitAttempt state ---
+      firstSubmitAttempt = true;
     }
 
-    // Show file chosen name (if any) and update thumbnail preview
+    // --- PATCH BEGIN: Fix "first image upload not saved" bug ---
+    // Explanation: On initial submit, the image's FileReader async might not finish before submit, so form closes but photo is not processed.
+    // Solution: When submitting, if file input has file and currentProductPhotoDataUrl is not set, wait for readFileAsDataURL promise before proceeding with save.
+
+    // Whether this is first time submit since opening modal
+    let firstSubmitAttempt = true;
+    // Store last pending file read promise, so form submit can wait for it
+    let prodPhotoLastPendingPromise = null;
+
     prodPhoto.addEventListener('change', function() {
       if (prodPhoto.files && prodPhoto.files.length) {
         prodPhotoFileName.textContent = prodPhoto.files[0].name;
         uploadBtnInnerText.textContent = "Image Selected";
         // Get file and preview
-        readFileAsDataURL(prodPhoto.files[0]).then(dataUrl => {
+        const filePromise = readFileAsDataURL(prodPhoto.files[0]).then(dataUrl => {
           currentProductPhotoDataUrl = dataUrl;
           updatePhotoPreviewUI();
         });
+        prodPhotoLastPendingPromise = filePromise;
       } else {
         prodPhotoFileName.textContent = '';
         uploadBtnInnerText.textContent = 'Choose Image';
         currentProductPhotoDataUrl = null;
         updatePhotoPreviewUI();
+        prodPhotoLastPendingPromise = null;
       }
     });
 
     document.getElementById('addProductBtn').onclick = ()=>showProductModal('add');
     document.getElementById('closeModalBtn').onclick = ()=>{
       productModalBackdrop.classList.add('hide');
-      // Unlock body scroll when closing modal
       if (document.body.classList.contains('modal-open')) {
         document.body.classList.remove('modal-open');
         const scrollY = document.body.dataset.scrollY ? parseInt(document.body.dataset.scrollY, 10) : 0;
@@ -1256,6 +1253,25 @@
     productModal.onsubmit = async function(e) {
       e.preventDefault();
       modalError.textContent = "";
+
+      // PATCH: Only on first submit after opening modal, if user chose an image and preview not processed yet, wait for FileReader to finish
+      // This ensures if user clicks "Save" immediately after picking image, it will be saved
+      // Once handled, any further submit is "normal"
+      if (firstSubmitAttempt && prodPhoto.files && prodPhoto.files.length && !currentProductPhotoDataUrl && prodPhotoLastPendingPromise) {
+        try {
+          await prodPhotoLastPendingPromise;
+        } catch (err) {
+          modalError.textContent = "Image failed to load, please select again.";
+          return;
+        }
+        // Only do this extra wait logic once per modal open
+        firstSubmitAttempt = false;
+        // Now try submitting again automatically
+        productModal.onsubmit(e);
+        return;
+      }
+      firstSubmitAttempt = false;
+
       const name = (prodName.value || '').trim();
       const mrpVal = prodMrp.value;
       const costVal = prodCost.value;
@@ -1291,7 +1307,6 @@
       }
       saveProducts();
       productModalBackdrop.classList.add('hide');
-      // Unlock body scroll when closing modal
       if (document.body.classList.contains('modal-open')) {
         document.body.classList.remove('modal-open');
         const scrollY = document.body.dataset.scrollY ? parseInt(document.body.dataset.scrollY, 10) : 0;
@@ -1299,10 +1314,10 @@
         window.scrollTo(0, scrollY);
         delete document.body.dataset.scrollY;
       }
-      // Exit multi-select
       selectedProductIds.clear();
       updateMultiSelectControls();
     };
+    // --- PATCH END ---
 
     function readFileAsDataURL(file) {
       return new Promise((resolve,reject)=>{
