@@ -264,35 +264,10 @@
     .modal-close { position:absolute; top:13px; right:14px; background:none; border:none; color:var(--accent2); font-size:1.24em; cursor:pointer; font-weight:bold; outline:none; }
     .modal label { font-weight:600; font-size:.96em; color:var(--text-muted); margin-bottom:4px; }
     .modal input[type=text], .modal input[type=number], .modal input[type=file], .modal input[type=password], .modal textarea { border-radius:7px; border:1.5px solid #253048; background:var(--bg3); color:var(--text); font-size:1em; padding:8px 11px; margin-bottom:13px; margin-top:2px; outline:none; width:100%; box-sizing:border-box; transition:border .13s; }
-    .modal input[type="password"].with-eye,
-    .modal input[type="text"].with-eye {
-      padding-right: 2.3em;
-    }
-    .eye-toggle-btn {
-      position: absolute;
-      right: 13px;
-      top: 35px;
-      background: none;
-      border: none;
-      color: var(--accent2-hover);
-      font-size: 1.13em;
-      cursor: pointer;
-      padding: 0 7px;
-      border-radius: 7px;
-      z-index: 3;
-      height: 2.1em;
-      width: 2.1em;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-sizing: border-box;
-      transition: background .13s;
-    }
-    .eye-toggle-btn:focus, .eye-toggle-btn:hover {
-      background: #23314a46;
-      color: var(--accent2);
-    }
-
+    .modal textarea { min-height:54px; resize:vertical; }
+    .modal-btnbar { display:flex; align-items:center; justify-content:flex-end; gap:13px; margin-top:6px; }
+    .modal button[type=submit] { background:linear-gradient(95deg,var(--accent2),var(--accent)); color:#fff; padding:11px 22px; font-size:1em; border:none; border-radius:8px; font-weight:700; cursor:pointer; box-shadow:0 2px 10px #1b314e28; margin:6px 0; transition:background .14s; outline:none; }
+    .modal .error { font-size:.98em; color:var(--danger); margin-bottom:7px; min-height:18px; text-align:left; }
     #detailModal .prod-detail-photo { display:block; width:124px; height:124px; object-fit:cover; border-radius:19px; margin:6px auto 0 auto; box-shadow:0 2px 12px #1b314e22; background:#21293f; }
 
     /* Prevent background scrolling when modal is open */
@@ -319,7 +294,6 @@
       #multiSelectControls{font-size:0.99em; flex-wrap:wrap;}
       .photo-preview-img-thumb { max-width:32px; max-height:32px; }
       .remove-photo-btn { width:22px; height:22px; font-size:1em;}
-      .eye-toggle-btn { top: 27px; font-size:1em;}
     }
     ::selection{background:var(--accent2); color:#fff;}
     a{color:var(--accent);}
@@ -356,19 +330,13 @@
 <body>
   <!-- LOGIN / SET PIN modal - now has a “Keep me logged in for 5 Minutes” toggle -->
   <div id="login-modal" style="position:fixed; inset:0; z-index:7000; background:rgba(22,27,34,0.89); display:flex; justify-content:center; align-items:center;">
-    <form class="login-dialog modal" id="loginForm" autocomplete="off" novalidate style="max-width:380px; position:relative;">
+    <form class="login-dialog modal" id="loginForm" autocomplete="off" novalidate style="max-width:380px;">
       <button class="modal-close" type="button" id="loginCloseBtn" title="Close" aria-label="Close dialog" role="button" style="display:none">✖</button>
       <h3 style="text-align:center;color:var(--accent2);margin-bottom:12px">🔐 Dealer Login</h3>
       <div class="error input-error" id="login-error" style="min-height:18px;margin-bottom:8px"></div>
 
       <label id="pinLabel" for="loginPIN">Create a secure PIN / Password</label>
-      <div style="position:relative;">
-        <input type="password" id="loginPIN" minlength="4" maxlength="32" required placeholder="Set PIN or password" autocomplete="new-password" class="with-eye"/>
-        <button type="button" tabindex="-1" aria-label="Show password" id="toggleLoginPinEye" class="eye-toggle-btn" title="Show/hide password">
-          <svg id="eyeIconShow" style="display:inline" xmlns="http://www.w3.org/2000/svg" width="1.34em" height="1.13em" fill="none" viewBox="0 0 18 14"><path d="M1 7C2.5 3 5.92 1 9 1s6.5 2 8 6c-1.5 4-4.92 6-8 6S2.5 11 1 7Z" stroke="currentColor" stroke-width="1.5"/><circle cx="9" cy="7" r="3" stroke="currentColor" stroke-width="1.5"/></svg>
-          <svg id="eyeIconHide" style="display:none" xmlns="http://www.w3.org/2000/svg" width="1.34em" height="1.13em" fill="none" viewBox="0 0 18 14"><path d="M1 7C2.5 3 5.92 1 9 1c2.21 0 4.42.73 6.03 2.17m2.1 3.38c-.47 1.57-1.49 3.03-2.86 4.03-1.56 1.16-3.27 1.62-5.27 1.42m-7-4c1.47 3.97 4.89 5.97 8.04 5.97.82 0 1.62-.09 2.38-.26M1 1l16 12" stroke="currentColor" stroke-width="1.5"/></svg>
-        </button>
-      </div>
+      <input type="password" id="loginPIN" minlength="4" maxlength="32" required placeholder="Set PIN or password" autocomplete="new-password" />
 
       <label class="keep-logged-toggle" title="If checked, you stay logged in for 5 minutes unless the app is closed or device is locked.">
         <input type="checkbox" id="keepLoggedInToggle" />
@@ -571,62 +539,6 @@
         if (e.key === "Escape") {
           unlockBodyScroll();
         }
-      });
-    })();
-  </script>
-  <script>
-    /***** Add password eye toggle for login PIN *****/
-    (function() {
-      window.addEventListener('DOMContentLoaded', function() {
-        var pinInput = document.getElementById('loginPIN');
-        var eyeBtn = document.getElementById('toggleLoginPinEye');
-        var eyeShow = document.getElementById('eyeIconShow');
-        var eyeHide = document.getElementById('eyeIconHide');
-
-        function setType(isVisible) {
-          if (isVisible) {
-            pinInput.type = 'text';
-            eyeShow.style.display = 'none';
-            eyeHide.style.display = '';
-            eyeBtn.title = "Hide password";
-          } else {
-            pinInput.type = 'password';
-            eyeShow.style.display = '';
-            eyeHide.style.display = 'none';
-            eyeBtn.title = "Show password";
-          }
-        }
-
-        var visible = false;
-        setType(visible);
-
-        eyeBtn.addEventListener('click', function(e) {
-          e.preventDefault();
-          visible = !visible;
-          setType(visible);
-          pinInput.focus();
-        });
-
-        // Optional: hide password on form submit for safety
-        var loginForm = document.getElementById('loginForm');
-        loginForm && loginForm.addEventListener('submit', function() {
-          visible = false;
-          setType(visible);
-        });
-        // Hide password when modal shown again
-        document.getElementById('login-modal').addEventListener('transitionend', function() {
-          visible = false;
-          setType(visible);
-        });
-
-        // Keyboard: ctrl+shift+H to toggle show/hide when in pinInput
-        pinInput.addEventListener('keydown', function(e){
-          if ((e.ctrlKey||e.metaKey) && e.shiftKey && (e.key==='H'||e.key==='h')) {
-            e.preventDefault();
-            visible = !visible;
-            setType(visible);
-          }
-        });
       });
     })();
   </script>
