@@ -719,7 +719,7 @@
     })();
 
     /**************************************************************
-     * UI fade
+     * Export / Import
      **************************************************************/
     window.addEventListener('DOMContentLoaded', function(){
       setTimeout(function() {
@@ -1647,6 +1647,54 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a'); a.style.display='none'; a.href = url; a.download = 'dealer-products-backup.json'; document.body.appendChild(a); a.click(); URL.revokeObjectURL(url);
       setTimeout(()=>{ document.body.removeChild(a); },200);
+    };
+
+    // Fix error and merge with existing import logic
+    document.getElementById('importBtn').onclick = function () {
+      // trigger hidden file input
+      let fileInput = document.getElementById('hiddenImport');
+      if (fileInput) fileInput.value = ''; // clear any previous selection for consistent behavior
+      if (fileInput) fileInput.click();
+    };
+
+    document.getElementById('hiddenImport').onchange = async function (e) {
+      const fileInput = e.target;
+      if (!fileInput.files || !fileInput.files.length) return;
+      const file = fileInput.files[0];
+      // Accept only json or with .json name
+      if (!(file && (file.type === 'application/json' || /\.json$/i.test(file.name)))) {
+        alert('Please select a .json backup/export file.');
+        return;
+      }
+      try {
+        // Try to read content as text
+        let text = '';
+        if (file.text) {
+          text = await file.text();
+        } else {
+          // fallback for old browsers
+          text = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = e => resolve(e.target.result);
+            reader.onerror = reject;
+            reader.readAsText(file);
+          });
+        }
+        let arr = JSON.parse(text);
+        if (!Array.isArray(arr)) throw new Error('Invalid file - data not array');
+        // Validate at least 'name' and 'qty' fields on entries
+        arr = arr.filter(prod => prod && typeof prod === 'object' && 'name' in prod && 'qty' in prod);
+        if (!arr.length) throw new Error('No valid products in file!');
+        if (!confirm(`Import will OVERWRITE your current products with ${arr.length} product(s).\nAre you sure?`)) return;
+        window.localStorage.setItem('dealer-products', JSON.stringify(arr));
+        products = arr;
+        refreshProductList();
+        selectedProductIds.clear();
+        updateMultiSelectControls();
+        alert('Import successful. Product list replaced.');
+      } catch (ex) {
+        alert("Failed to import products: " + (ex.message || ex));
+      }
     };
 
     // Remove old readFileAsDataURL; not used in main flow anymore
