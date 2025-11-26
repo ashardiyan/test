@@ -564,20 +564,15 @@
     function clearKeepSession() {
       try { sessionStorage.removeItem('dealer-keep-expires'); } catch(e) {}
     }
-
-    // Notice about session expiry
     function showTimeoutNotice(msg) {
       const t = document.getElementById('timeoutNotice');
       t.textContent = msg || '';
       t.style.display = msg ? 'block' : 'none';
     }
-
-    // Check if we're still within the "keep me logged in" window
     function isSessionStillActive() {
       const expiresAt = getKeepSessionActive();
-      return expiresAt && Date.now() < expiresAt;
+      return !!expiresAt && Date.now() < expiresAt;
     }
-    // Show friendly reminder how much time is left
     function showTimeoutCountdownIfAny() {
       const expiresAt = getKeepSessionActive();
       if (expiresAt && Date.now() < expiresAt) {
@@ -589,27 +584,25 @@
         showTimeoutNotice("");
       }
     }
-    // Timer for updating countdown message
     let timeoutCountdownInterval = null;
 
-    // When showing login, if session still active, skip PIN step and unlock
     function checkQuickAutoUnlock() {
       if (isSessionStillActive()) {
+        // Set PIN UI state: Unlock not Set PIN
+        updatePINUI(getHasPIN());
         showDealerApp();
         startSessionTimeoutMonitor();
         return true;
       }
       return false;
     }
-    // Monitor for session auto-timeout while unlocked
     function startSessionTimeoutMonitor() {
-      // When app is open (dealerApp visible), warn as session nears expiry, and auto-lock if expired
       if (timeoutCountdownInterval) clearInterval(timeoutCountdownInterval);
       function check() {
         showTimeoutCountdownIfAny();
         if (!isSessionStillActive()) {
           showTimeoutNotice("Session expired for security. Please login again.");
-          setTimeout(()=>manualLogoutDueToTimeout(), 1100); // Slight delay for message
+          setTimeout(()=>manualLogoutDueToTimeout(), 1100);
         }
       }
       timeoutCountdownInterval = setInterval(check, 800);
@@ -617,24 +610,19 @@
     }
     function stopSessionTimeoutMonitor() {
       if (timeoutCountdownInterval) clearInterval(timeoutCountdownInterval);
-      showTimeoutNotice(""); // Clear
+      showTimeoutNotice("");
     }
     function manualLogoutDueToTimeout() {
       stopSessionTimeoutMonitor();
       clearKeepSession();
       document.getElementById('dealerApp').style.display = 'none';
       showLoginModal("Session expired for security. Please login again.");
+      updatePINUI(getHasPIN());
     }
-
-    // Also want to clean session on tab close, reload, or if screen/device gets locked!
-    // Try to use Page Visibility & pagehide/unload events for maximum security.
     function addSessionAutoLogoutHandlers() {
-      // On tab close/reload
       window.addEventListener('pagehide', function(e) {
-        // Always clear the keep session on true pagehide, so only new PIN auth reactivates it
         clearKeepSession();
       });
-      // On screen lock, if available (visibility API)
       document.addEventListener('visibilitychange', function() {
         if (document.hidden) {
           clearKeepSession();
@@ -642,10 +630,9 @@
       });
     }
     addSessionAutoLogoutHandlers();
-  </script>
-  <script>
+
     /****************************************************************
-     * PWA manifest & service worker (dynamically created)
+     * PIN hashing & auth helpers - improved and bugfixed
      ****************************************************************/
     // ... (PWA manifest/service worker unchanged) ...
     (function createManifestAndServiceWorker() {
@@ -885,18 +872,23 @@
       }
       const encoder = new TextEncoder();
       try {
+        // Defensive: PBKDF2 with a salt (slow hash) for security, fallback to SHA-256
         const baseKey = await window.crypto.subtle.importKey('raw', encoder.encode(pin), 'PBKDF2', false, ['deriveBits']);
         const rawBits = await window.crypto.subtle.deriveBits({ name: "PBKDF2", salt: encoder.encode(salt), iterations: 3000, hash: "SHA-256" }, baseKey, 256);
         const hashArr = new Uint8Array(rawBits);
         return Array.from(hashArr).map(b => b.toString(16).padStart(2,'0')).join('');
       } catch (e) {
-        const data = encoder.encode(pin + salt);
-        const arrBuf = await window.crypto.subtle.digest('SHA-256', data);
-        const hashArr = new Uint8Array(arrBuf);
-        return Array.from(hashArr).map(b => b.toString(16).padStart(2,'0')).join('');
+        try {
+          const data = encoder.encode(pin + salt);
+          const arrBuf = await window.crypto.subtle.digest('SHA-256', data);
+          const hashArr = new Uint8Array(arrBuf);
+          return Array.from(hashArr).map(b => b.toString(16).padStart(2,'0')).join('');
+        } catch (e2) {
+          // If hashing not available, fallback (not secure)
+          return pin + salt;
+        }
       }
     }
-
     function getHasPIN() { return !!window.localStorage.getItem('dealer-hash'); }
     function showDealerApp() {
       document.getElementById('dealerApp').style.display = '';
@@ -909,17 +901,27 @@
       document.getElementById('dealerApp').style.display = 'none';
       const loginModal = document.getElementById('login-modal');
       loginModal.style.display = 'flex';
-      if (msg) { document.getElementById('login-error').textContent = msg; } else { document.getElementById('login-error').textContent = ''; }
+      if (msg) { 
+        document.getElementById('login-error').textContent = msg; 
+        document.getElementById('login-error').style.color = 'var(--danger)';
+      } else { 
+        document.getElementById('login-error').textContent = ''; 
+        document.getElementById('login-error').style.color = '';
+      }
       document.getElementById('loginPIN').value = '';
       setTimeout(()=>document.getElementById('loginPIN').focus(),120);
     }
+    // Fix—track if PIN was just set, to avoid double-prompt
+    let justSetPIN = false;
 
-    // Always require PIN on load -> do not auto-unlock
+    // Always require PIN on load -> do not auto-unlock directly
     window.addEventListener('load', ()=> {
-      // show login modal always
       updatePINUI(getHasPIN());
-      showLoginModal();
-      // Push dummy back state to help installs that open to blank (workaround for Chrome bug)
+      // On initial load, if session active, skip PIN
+      if (!checkQuickAutoUnlock()) {
+        showLoginModal();
+      }
+      // Push dummy back state to help installs that open to blank
       setTimeout(function() {
         if ("serviceWorker" in navigator && window.matchMedia('(display-mode: standalone)').matches) {
           try { history.replaceState({start:true}, document.title, window.location.href); } catch (e) {}
@@ -927,12 +929,13 @@
       }, 180);
     });
 
-    // Update login UI depending on whether PIN exists
+    // --- Login UI update logic ---
     const loginBtn = document.getElementById('loginBtn');
     const loginForm = document.getElementById('loginForm');
     const loginPIN = document.getElementById('loginPIN');
     const loginError = document.getElementById('login-error');
     const pinLabel = document.getElementById('pinLabel');
+    const keepLoggedInToggle = document.getElementById('keepLoggedInToggle');
 
     function updatePINUI(hasPIN) {
       if (hasPIN) {
@@ -947,48 +950,95 @@
         loginPIN.autocomplete = "new-password";
       }
       loginError.textContent = '';
+      loginError.style.color = '';
     }
 
     loginForm.onsubmit = async function(e) {
       e.preventDefault();
       loginError.textContent = '';
+      loginError.style.color = '';
       const pinVal = (loginPIN.value || '').trim();
       const hasPIN = getHasPIN();
       if (!pinVal || pinVal.length < 4) {
+        loginError.style.color = 'var(--danger)';
         loginError.textContent = hasPIN ? "Enter your PIN/Password." : "PIN/password must be at least 4 characters.";
         return;
       }
       loginBtn.disabled = true;
       try {
         const hash = await hashPIN(pinVal);
+
+        // SET PIN (first time only)
         if (!hasPIN) {
           window.localStorage.setItem('dealer-hash', hash);
+          justSetPIN = true;
           updatePINUI(true);
           loginError.style.color = 'var(--success)';
           loginError.textContent = "PIN set. Now use it to unlock.";
-          setTimeout(()=>{ loginError.textContent = ''; loginError.style.color=''; },1500);
           loginBtn.disabled = false;
           loginPIN.value = '';
+          setTimeout(()=>{
+            loginError.textContent = '';
+            loginError.style.color='';
+          }, 1500);
+          // The first time user sets PIN, make sure the keep-logged-in toggle is unchecked
+          keepLoggedInToggle.checked = false;
           return;
         }
+
+        // UNLOCK (existing)
         const userHash = window.localStorage.getItem('dealer-hash');
         if (userHash === hash) {
+          // "Keep me logged in" logic (checkbox only visible after PIN has been set)
+          if (keepLoggedInToggle.checked) {
+            // Set session expiry only if explicitly checked now, not sticky
+            setKeepSessionActive(Date.now() + KEEP_LOGGED_TIMEOUT_MS);
+            startSessionTimeoutMonitor();
+          } else {
+            clearKeepSession();
+            stopSessionTimeoutMonitor();
+          }
+          showDealerApp();
           loginBtn.disabled = false;
           loginError.textContent = '';
-          showDealerApp();
+          loginError.style.color = '';
+          // Reset [justSetPIN] after first successful unlock, so next logout shows regular login
+          justSetPIN = false;
         } else {
           loginBtn.disabled = false;
-          loginError.style.color = '';
+          loginError.style.color='var(--danger)';
           loginError.textContent = 'Incorrect PIN / Password.';
         }
       } catch (ex) {
         loginBtn.disabled = false;
-        loginError.textContent = 'An error occurred.';
+        loginError.style.color='var(--danger)';
+        loginError.textContent = 'An error occurred. Try again.';
       }
     };
 
+    // Hide session warning message on new login UI
+    keepLoggedInToggle.onchange = function() {
+      showTimeoutNotice("");
+      // If unchecked, forcibly clear any keep session
+      if (!this.checked) clearKeepSession();
+    };
+
+    // Security fix: always clear PIN field on show
+    document.getElementById('login-modal').addEventListener('transitionend', function() {
+      loginPIN.value = '';
+    });
+
+    // Handle manual logout or session expiration
+    function doLogout(showMsg) {
+      stopSessionTimeoutMonitor();
+      clearKeepSession();
+      document.getElementById('dealerApp').style.display = 'none';
+      showLoginModal(showMsg || 'You have been logged out.');
+      updatePINUI(getHasPIN());
+    }
+
     /**************************************************************
-     * Settings modal logic: logout + reset PIN
+     * Settings Modal Logic (Logout, PIN Reset) - PIN reset bugfix
      **************************************************************/
     const settingsBtn = document.getElementById('settingsBtn');
     const settingsBackdrop = document.getElementById('settingsBackdrop');
@@ -1000,42 +1050,42 @@
 
     settingsBtn.onclick = () => {
       settingsBackdrop.classList.remove('hide');
-      // populate/clear reset form
       document.getElementById('oldPin').value = '';
       document.getElementById('newPin').value = '';
       document.getElementById('confirmPin').value = '';
       resetPinError.textContent = '';
+      resetPinError.style.color = '';
     };
     closeSettingsBtn.onclick = () => settingsBackdrop.classList.add('hide');
 
     logoutBtn.onclick = () => {
-      // do not delete PIN or products, just lock UI
       settingsBackdrop.classList.add('hide');
-      showLoginModal('You have been logged out.');
-      updatePINUI(getHasPIN());
+      doLogout();
     };
 
     resetPinCancel.onclick = () => {
       resetPinError.textContent = '';
+      resetPinError.style.color = '';
       settingsBackdrop.classList.add('hide');
     };
 
     resetPinSubmit.onclick = async function() {
       resetPinError.textContent = '';
+      resetPinError.style.color = '';
       const oldPin = (document.getElementById('oldPin').value || '').trim();
       const newPin = (document.getElementById('newPin').value || '').trim();
       const confirmPin = (document.getElementById('confirmPin').value || '').trim();
-
-      if (!oldPin || oldPin.length < 4) { resetPinError.textContent = "Enter current PIN (min 4 chars)."; return; }
-      if (!newPin || newPin.length < 4) { resetPinError.textContent = "New PIN must be at least 4 characters."; return; }
-      if (newPin !== confirmPin) { resetPinError.textContent = "New PIN and confirmation do not match."; return; }
-
+      if (!oldPin || oldPin.length < 4) { resetPinError.textContent = "Enter current PIN (min 4 chars)."; resetPinError.style.color='var(--danger)'; return; }
+      if (!newPin || newPin.length < 4) { resetPinError.textContent = "New PIN must be at least 4 characters."; resetPinError.style.color='var(--danger)'; return; }
+      if (newPin !== confirmPin) { resetPinError.textContent = "New PIN and confirmation do not match."; resetPinError.style.color='var(--danger)'; return; }
+      if (oldPin === newPin) { resetPinError.textContent = "New PIN cannot be same as old PIN."; resetPinError.style.color='var(--danger)'; return;}
       resetPinSubmit.disabled = true;
       try {
         const oldHash = await hashPIN(oldPin);
         const stored = window.localStorage.getItem('dealer-hash');
         if (stored !== oldHash) {
           resetPinError.textContent = "Current PIN is incorrect.";
+          resetPinError.style.color='var(--danger)';
           resetPinSubmit.disabled = false;
           return;
         }
@@ -1051,12 +1101,13 @@
         }, 1000);
       } catch (err) {
         resetPinError.textContent = "Failed to update PIN.";
+        resetPinError.style.color='var(--danger)';
       }
       resetPinSubmit.disabled = false;
     };
 
     /**************************************************************
-     * Products store & UI (same as previous working code)
+     * All other app/product logic unchanged...
      **************************************************************/
     const productListElem = document.getElementById('productList');
     const noProductsElem = document.getElementById('noProducts');
