@@ -842,7 +842,7 @@
     });
 
     /**************************************************************
-     * Handle Android back button in PWA (prevent full exit)
+     * Handle Android back button in PWA (improved so back closes modals first, then product, but does NOT logout)
      **************************************************************/
     (function handleAndroidBackButton() {
       // Only for standalone PWA mode
@@ -850,51 +850,110 @@
         return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
                (window.navigator.standalone === true);
       }
-      let canGoBack = false;
+      // Keep track of our own stack of modal closings in history
+      let openedModals = [];
+      // modal id order preference (topmost modal should be closed first)
+      const modalPriority = ['productModalBackdrop', 'deleteModalBackdrop', 'settingsBackdrop', 'detailModalBackdrop'];
 
-      // Push initial state once on entering app after successful login
-      function pushDummyHistory() {
+      // Helper: check any modal open, return its id (in priority order)
+      function getOpenModalId() {
+        for (const id of modalPriority) {
+          const el = document.getElementById(id);
+          if (el && !el.classList.contains('hide')) return id;
+        }
+        return null;
+      }
+
+      // Called after entering app
+      function pushMainStateToHistory() {
+        // Push a base state to history. Only needed in standalone mode.
         if (!isStandalone()) return;
         try {
-          history.replaceState({dummy:true}, document.title, window.location.href);
-          history.pushState({dummy:true}, document.title, window.location.href);
+          history.replaceState({dealerAppMain: true}, document.title, window.location.href);
         } catch (e) {}
       }
 
-      // After successful login, push history state so back button is intercepted
+      // Called when opening a modal: push extra state (so back closes)
+      function pushModalState(modalId) {
+        if (!isStandalone()) return;
+        try {
+          history.pushState({modal: modalId}, document.title, window.location.href);
+          openedModals.push(modalId);
+        } catch (e) {}
+      }
+
+      // Called on modal close
+      function popModalState() {
+        if (!isStandalone()) return;
+        try {
+          // On close, go back in history just once
+          if (openedModals.length) {
+            openedModals.pop();
+            history.back();
+          }
+        } catch (e) {}
+      }
+
+      // On login/unlock, set initial state (don't push extra!)
       function enablePwaBackHandler() {
-        pushDummyHistory();
+        pushMainStateToHistory();
+
         window.addEventListener('popstate', function(e) {
+          // Only act if we are in dealer app view
           if (document.getElementById('dealerApp').style.display !== 'none') {
-            // If any modal/popover open, close it first
-            let anyClosed = false;
-            ['productModalBackdrop','deleteModalBackdrop','settingsBackdrop','detailModalBackdrop'].forEach(id=>{
-              let el=document.getElementById(id);
-              if(el && !el.classList.contains('hide')) {
-                el.classList.add('hide');
-                anyClosed = true;
+            // If a modal is open, close the most "top" (last in modalPriority) one
+            const topOpenModal = (() => {
+              for (let i = 0; i < modalPriority.length; ++i) {
+                const el = document.getElementById(modalPriority[i]);
+                if (el && !el.classList.contains('hide')) return modalPriority[i];
               }
-            });
-            if(anyClosed) {
-              // Closed a modal, but remain in app - push again to prevent quit
-              pushDummyHistory();
+              return null;
+            })();
+
+            if (topOpenModal) {
+              // Instead of locking/logging out, just close modal
+              document.getElementById(topOpenModal).classList.add('hide');
+              // When you close a modal using history back, prevent further side effects
+              setTimeout(()=>{},10);
               return;
             }
-            // Instead of quitting app, show login modal (lock the app)
-            document.getElementById('dealerApp').style.display = 'none';
-            document.getElementById('login-modal').style.display = 'flex';
-            window.setTimeout(()=>document.getElementById('loginPIN').focus(),150);
-            pushDummyHistory();
+            // NO modals open, stay in app. Ignore standard back (prevent leaving app on "back"), unless user is on login!
+            // Option 1: Stay at current page (don't push new state, just ignore back)
+            // Option 2: Optionally show a toast "Press back again to exit"
+            // We'll do Option 1: Ignore further back (user can manually exit the PWA from app switcher)
+            pushMainStateToHistory();
           } else {
-            // On login screen, allow exit with back (one level)
-            // But push dummy to at least prevent double-tap accidental exits
-            pushDummyHistory();
+            // On login screen, allow exit with back (one level). Could show a message or just allow browser to leave.
+            // But "main" state always on top, so back from here can't be intercepted
           }
         });
       }
 
-      // Attach after showDealerApp is called
-      window.__enablePwaBackHandler = enablePwaBackHandler;
+      // Auto-track modal open/close: whenever any modal is opened, push modal state if needed
+      function setupModalHistoryTracking() {
+        modalPriority.forEach(id => {
+          const el = document.getElementById(id);
+          if (!el) return;
+          // Observe open
+          const observer = new MutationObserver(() => {
+            if (!el.classList.contains('hide')) {
+              // Modal opened
+              if (!openedModals.includes(id)) pushModalState(id);
+            } else {
+              // Modal closed (pop from our stack if present)
+              const idx = openedModals.indexOf(id);
+              if (idx !== -1) openedModals.splice(idx, 1);
+            }
+          });
+          observer.observe(el, { attributes: true, attributeFilter: ['class'] });
+        });
+      }
+
+      // Attach after showDealerApp is called, and modal tracking
+      window.__enablePwaBackHandler = function() {
+        enablePwaBackHandler();
+        setupModalHistoryTracking();
+      };
     })();
 
     /**************************************************************
