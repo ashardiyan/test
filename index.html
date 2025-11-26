@@ -270,6 +270,39 @@
     .modal .error { font-size:.98em; color:var(--danger); margin-bottom:7px; min-height:18px; text-align:left; }
     #detailModal .prod-detail-photo { display:block; width:124px; height:124px; object-fit:cover; border-radius:19px; margin:6px auto 0 auto; box-shadow:0 2px 12px #1b314e22; background:#21293f; }
 
+    /* --- Show/hide password button styles (for login screen) --- */
+    .show-password-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      position: relative;
+    }
+    #showLoginPINBtn {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: var(--accent2);
+      cursor: pointer;
+      font-size: 1.11em;
+      opacity: 0.79;
+      padding: 2px 7px;
+      border-radius: 8px;
+      z-index: 5;
+      user-select: none;
+      /* tap highlight and focus ring removed like other modal buttons */
+      -webkit-tap-highlight-color: transparent !important;
+      outline: none !important;
+    }
+    #showLoginPINBtn:active, #showLoginPINBtn:focus {
+      background: #1f2336;
+      color: var(--accent2-hover);
+      outline: none !important;
+      box-shadow: none !important;
+    }
+
     /* Prevent background scrolling when modal is open */
     body.modal-open {
       overflow: hidden !important;
@@ -336,7 +369,12 @@
       <div class="error input-error" id="login-error" style="min-height:18px;margin-bottom:8px"></div>
 
       <label id="pinLabel" for="loginPIN">Create a secure PIN / Password</label>
-      <input type="password" id="loginPIN" minlength="4" maxlength="32" required placeholder="Set PIN or password" autocomplete="new-password" />
+      <div class="show-password-wrap">
+        <input type="password" id="loginPIN" minlength="4" maxlength="32" required placeholder="Set PIN or password" autocomplete="new-password" />
+        <button type="button" id="showLoginPINBtn" title="Show/Hide PIN" tabindex="-1" aria-label="Show password" style="display:inline-flex;align-items:center;">
+          <span id="showLoginPINBtnIcon" aria-hidden="true">&#128065;</span>
+        </button>
+      </div>
 
       <label class="keep-logged-toggle" title="If checked, you stay logged in for 5 minutes unless the app is closed or device is locked.">
         <input type="checkbox" id="keepLoggedInToggle" />
@@ -936,6 +974,33 @@
     const loginError = document.getElementById('login-error');
     const pinLabel = document.getElementById('pinLabel');
     const keepLoggedInToggle = document.getElementById('keepLoggedInToggle');
+
+    // --- Show/hide password button logic ---
+    (function() {
+      const showBtn = document.getElementById('showLoginPINBtn');
+      const pinInput = document.getElementById('loginPIN');
+      const iconSpan = document.getElementById('showLoginPINBtnIcon');
+      let visible = false;
+      if (showBtn && pinInput) {
+        showBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          visible = !visible;
+          pinInput.type = visible ? 'text' : 'password';
+          // Update eye emoji/icon
+          iconSpan.textContent = visible ? '🙈' : '👁️'; // 👁️ open; 🙈 closed
+          showBtn.setAttribute('aria-label', visible ? "Hide PIN" : "Show PIN");
+        });
+        // For accessibility: pressing Escape should hide the PIN
+        pinInput.addEventListener('keydown', function(e) {
+          if (visible && e.key === "Escape") {
+            pinInput.type = 'password';
+            visible = false;
+            iconSpan.textContent = '👁️';
+            showBtn.setAttribute('aria-label', "Show PIN");
+          }
+        });
+      }
+    })();
 
     function updatePINUI(hasPIN) {
       if (hasPIN) {
