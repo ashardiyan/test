@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Al Rehman Electronics</title>
   <meta name="theme-color" content="#161B22" />
-  <!-- Add PWA meta for mobile -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -94,7 +93,7 @@
 
     .product-list { margin:0; padding:0; list-style:none; }
 
-    /* Stylish Skyblue Buttons (for add/export/import/cancel and file uploads) */
+    /* Stylish Skyblue Buttons */
     .rounded-sky-btn {
       background: var(--button-gradient);
       color: #fff;
@@ -110,10 +109,8 @@
       margin: 2px 0;
       letter-spacing: 0.02em;
       position: relative;
-      /* for file input overlays */
       overflow: hidden;
-      /* Remove blue highlight on tap/focus in mobile Safari/Chrome */
-      -webkit-tap-highlight-color: transparent; /* iOS Safari */
+      -webkit-tap-highlight-color: transparent; 
       -webkit-user-select: none;
       user-select: none;
     }
@@ -134,42 +131,42 @@
       color: #fff;
       border-color: #1095b7;
     }
+    /* Biometric Button */
+    #biometricUnlockBtn {
+      background: linear-gradient(90deg, #10b981 30%, #059669 100%);
+      width: 100%;
+      margin-top: 10px;
+      display: none; /* hidden by default */
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+    }
 
-    /* Remove tap highlight globally from touch targets/buttons for mobile! */
+    /* Remove tap highlight globally */
     button, .rounded-sky-btn, .prod-actions button, .modal-close, input[type="button"], input[type="submit"], .remove-photo-btn {
       -webkit-tap-highlight-color: transparent !important;
       tap-highlight-color: transparent !important;
-      /* Remove default mobile focus outline/box */
       outline: none !important;
     }
-    /* Remove strange mobile blue box after click */
     button:focus, .rounded-sky-btn:focus, .prod-actions button:focus, .modal-close:focus, .remove-photo-btn:focus {
       outline: none !important;
       box-shadow: none !important;
     }
-    /* Remove Safari's inner highlight for tap targets */
     input[type="button"]:focus, input[type="submit"]:focus { outline:none !important; box-shadow:none !important; }
-    /* Prevent webkit highlight after tap for all clickable controls inside main card list */
     .card button:focus-visible, .card button:focus, .prod-actions button:focus, .rounded-sky-btn:focus, .remove-photo-btn:focus {
       outline: none !important;
       box-shadow: none !important;
       border-color: inherit !important;
       background-clip: padding-box;
     }
-
-    /* NEW: Remove "ghost highlight" when tapping on li/prod-card in mobile browser */
     .prod-card, .prod-card * {
       -webkit-tap-highlight-color: transparent !important;
       tap-highlight-color: transparent !important;
     }
-
-    /* NEW: Remove focus ring box for icon-btns/buttons everywhere on focus except for keyboard. Keep accessibility for tab, not mouse/touch. */
     button:focus:not(:focus-visible), .rounded-sky-btn:focus:not(:focus-visible), .modal-close:focus:not(:focus-visible), .remove-photo-btn:focus:not(:focus-visible) {
       outline: none !important;
       box-shadow: none !important;
     }
-
-    /* THE REST of your original styles unchanged... */
 
     .modal-file-upload-wrap {
       display: flex;
@@ -292,7 +289,6 @@
       border-radius: 8px;
       z-index: 5;
       user-select: none;
-      /* tap highlight and focus ring removed like other modal buttons */
       -webkit-tap-highlight-color: transparent !important;
       outline: none !important;
     }
@@ -303,17 +299,13 @@
       box-shadow: none !important;
     }
 
-    /* Prevent background scrolling when modal is open */
     body.modal-open {
       overflow: hidden !important;
       position: fixed !important;
       width: 100vw;
     }
-
-    /* Custom class to prevent background scrolling when product detail is open */
     body.detail-modal-open {
       overflow: hidden !important;
-      /* Don't use position:fixed because it causes iOS bugs and scroll jumps, just hide overflow */
     }
 
     @media (max-width:650px){
@@ -361,7 +353,6 @@
   </style>
 </head>
 <body>
-  <!-- LOGIN / SET PIN modal - now has a “Keep me logged in for 5 Minutes” toggle -->
   <div id="login-modal" style="position:fixed; inset:0; z-index:7000; background:rgba(22,27,34,0.89); display:flex; justify-content:center; align-items:center;">
     <form class="login-dialog modal" id="loginForm" autocomplete="off" novalidate style="max-width:380px;">
       <button class="modal-close" type="button" id="loginCloseBtn" title="Close" aria-label="Close dialog" role="button" style="display:none">✖</button>
@@ -382,8 +373,11 @@
       </label>
       <div id="timeoutNotice"></div>
 
-      <div style="display:flex; gap:8px; align-items:center;">
-        <button type="submit" id="loginBtn" style="flex:1;">Set PIN</button>
+      <div style="display:flex; flex-direction:column; gap:10px; align-items:center; width:100%; margin-top:10px;">
+        <button type="submit" id="loginBtn" style="width:100%;">Set PIN</button>
+        <button type="button" id="biometricUnlockBtn" class="rounded-sky-btn" title="Unlock with Fingerprint">
+           👆 Unlock with Fingerprint
+        </button>
         <button type="button" id="forgotBtn" style="display:none; background:transparent; border:1px solid #253048; color:var(--text); padding:9px 12px; border-radius:8px; cursor:pointer;">Forgot</button>
       </div>
 
@@ -391,7 +385,6 @@
     </form>
   </div>
 
-  <!-- Main app container (hidden until correct login) -->
   <div id="dealerApp" class="" style="display:none;">
     <div class="container">
       <header>
@@ -436,7 +429,6 @@
     </div>
   </div>
 
-  <!-- Product Add/Edit Modal -->
   <div class="modal-backdrop hide" id="productModalBackdrop">
     <form class="modal" id="productModal" autocomplete="off">
       <button class="modal-close" type="button" id="closeModalBtn" title="Close" aria-label="Close dialog" role="button">✖</button>
@@ -471,7 +463,6 @@
     </form>
   </div>
 
-  <!-- Delete confirmation modal -->
   <div class="modal-backdrop hide" id="deleteModalBackdrop">
     <form class="modal" id="deleteModal">
       <button class="modal-close" type="button" id="closeDeleteBtn" title="Close" aria-label="Close dialog" role="button">✖</button>
@@ -484,7 +475,6 @@
     </form>
   </div>
 
-  <!-- Product Detail Modal -->
   <div class="modal-backdrop hide" id="detailModalBackdrop">
     <div class="modal" id="detailModal" tabindex="-1">
       <button class="modal-close" type="button" id="closeDetailModalBtn" title="Close" aria-label="Close dialog" role="button">✖</button>
@@ -493,7 +483,6 @@
     </div>
   </div>
 
-  <!-- Settings Modal (contains Logout + Reset PIN) -->
   <div class="modal-backdrop hide" id="settingsBackdrop">
     <div class="modal" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
       <button class="modal-close" type="button" id="closeSettingsBtn" title="Close" aria-label="Close dialog" role="button">✖</button>
@@ -508,6 +497,18 @@
         </div>
 
         <button id="logoutBtn" style="padding:10px;border-radius:8px;border:none;background:#2b2f3a;color:var(--text);cursor:pointer;">🔒 Logout</button>
+
+        <hr style="border:none;height:1px;background:#22272f;margin:6px 0;border-radius:2px;" />
+
+        <div style="font-weight:700; display:flex; align-items:center; gap:6px;">
+          Fingerprint / Face ID
+        </div>
+        <button id="setupBiometricBtn" class="rounded-sky-btn" style="background:#2b2f3a; border:1px solid #364052;">
+           👆 Setup Fingerprint
+        </button>
+        <div style="color:var(--text-muted);font-size:.85em;margin-bottom:6px;">
+           Enable easy unlock using your device's sensor.
+        </div>
 
         <hr style="border:none;height:1px;background:#22272f;margin:6px 0;border-radius:2px;" />
 
@@ -538,8 +539,131 @@
 
   <script>
     /****************************************************************
-     * Modal background scroll lock
+     * BIOMETRIC (FINGERPRINT/FACE ID) LOGIC
+     * Using 'platform' attachment to force device sensor instead of passkey/usb
      ****************************************************************/
+    
+    // Helpers for WebAuthn Buffer conversion
+    const strToBuffer = (str) => Uint8Array.from(str, c => c.charCodeAt(0));
+    const randomBuffer = (len) => {
+      const arr = new Uint8Array(len);
+      window.crypto.getRandomValues(arr);
+      return arr;
+    };
+
+    // Check if biometric is set up
+    function hasBiometricSetup() {
+       return !!localStorage.getItem('dealer-bio-cred-id');
+    }
+
+    // 1. Setup/Register Fingerprint (Called from Settings)
+    async function registerBiometric() {
+        if (!window.PublicKeyCredential) {
+            alert("Biometrics not supported on this browser.");
+            return;
+        }
+
+        const userId = window.localStorage.getItem('dealer-hash') || 'default-user';
+        
+        try {
+            const publicKeyCredentialCreationOptions = {
+                challenge: randomBuffer(32),
+                rp: { 
+                    name: "Al Rahman Electronics", 
+                    id: window.location.hostname 
+                },
+                user: {
+                    id: strToBuffer(userId),
+                    name: "dealer@local",
+                    displayName: "Dealer"
+                },
+                pubKeyCredParams: [{ alg: -7, type: "public-key" }, { alg: -257, type: "public-key" }],
+                authenticatorSelection: {
+                    authenticatorAttachment: "platform", // Forces device sensor
+                    userVerification: "required",
+                    residentKey: "preferred"
+                },
+                timeout: 60000,
+                attestation: "none"
+            };
+
+            const credential = await navigator.credentials.create({
+                publicKey: publicKeyCredentialCreationOptions
+            });
+
+            const credId = btoa(String.fromCharCode(...new Uint8Array(credential.rawId)));
+            localStorage.setItem('dealer-bio-cred-id', credId);
+            
+            alert("Fingerprint setup successful! You can now use it to unlock.");
+            checkBiometricButtonVisibility();
+
+        } catch (err) {
+            console.error(err);
+            if(err.name === 'NotAllowedError') {
+                alert("Setup cancelled or timed out.");
+            } else if (window.location.protocol === 'file:') {
+                alert("Security Error: Biometrics do not work on local files (file://). You must use a server (localhost or https).");
+            } else {
+                alert("Setup failed: " + err.message);
+            }
+        }
+    }
+
+    // 2. Authenticate/Unlock (Called from Login Screen)
+    async function authenticateBiometric() {
+        if (!hasBiometricSetup()) return;
+
+        try {
+            const publicKeyCredentialRequestOptions = {
+                challenge: randomBuffer(32),
+                rpId: window.location.hostname,
+                userVerification: "required", // Forces the biometric prompt
+                allowCredentials: [{
+                    id: Uint8Array.from(atob(localStorage.getItem('dealer-bio-cred-id')), c => c.charCodeAt(0)),
+                    type: 'public-key',
+                    transports: ['internal']
+                }]
+            };
+
+            const assertion = await navigator.credentials.get({
+                publicKey: publicKeyCredentialRequestOptions
+            });
+
+            if (assertion) {
+                // Success! Unlock the app.
+                showDealerApp();
+                const keepLoggedInToggle = document.getElementById('keepLoggedInToggle');
+                if (keepLoggedInToggle.checked) {
+                     setKeepSessionActive(Date.now() + KEEP_LOGGED_TIMEOUT_MS);
+                     startSessionTimeoutMonitor();
+                } else {
+                     clearKeepSession();
+                     stopSessionTimeoutMonitor();
+                }
+            }
+        } catch (err) {
+            console.error(err);
+            const loginError = document.getElementById('login-error');
+            loginError.textContent = "Fingerprint not recognized. Use PIN.";
+            loginError.style.color = 'var(--danger)';
+        }
+    }
+
+    // UI: Show/Hide the biometric button on login screen
+    function checkBiometricButtonVisibility() {
+        const btn = document.getElementById('biometricUnlockBtn');
+        if(hasBiometricSetup() && getHasPIN()) {
+            btn.style.display = 'flex';
+        } else {
+            btn.style.display = 'none';
+        }
+    }
+
+    /****************************************************************
+     * EXISTING APP LOGIC
+     ****************************************************************/
+    
+    // Modal background scroll lock
     (function() {
       function lockBodyScroll() {
         if (!document.body.classList.contains('modal-open')) {
@@ -584,14 +708,10 @@
     /****************************************************************
      * Keep-logged-in authentication logic
      ****************************************************************/
-    // Configuration
     const KEEP_LOGGED_TIMEOUT_MS = 5*60*1000; // 5 minutes
 
-    // Helpers to store and retrieve session expiry (use sessionStorage so closes/logouts always expire it!)
     function setKeepSessionActive(expiresAt) {
-      try {
-        sessionStorage.setItem('dealer-keep-expires', String(expiresAt));
-      } catch(e) {}
+      try { sessionStorage.setItem('dealer-keep-expires', String(expiresAt)); } catch(e) {}
     }
     function getKeepSessionActive() {
       try {
@@ -626,7 +746,6 @@
 
     function checkQuickAutoUnlock() {
       if (isSessionStillActive()) {
-        // Set PIN UI state: Unlock not Set PIN
         updatePINUI(getHasPIN());
         showDealerApp();
         startSessionTimeoutMonitor();
@@ -670,17 +789,15 @@
     addSessionAutoLogoutHandlers();
 
     /****************************************************************
-     * PIN hashing & auth helpers - improved and bugfixed
+     * Service Worker & PWA
      ****************************************************************/
-    // ... (PWA manifest/service worker unchanged) ...
     (function createManifestAndServiceWorker() {
-      // Manifest
       const imgIcon = "https://github.com/ashardiyan/test/blob/main/Al%20Rahman%20Electronics-02.png?raw=true";
       const manifestObj = {
         name: "Al Rahman Electronics",
         short_name: "ARE",
         description: "Local-only dealer product listing (offline-first)",
-        start_url: "./index.html", // use "./" so that it also works offline when in subpath
+        start_url: "./index.html", 
         display: "standalone",
         background_color: "#161B22",
         theme_color: "#161B22",
@@ -701,7 +818,6 @@
         existing.href = manifestURL;
       })();
 
-      // Service Worker code for offline cache-first with fallback for Github Pages
       const swScript = `
         const CACHE_NAME = 'local-dealer-cache-v3';
         const OFFLINE_URL = self.registration.scope.endsWith('/') ? self.registration.scope + 'index.html' : self.registration.scope + '/index.html';
@@ -709,7 +825,6 @@
           OFFLINE_URL,
           './index.html'
         ];
-
         self.addEventListener('install', function(event) {
           event.waitUntil(
             caches.open(CACHE_NAME).then(function(cache) {
@@ -718,20 +833,15 @@
           );
           self.skipWaiting();
         });
-
         self.addEventListener('activate', function(event) {
           event.waitUntil(self.clients.claim());
         });
-
         self.addEventListener('fetch', function(event) {
           if (event.request.method !== 'GET') return;
-
           event.respondWith(
             caches.match(event.request, {ignoreSearch:true}).then(function(response) {
-              // Cache-first
               if (response) return response;
               return fetch(event.request).then(function(resp) {
-                // Cache new GET documents
                 if (resp && resp.status === 200 && resp.type === 'basic' && /\.(html|js|css|png|jpg|jpeg|svg|woff2?|json)$/i.test(event.request.url)) {
                   const respClone = resp.clone();
                   caches.open(CACHE_NAME).then(function(cache) {
@@ -740,7 +850,6 @@
                 }
                 return resp;
               }).catch(function() {
-                // If navigation or html/json, fallback to offline page
                 if (event.request.mode === 'navigate' || event.request.destination === 'document') {
                   return caches.match(OFFLINE_URL);
                 }
@@ -754,7 +863,6 @@
         const swBlob = new Blob([swScript], { type: 'text/javascript' });
         const swURL = URL.createObjectURL(swBlob);
         if ('serviceWorker' in navigator) {
-          // Register early, but after DOM loaded for maximum coverage
           window.addEventListener('load', function() {
             navigator.serviceWorker.register(swURL);
           });
@@ -763,7 +871,7 @@
     })();
 
     /**************************************************************
-     * Export / Import
+     * Start animation
      **************************************************************/
     window.addEventListener('DOMContentLoaded', function(){
       setTimeout(function() {
@@ -848,38 +956,20 @@
     });
 
     /**************************************************************
-     * Handle Android back button in PWA (improved so back closes modals first, then product, but does NOT logout)
+     * Android Back Button Logic
      **************************************************************/
     (function handleAndroidBackButton() {
-      // Only for standalone PWA mode
       function isStandalone() {
         return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
                (window.navigator.standalone === true);
       }
-      // Keep track of our own stack of modal closings in history
       let openedModals = [];
-      // modal id order preference (topmost modal should be closed first)
       const modalPriority = ['productModalBackdrop', 'deleteModalBackdrop', 'settingsBackdrop', 'detailModalBackdrop'];
 
-      // Helper: check any modal open, return its id (in priority order)
-      function getOpenModalId() {
-        for (const id of modalPriority) {
-          const el = document.getElementById(id);
-          if (el && !el.classList.contains('hide')) return id;
-        }
-        return null;
-      }
-
-      // Called after entering app
       function pushMainStateToHistory() {
-        // Push a base state to history. Only needed in standalone mode.
         if (!isStandalone()) return;
-        try {
-          history.replaceState({dealerAppMain: true}, document.title, window.location.href);
-        } catch (e) {}
+        try { history.replaceState({dealerAppMain: true}, document.title, window.location.href); } catch (e) {}
       }
-
-      // Called when opening a modal: push extra state (so back closes)
       function pushModalState(modalId) {
         if (!isStandalone()) return;
         try {
@@ -887,27 +977,10 @@
           openedModals.push(modalId);
         } catch (e) {}
       }
-
-      // Called on modal close
-      function popModalState() {
-        if (!isStandalone()) return;
-        try {
-          // On close, go back in history just once
-          if (openedModals.length) {
-            openedModals.pop();
-            history.back();
-          }
-        } catch (e) {}
-      }
-
-      // On login/unlock, set initial state (don't push extra!)
       function enablePwaBackHandler() {
         pushMainStateToHistory();
-
         window.addEventListener('popstate', function(e) {
-          // Only act if we are in dealer app view
           if (document.getElementById('dealerApp').style.display !== 'none') {
-            // If a modal is open, close the most "top" (last in modalPriority) one
             const topOpenModal = (() => {
               for (let i = 0; i < modalPriority.length; ++i) {
                 const el = document.getElementById(modalPriority[i]);
@@ -917,36 +990,22 @@
             })();
 
             if (topOpenModal) {
-              // Instead of locking/logging out, just close modal
               document.getElementById(topOpenModal).classList.add('hide');
-              // When you close a modal using history back, prevent further side effects
               setTimeout(()=>{},10);
               return;
             }
-            // NO modals open, stay in app. Ignore standard back (prevent leaving app on "back"), unless user is on login!
-            // Option 1: Stay at current page (don't push new state, just ignore back)
-            // Option 2: Optionally show a toast "Press back again to exit"
-            // We'll do Option 1: Ignore further back (user can manually exit the PWA from app switcher)
             pushMainStateToHistory();
-          } else {
-            // On login screen, allow exit with back (one level). Could show a message or just allow browser to leave.
-            // But "main" state always on top, so back from here can't be intercepted
           }
         });
       }
-
-      // Auto-track modal open/close: whenever any modal is opened, push modal state if needed
       function setupModalHistoryTracking() {
         modalPriority.forEach(id => {
           const el = document.getElementById(id);
           if (!el) return;
-          // Observe open
           const observer = new MutationObserver(() => {
             if (!el.classList.contains('hide')) {
-              // Modal opened
               if (!openedModals.includes(id)) pushModalState(id);
             } else {
-              // Modal closed (pop from our stack if present)
               const idx = openedModals.indexOf(id);
               if (idx !== -1) openedModals.splice(idx, 1);
             }
@@ -954,8 +1013,6 @@
           observer.observe(el, { attributes: true, attributeFilter: ['class'] });
         });
       }
-
-      // Attach after showDealerApp is called, and modal tracking
       window.__enablePwaBackHandler = function() {
         enablePwaBackHandler();
         setupModalHistoryTracking();
@@ -975,31 +1032,23 @@
       }
       const encoder = new TextEncoder();
       try {
-        // Defensive: PBKDF2 with a salt (slow hash) for security, fallback to SHA-256
         const baseKey = await window.crypto.subtle.importKey('raw', encoder.encode(pin), 'PBKDF2', false, ['deriveBits']);
         const rawBits = await window.crypto.subtle.deriveBits({ name: "PBKDF2", salt: encoder.encode(salt), iterations: 3000, hash: "SHA-256" }, baseKey, 256);
         const hashArr = new Uint8Array(rawBits);
         return Array.from(hashArr).map(b => b.toString(16).padStart(2,'0')).join('');
       } catch (e) {
-        try {
-          const data = encoder.encode(pin + salt);
-          const arrBuf = await window.crypto.subtle.digest('SHA-256', data);
-          const hashArr = new Uint8Array(arrBuf);
-          return Array.from(hashArr).map(b => b.toString(16).padStart(2,'0')).join('');
-        } catch (e2) {
-          // If hashing not available, fallback (not secure)
-          return pin + salt;
-        }
+        return pin + salt; // Fallback
       }
     }
     function getHasPIN() { return !!window.localStorage.getItem('dealer-hash'); }
+    
     function showDealerApp() {
       document.getElementById('dealerApp').style.display = '';
       document.getElementById('login-modal').style.display = 'none';
       setTimeout(refreshProductList, 220);
-      // Enable PWA back handler for Android after entering app
       if (typeof window.__enablePwaBackHandler === 'function') window.__enablePwaBackHandler();
     }
+    
     function showLoginModal(msg) {
       document.getElementById('dealerApp').style.display = 'none';
       const loginModal = document.getElementById('login-modal');
@@ -1012,19 +1061,29 @@
         document.getElementById('login-error').style.color = '';
       }
       document.getElementById('loginPIN').value = '';
-      setTimeout(()=>document.getElementById('loginPIN').focus(),120);
+      
+      // FIXED: Only focus PIN (showing keyboard) if fingerprint is NOT setup
+      if (!hasBiometricSetup()) {
+          setTimeout(()=>document.getElementById('loginPIN').focus(),120);
+      }
+      
+      // Check if we should show fingerprint button
+      checkBiometricButtonVisibility();
     }
-    // Fix—track if PIN was just set, to avoid double-prompt
+    
     let justSetPIN = false;
 
-    // Always require PIN on load -> do not auto-unlock directly
     window.addEventListener('load', ()=> {
       updatePINUI(getHasPIN());
-      // On initial load, if session active, skip PIN
       if (!checkQuickAutoUnlock()) {
         showLoginModal();
+        
+        // FIXED: Automatically trigger fingerprint scan on load
+        if (hasBiometricSetup()) {
+             // Slight delay to ensure modal is rendered
+             setTimeout(authenticateBiometric, 400); 
+        }
       }
-      // Push dummy back state to help installs that open to blank
       setTimeout(function() {
         if ("serviceWorker" in navigator && window.matchMedia('(display-mode: standalone)').matches) {
           try { history.replaceState({start:true}, document.title, window.location.href); } catch (e) {}
@@ -1032,15 +1091,20 @@
       }, 180);
     });
 
-    // --- Login UI update logic ---
     const loginBtn = document.getElementById('loginBtn');
     const loginForm = document.getElementById('loginForm');
     const loginPIN = document.getElementById('loginPIN');
     const loginError = document.getElementById('login-error');
     const pinLabel = document.getElementById('pinLabel');
     const keepLoggedInToggle = document.getElementById('keepLoggedInToggle');
+    // Grab the new buttons
+    const setupBiometricBtn = document.getElementById('setupBiometricBtn');
+    const biometricUnlockBtn = document.getElementById('biometricUnlockBtn');
 
-    // --- Show/hide password button logic ---
+    // Attach listeners for new buttons
+    setupBiometricBtn.onclick = (e) => { e.preventDefault(); registerBiometric(); };
+    biometricUnlockBtn.onclick = (e) => { e.preventDefault(); authenticateBiometric(); };
+
     (function() {
       const showBtn = document.getElementById('showLoginPINBtn');
       const pinInput = document.getElementById('loginPIN');
@@ -1051,11 +1115,9 @@
           e.preventDefault();
           visible = !visible;
           pinInput.type = visible ? 'text' : 'password';
-          // Update eye emoji/icon
-          iconSpan.textContent = visible ? '🙈' : '👁️'; // 👁️ open; 🙈 closed
+          iconSpan.textContent = visible ? '🙈' : '👁️'; 
           showBtn.setAttribute('aria-label', visible ? "Hide PIN" : "Show PIN");
         });
-        // For accessibility: pressing Escape should hide the PIN
         pinInput.addEventListener('keydown', function(e) {
           if (visible && e.key === "Escape") {
             pinInput.type = 'password';
@@ -1081,6 +1143,7 @@
       }
       loginError.textContent = '';
       loginError.style.color = '';
+      checkBiometricButtonVisibility();
     }
 
     loginForm.onsubmit = async function(e) {
@@ -1097,8 +1160,6 @@
       loginBtn.disabled = true;
       try {
         const hash = await hashPIN(pinVal);
-
-        // SET PIN (first time only)
         if (!hasPIN) {
           window.localStorage.setItem('dealer-hash', hash);
           justSetPIN = true;
@@ -1111,17 +1172,12 @@
             loginError.textContent = '';
             loginError.style.color='';
           }, 1500);
-          // The first time user sets PIN, make sure the keep-logged-in toggle is unchecked
           keepLoggedInToggle.checked = false;
           return;
         }
-
-        // UNLOCK (existing)
         const userHash = window.localStorage.getItem('dealer-hash');
         if (userHash === hash) {
-          // "Keep me logged in" logic (checkbox only visible after PIN has been set)
           if (keepLoggedInToggle.checked) {
-            // Set session expiry only if explicitly checked now, not sticky
             setKeepSessionActive(Date.now() + KEEP_LOGGED_TIMEOUT_MS);
             startSessionTimeoutMonitor();
           } else {
@@ -1132,7 +1188,6 @@
           loginBtn.disabled = false;
           loginError.textContent = '';
           loginError.style.color = '';
-          // Reset [justSetPIN] after first successful unlock, so next logout shows regular login
           justSetPIN = false;
         } else {
           loginBtn.disabled = false;
@@ -1146,19 +1201,15 @@
       }
     };
 
-    // Hide session warning message on new login UI
     keepLoggedInToggle.onchange = function() {
       showTimeoutNotice("");
-      // If unchecked, forcibly clear any keep session
       if (!this.checked) clearKeepSession();
     };
 
-    // Security fix: always clear PIN field on show
     document.getElementById('login-modal').addEventListener('transitionend', function() {
       loginPIN.value = '';
     });
 
-    // Handle manual logout or session expiration
     function doLogout(showMsg) {
       stopSessionTimeoutMonitor();
       clearKeepSession();
@@ -1168,7 +1219,7 @@
     }
 
     /**************************************************************
-     * Settings Modal Logic (Logout, PIN Reset) - PIN reset bugfix
+     * Settings Modal Logic 
      **************************************************************/
     const settingsBtn = document.getElementById('settingsBtn');
     const settingsBackdrop = document.getElementById('settingsBackdrop');
@@ -1221,7 +1272,6 @@
         }
         const newHash = await hashPIN(newPin);
         window.localStorage.setItem('dealer-hash', newHash);
-        // feedback and close
         resetPinError.style.color = 'var(--success)';
         resetPinError.textContent = "PIN updated successfully.";
         setTimeout(()=>{
@@ -1237,16 +1287,15 @@
     };
 
     /**************************************************************
-     * All other app/product logic unchanged...
+     * Product Logic (Add/Edit/Delete/Import)
      **************************************************************/
     const productListElem = document.getElementById('productList');
     const noProductsElem = document.getElementById('noProducts');
     let products = [];
-    let multiSelectMode = false;
     let selectedProductIds = new Set();
 
     function saveProducts() {
-      try { window.localStorage.setItem('dealer-products', JSON.stringify(products)); } catch(e){ console.error("Saving products failed",e); }
+      try { window.localStorage.setItem('dealer-products', JSON.stringify(products)); } catch(e){}
       refreshProductList();
     }
     function loadProducts() {
@@ -1272,8 +1321,6 @@
       const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
       const selectedCountText = document.getElementById('selectedCountText');
       const selectAllCheckbox = document.getElementById('selectAllCheckbox');
-
-      // Show/hide controls only if there is at least 1 selected item
       if (selectedProductIds.size > 0) {
         multiSelectControls.classList.add('active');
         deleteSelectedBtn.disabled = false;
@@ -1283,8 +1330,6 @@
         deleteSelectedBtn.disabled = true;
         selectedCountText.textContent = "";
       }
-
-      // Set "selectAllCheckbox" state
       if (products.length && selectedProductIds.size === products.length) {
         selectAllCheckbox.checked = true;
         selectAllCheckbox.indeterminate = false;
@@ -1297,7 +1342,6 @@
       }
     }
 
-    // --- PATCH: Removed category display from product name in product list ---
     function createProductCard(product, idx) {
       const li = document.createElement('li');
       li.className = 'prod-card';
@@ -1305,11 +1349,8 @@
       setTimeout(()=>li.classList.add('show'), 121+idx*64);
       let imgHTML = product.photo ? `<img src="${escapeHTML(product.photo)}" class="prod-photo-thumb" alt="Product Photo">` : `<span>📦</span>`;
       const nameSafe = escapeHTML(product.name || "Unnamed");
-      // Removed the cat variable and its use below
       const qtyNum = Number(product.qty) || 0;
       const mrpNum = Number(product.mrp) || 0;
-
-      // Multi-select checkbox
       let checkboxHTML = `<input type="checkbox" class="prod-select-checkbox" title="Select" data-id="${product.id}" tabindex="0" ${selectedProductIds.has(product.id) ? "checked" : ""}/>`;
 
       li.innerHTML = `
@@ -1324,23 +1365,17 @@
           <button type="button" title="Edit" aria-label="Edit product" role="button" class="edit" data-id="${product.id}">✏️</button>
         </div>
       `;
-
-      // highlight selection
       if (selectedProductIds.has(product.id)) li.classList.add('selected');
-
-      // Checkboxes
       const checkbox = li.querySelector('.prod-select-checkbox');
       if (checkbox) {
         checkbox.addEventListener('change', (e) => {
           handleCheckboxChange(product.id, checkbox.checked);
         });
-        checkbox.addEventListener('click', (e)=>e.stopPropagation()); // don't fire detail modal
+        checkbox.addEventListener('click', (e)=>e.stopPropagation());
         checkbox.addEventListener('keydown', (e)=>e.stopPropagation());
       }
-
       const editBtn = li.querySelector('.edit');
       if (editBtn) editBtn.onclick = (e)=>{ e.stopPropagation(); showProductModal('edit', product); };
-
       li.addEventListener('click', function(e){
         if(e.target.classList.contains('prod-select-checkbox')) return;
         if(!e.target.closest('.prod-actions')) showDetailModal(product);
@@ -1350,11 +1385,6 @@
       });
       return li;
     }
-    // --- END PATCH ---
-
-    /**************************************************************
-     * Multi-select controls
-     **************************************************************/
 
     document.getElementById("selectAllCheckbox").addEventListener("change", function() {
       if (this.checked) {
@@ -1375,20 +1405,14 @@
       updateMultiSelectControls();
     };
 
-    /**************************************************************
-     * Detail modal
-     **************************************************************/
     const detailModalBackdrop = document.getElementById('detailModalBackdrop');
     const detailModalBody = document.getElementById('detailModalBody');
-
     function disableDetailBackgroundScroll() {
       document.body.classList.add('detail-modal-open');
-      // Optionally also store scroll position if you ever want to restore it (not necessary with overflow:hidden)
     }
     function enableDetailBackgroundScroll() {
       document.body.classList.remove('detail-modal-open');
     }
-
     function showDetailModal(product) {
       const nameSafe = escapeHTML(product.name || 'Unnamed');
       const photoBlock = product.photo ? `<img src="${escapeHTML(product.photo)}" class="prod-detail-photo" alt="${nameSafe}"/>` : `<div class="prod-detail-photo" style="font-size:60px;padding:22px 0 12px 0;">📦</div>`;
@@ -1410,16 +1434,11 @@
       disableDetailBackgroundScroll();
       setTimeout(()=>document.getElementById('closeDetailModalBtn').focus(),100);
     }
-
     document.getElementById('closeDetailModalBtn').onclick = function(){
       detailModalBackdrop.classList.add('hide');
       detailModalBody.innerHTML = '';
       enableDetailBackgroundScroll();
     };
-
-    // Prevent scroll when detail modal is open (background locked when detail modal is NOT .hide)
-    // Also ensure it unlocks on other modal closes and Escape, and on navigation/back
-
     document.addEventListener('keydown', function(e){
       if (e.key === "Escape") {
         let closedAModal = false;
@@ -1431,12 +1450,9 @@
         if (!productModalBackdrop.classList.contains('hide')) { productModalBackdrop.classList.add('hide'); closedAModal = true; }
         if (!deleteModalBackdrop.classList.contains('hide')) { deleteModalBackdrop.classList.add('hide'); closedAModal = true; }
         if (!settingsBackdrop.classList.contains('hide')) { settingsBackdrop.classList.add('hide'); closedAModal = true; }
-        // when closing detail modal, always enable scroll
         if (closedAModal) enableDetailBackgroundScroll();
       }
     });
-
-    // Defensive: re-enable scroll on any click in the body if all modals are shut (e.g. browser back, unusual nav)
     function maybeResetBodyScroll() {
       if (
         detailModalBackdrop.classList.contains('hide') &&
@@ -1451,16 +1467,10 @@
     detailModalBackdrop.addEventListener('animationend', maybeResetBodyScroll);
     window.addEventListener('popstate', maybeResetBodyScroll);
 
-    /**************************************************************
-     * Search
-     **************************************************************/
     const searchInput = document.getElementById('productSearch');
     searchInput.addEventListener('input', function(){ refreshProductList(); });
     searchInput.addEventListener('keydown', function(e){ if(e.key==='Escape'){ searchInput.value=''; refreshProductList(); } });
 
-    /**************************************************************
-     * Refresh product list
-     **************************************************************/
     function refreshProductList() {
       loadProducts();
       productListElem.innerHTML = '';
@@ -1481,9 +1491,6 @@
       updateMultiSelectControls();
     }
 
-    /**************************************************************
-     * Add / Edit product modal
-     **************************************************************/
     let productEditing = null;
     const prodName = document.getElementById('prodName');
     const prodMrp = document.getElementById('prodMrp');
@@ -1501,15 +1508,8 @@
     const prodPhotoFileContainer = document.getElementById('prodPhotoFileContainer');
     const fileUploadWrap = document.getElementById('fileUploadWrap');
     const imageCompressMsg = document.getElementById('imageCompressMsg');
-    // Store current selected photo preview (dataurl or null)
     let currentProductPhotoDataUrl = null;
 
-    /**
-     * Compress image using <canvas>:
-     * - target max size: 260px width/height
-     * - medium quality (~0.7)
-     * - always converts to JPEG to save space
-     */
     async function compressImageFile(file, maxDim = 260, quality = 0.72) {
       return new Promise((resolve, reject) => {
         if (!/^image\//.test(file.type)) return reject("Not an image file.");
@@ -1517,22 +1517,14 @@
         let url = URL.createObjectURL(file);
         img.onload = function() {
           let [w, h] = [img.naturalWidth, img.naturalHeight];
-          // Calculate new size
           if (w > maxDim || h > maxDim) {
-            if (w > h) {
-              h = Math.round(h * maxDim / w);
-              w = maxDim;
-            } else {
-              w = Math.round(w * maxDim / h);
-              h = maxDim;
-            }
+            if (w > h) { h = Math.round(h * maxDim / w); w = maxDim; }
+            else { w = Math.round(w * maxDim / h); h = maxDim; }
           }
           const canvas = document.createElement('canvas');
-          canvas.width = w;
-          canvas.height = h;
+          canvas.width = w; canvas.height = h;
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, w, h);
-          // Always use JPEG for size!
           canvas.toBlob(blob => {
             if (!blob) return reject("Compression error.");
             const reader = new FileReader();
@@ -1554,7 +1546,6 @@
         img.src = currentProductPhotoDataUrl;
         img.alt = "Product Photo";
         img.className = 'photo-preview-img-thumb';
-
         const removeBtn = document.createElement('button');
         removeBtn.type = 'button';
         removeBtn.className = 'remove-photo-btn';
@@ -1568,7 +1559,6 @@
           imageCompressMsg.style.display = 'none';
           updatePhotoPreviewUI();
         };
-
         prodPhotoFileContainer.appendChild(img);
         prodPhotoFileContainer.appendChild(removeBtn);
       }
@@ -1582,7 +1572,6 @@
       currentProductPhotoDataUrl = null;
       imageCompressMsg.style.display = 'none';
       updatePhotoPreviewUI();
-
       if (mode === 'add') {
         modalTitle.textContent = "Add Product";
         productEditing = null;
@@ -1591,28 +1580,24 @@
         modalTitle.textContent = "Edit Product";
         productEditing = product;
         prodName.value = product.name || ""; prodMrp.value = product.mrp !== undefined ? product.mrp : ""; prodCost.value = product.cost !== undefined ? product.cost : ""; prodQty.value = product.qty !== undefined ? product.qty : ""; prodCategory.value = product.category || ""; prodNotes.value = product.notes || ""; prodPhoto.value = "";
-
         if (product.photo) {
           currentProductPhotoDataUrl = product.photo;
           updatePhotoPreviewUI();
         }
       }
       productModalBackdrop.classList.remove('hide');
-      // Lock body scroll when opening modal
       if (!document.body.classList.contains('modal-open')) {
         document.body.dataset.scrollY = window.scrollY;
         document.body.style.top = `-${window.scrollY}px`;
         document.body.classList.add('modal-open');
       }
       setTimeout(()=>prodName.focus(),150);
-      // --- PATCH: Reset firstSubmitAttempt state ---
       firstSubmitAttempt = true;
     }
 
     let firstSubmitAttempt = true;
     let prodPhotoLastPendingPromise = null;
 
-    // --- REPLACEMENT: compress image before preview/save ---
     prodPhoto.addEventListener('change', function () {
       if (prodPhoto.files && prodPhoto.files.length) {
         const file = prodPhoto.files[0];
@@ -1620,7 +1605,6 @@
         uploadBtnInnerText.textContent = "Image Selected";
         imageCompressMsg.textContent = "Compressing image...";
         imageCompressMsg.style.display = 'block';
-        const t0 = performance.now();
         const filePromise = compressImageFile(file, 260, 0.72).then(dataUrl => {
           const kb = Math.round((dataUrl.length * 3 / 4) / 1024);
           currentProductPhotoDataUrl = dataUrl;
@@ -1664,38 +1648,24 @@
     productModal.onsubmit = async function(e) {
       e.preventDefault();
       modalError.textContent = "";
-
-      // Only on first submit after opening modal, if user chose an image and preview not processed yet, wait for compression to finish
       if (firstSubmitAttempt && prodPhoto.files && prodPhoto.files.length && !currentProductPhotoDataUrl && prodPhotoLastPendingPromise) {
-        try {
-          await prodPhotoLastPendingPromise;
-        } catch (err) {
-          modalError.textContent = "Image failed to load, please select again.";
-          return;
-        }
+        try { await prodPhotoLastPendingPromise; } catch (err) { modalError.textContent = "Image failed to load, please select again."; return; }
         firstSubmitAttempt = false;
         productModal.onsubmit(e);
         return;
       }
       firstSubmitAttempt = false;
-
       const name = (prodName.value || '').trim();
       const mrpVal = prodMrp.value;
       const costVal = prodCost.value;
       const qtyVal = prodQty.value;
       const category = (prodCategory.value || '').trim();
       const notes = (prodNotes.value || '').trim();
-
       if (!name) { modalError.textContent = "Name required."; return; }
       if (mrpVal === "" || isNaN(Number(mrpVal)) || Number(mrpVal) < 0) { modalError.textContent = "Valid MRP required."; return; }
       if (qtyVal === "" || isNaN(Number(qtyVal)) || Number(qtyVal) < 0) { modalError.textContent = "Valid quantity required."; return; }
-
       let photoData = null;
-      // Use the dataUrl from preview (already compressed)
-      if (currentProductPhotoDataUrl) {
-        photoData = currentProductPhotoDataUrl;
-      }
-
+      if (currentProductPhotoDataUrl) photoData = currentProductPhotoDataUrl;
       const productObj = {
         id: productEditing ? productEditing.id : genID(),
         name,
@@ -1706,7 +1676,6 @@
         notes,
         photo: photoData
       };
-
       if (!productEditing) products.push(productObj);
       else {
         const idx = products.findIndex(p => p.id === productEditing.id);
@@ -1724,20 +1693,7 @@
       selectedProductIds.clear();
       updateMultiSelectControls();
     };
-    // --- PATCH END ---
 
-    function readFileAsDataURL(file) {
-      return new Promise((resolve,reject)=>{
-        const reader = new FileReader();
-        reader.onload = e => resolve(e.target.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-    }
-
-    /**************************************************************
-     * Delete modal
-     **************************************************************/
     const deleteModalBackdrop = document.getElementById('deleteModalBackdrop');
     const deleteModal = document.getElementById('deleteModal');
     const deleteName = document.getElementById('deleteName');
@@ -1749,28 +1705,21 @@
       productToDelete = product;
       setTimeout(()=>document.getElementById('cancelDeleteBtn').focus(),60);
     }
-
     document.getElementById('closeDeleteBtn').onclick =
     document.getElementById('cancelDeleteBtn').onclick = () => {
       deleteModalBackdrop.classList.add('hide'); productToDelete = null;
     };
-
     deleteModal.onsubmit = function(e){
       e.preventDefault();
       if (!productToDelete) return;
       products = products.filter(p => p.id !== productToDelete.id);
       saveProducts();
       deleteModalBackdrop.classList.add('hide'); productToDelete = null;
-      // Remove from multi-select, if any
       selectedProductIds.delete(productToDelete.id);
       updateMultiSelectControls();
     };
-
     function genID() { return 'p' + (Date.now() + ('' + Math.random()).slice(2,7)); }
 
-    /**************************************************************
-     * Export / Import
-     **************************************************************/
     document.getElementById('exportBtn').onclick = function() {
       const dataStr = JSON.stringify(products || [], null, 2);
       const blob = new Blob([dataStr], {type:"application/json"});
@@ -1779,11 +1728,9 @@
       setTimeout(()=>{ document.body.removeChild(a); },200);
     };
 
-    // Fix error and merge with existing import logic
     document.getElementById('importBtn').onclick = function () {
-      // trigger hidden file input
       let fileInput = document.getElementById('hiddenImport');
-      if (fileInput) fileInput.value = ''; // clear any previous selection for consistent behavior
+      if (fileInput) fileInput.value = '';
       if (fileInput) fileInput.click();
     };
 
@@ -1791,18 +1738,14 @@
       const fileInput = e.target;
       if (!fileInput.files || !fileInput.files.length) return;
       const file = fileInput.files[0];
-      // Accept only json or with .json name
       if (!(file && (file.type === 'application/json' || /\.json$/i.test(file.name)))) {
         alert('Please select a .json backup/export file.');
         return;
       }
       try {
-        // Try to read content as text
         let text = '';
-        if (file.text) {
-          text = await file.text();
-        } else {
-          // fallback for old browsers
+        if (file.text) text = await file.text();
+        else {
           text = await new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = e => resolve(e.target.result);
@@ -1812,7 +1755,6 @@
         }
         let arr = JSON.parse(text);
         if (!Array.isArray(arr)) throw new Error('Invalid file - data not array');
-        // Validate at least 'name' and 'qty' fields on entries
         arr = arr.filter(prod => prod && typeof prod === 'object' && 'name' in prod && 'qty' in prod);
         if (!arr.length) throw new Error('No valid products in file!');
         if (!confirm(`Import will OVERWRITE your current products with ${arr.length} product(s).\nAre you sure?`)) return;
@@ -1827,14 +1769,8 @@
       }
     };
 
-    // Remove old readFileAsDataURL; not used in main flow anymore
-
-    /**************************************************************
-     * Delete modal, Export/Import, etc. unchanged...
-     **************************************************************/
     window.addEventListener('load', function() {
       loadProducts();
-      // do not auto-show app; user must login each time
     });
   </script>
 </body>
