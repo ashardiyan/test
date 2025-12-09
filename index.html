@@ -13,7 +13,6 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
   <style>
-    /* ...styles unchanged... */
     :root {
       --bg1: #0C1220;
       --bg2: #161B22;
@@ -69,10 +68,11 @@
     /* Multi-select controls */
     #multiSelectControls {
       display: none;
-      gap: 10px;
+      gap: 8px;
       margin-top: 6px;
       margin-left: 2px;
       align-items: center;
+      flex-wrap: wrap;
     }
     #multiSelectControls.active { display: flex; }
     #deleteSelectedBtn {
@@ -86,9 +86,20 @@
       cursor: pointer;
       box-shadow: 0 1px 7px #ef444433;
       transition: background .14s, box-shadow .13s;
-      margin-left: 6px;
+      margin-left: 0;
     }
-    #deleteSelectedBtn:disabled { background: #ce5353a0; cursor: not-allowed; }
+    #shareSelectedBtn {
+      background: #2b3548;
+      color: var(--accent2);
+      border: 1px solid #364052;
+      border-radius: var(--rounded-btn);
+      padding: 10px 16px;
+      font-size: 0.95em;
+      font-weight: 700;
+      cursor: pointer;
+      margin-left: 0;
+    }
+    #deleteSelectedBtn:disabled, #shareSelectedBtn:disabled { background: #333; color:#777; cursor: not-allowed; border-color:transparent;}
     #selectAllCheckbox { accent-color: var(--accent2); margin-left:4px; margin-right:0; transform: scale(1.1); }
 
     .product-list { margin:0; padding:0; list-style:none; }
@@ -238,8 +249,17 @@
     .prod-card { background:var(--bg3); border-radius:13px; margin-bottom:16px; box-shadow:0 2px 10px #2c345128; display:flex; gap:19px; align-items:center; padding:18px 20px; position:relative; animation:fadeUp .35s; opacity:0; transform:translateY(25px); animation-fill-mode:forwards; cursor:pointer; border:2px solid transparent; transition:box-shadow .14s, border-color .16s; }
     .prod-card.show { opacity:1; transform:none; }
     .prod-card:hover { border-color:var(--accent2); box-shadow:0 6px 24px #18346023; }
-    .prod-img { min-width:43px; width:43px; height:43px; border-radius:10px; background:#21293f; flex-shrink:0; display:flex; align-items:center; justify-content:center; color:var(--accent2); font-size:1.45em; overflow:hidden; }
+    
+    /* Thumbnail style for product list - now click able */
+    .prod-img { 
+        min-width:43px; width:43px; height:43px; 
+        border-radius:10px; background:#21293f; 
+        flex-shrink:0; display:flex; align-items:center; justify-content:center; 
+        color:var(--accent2); font-size:1.45em; overflow:hidden; 
+        cursor: zoom-in; /* Cursor changed to indicate zoom */
+    }
     .prod-photo-thumb { max-width:100%; max-height:43px; border-radius:8px; object-fit:cover; background:#232b36; display:block; }
+    
     .prod-name { font-weight:700; font-size:1.15em; color:var(--text); letter-spacing:-0.5px; margin-bottom:1.5px; }
     .prod-details { color:var(--gray); font-size:.97em; margin-top:2px; margin-bottom:2px; }
     .prod-actions { margin-left:auto; display:flex; gap:7px; align-items:center; }
@@ -298,6 +318,141 @@
       outline: none !important;
       box-shadow: none !important;
     }
+    
+    /* --- SHARE MODAL CHECKBOXES --- */
+    .share-options {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 20px;
+    }
+    .share-option-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 10px;
+        background: #1e2530;
+        border-radius: 8px;
+        cursor: pointer;
+        user-select: none;
+    }
+    .share-option-row:hover { background: #262f3d; }
+    .share-option-row input[type="checkbox"] {
+        width: auto;
+        margin: 0;
+        transform: scale(1.2);
+        accent-color: var(--accent2);
+        cursor: pointer;
+    }
+
+    /* --- FULL SCREEN IMAGE VIEWER --- */
+    #imageViewerOverlay {
+        position: fixed;
+        inset: 0;
+        z-index: 8000;
+        background: rgba(0,0,0,0.95);
+        display: none;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        animation: fadeIn 0.2s ease-out;
+    }
+    #imageViewerOverlay.show { display: flex; }
+    #imageViewerImg {
+        max-width: 95vw;
+        max-height: 85vh;
+        object-fit: contain;
+        border-radius: 4px;
+        box-shadow: 0 0 20px rgba(0,0,0,0.5);
+    }
+    #imageViewerClose {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        color: white;
+        background: rgba(255,255,255,0.1);
+        border: none;
+        font-size: 1.5rem;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    #imageViewerClose:hover { background: rgba(255,255,255,0.25); }
+    @keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
+
+    /* --- PRINTING STYLES (PDF Generation) --- */
+    #printableArea {
+        display: none;
+        background: white;
+        color: black;
+        font-family: 'Arial', sans-serif;
+        padding: 40px;
+    }
+    @media print {
+        body > *:not(#printableArea) {
+            display: none !important;
+        }
+        #printableArea {
+            display: block !important;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: auto;
+            z-index: 9999;
+            background: white !important;
+            color: black !important;
+        }
+        /* Each product gets a page or section */
+        .print-product-page {
+            page-break-after: always;
+            margin-bottom: 50px;
+        }
+        .print-product-page:last-child {
+            page-break-after: auto;
+        }
+        .print-header {
+            text-align: center;
+            border-bottom: 2px solid #000;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .print-logo {
+            width: 80px;
+            height: 80px;
+            object-fit: contain;
+        }
+        .print-title { font-size: 24px; font-weight: bold; margin: 10px 0; }
+        .print-product-img {
+            max-width: 300px;
+            max-height: 300px;
+            display: block;
+            margin: 20px auto;
+            border: 1px solid #ddd;
+        }
+        .print-details-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 18px;
+        }
+        .print-details-table td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+        }
+        .print-label { font-weight: bold; width: 40%; }
+        .print-notes-box {
+            margin-top: 30px;
+            padding: 15px;
+            border: 1px dashed #aaa;
+            background: #f9f9f9;
+        }
+    }
 
     body.modal-open {
       overflow: hidden !important;
@@ -353,6 +508,13 @@
   </style>
 </head>
 <body>
+  <div id="printableArea"></div>
+
+  <div id="imageViewerOverlay">
+      <button id="imageViewerClose">✖</button>
+      <img id="imageViewerImg" src="" alt="Full Screen" />
+  </div>
+
   <div id="login-modal" style="position:fixed; inset:0; z-index:7000; background:rgba(22,27,34,0.89); display:flex; justify-content:center; align-items:center;">
     <form class="login-dialog modal" id="loginForm" autocomplete="off" novalidate style="max-width:380px;">
       <button class="modal-close" type="button" id="loginCloseBtn" title="Close" aria-label="Close dialog" role="button" style="display:none">✖</button>
@@ -415,12 +577,15 @@
             <input type="file" id="importFile" accept="application/json" style="display:none"/>
           </div>
           <div id="multiSelectControls">
-            <label style="display:flex;align-items:center;gap:4px;">
+            <label style="display:flex;align-items:center;gap:4px;margin-right:10px;">
               <input type="checkbox" id="selectAllCheckbox" title="Select all" />
               <span style="user-select:none;">Select all</span>
             </label>
-            <button type="button" id="deleteSelectedBtn" disabled>🗑️ Delete Selected</button>
-            <span id="selectedCountText" style="color:var(--danger);font-weight:600;font-size:0.99em;"></span>
+            <div style="display:flex;gap:6px;">
+                <button type="button" id="deleteSelectedBtn" disabled>🗑️ Delete</button>
+                <button type="button" id="shareSelectedBtn" disabled>📤 Share Selected</button>
+            </div>
+            <span id="selectedCountText" style="color:var(--danger);font-weight:600;font-size:0.99em;margin-left:5px;"></span>
           </div>
           <ul class="product-list" id="productList"></ul>
           <div class="no-products" id="noProducts" style="display:none">No products yet. Click <b>+ Add</b> to get started!</div>
@@ -461,6 +626,39 @@
       </div>
       <div id="imageCompressMsg" style="font-size:.99em;color:var(--text-muted);margin-top:10px;user-select:none;display:none"></div>
     </form>
+  </div>
+  
+  <div class="modal-backdrop hide" id="shareModalBackdrop">
+    <div class="modal" id="shareModal">
+      <button class="modal-close" type="button" id="closeShareBtn" title="Close" aria-label="Close dialog" role="button">✖</button>
+      <h3>📤 Share Product PDF</h3>
+      <div id="shareSubtitle" style="margin-bottom:15px;color:var(--text-muted);text-align:center;">Select fields to include in the generated PDF/Print.</div>
+      
+      <div class="share-options">
+          <label class="share-option-row">
+              <input type="checkbox" id="sharePhoto" checked> <span>Include Photo</span>
+          </label>
+          <label class="share-option-row">
+              <input type="checkbox" id="shareMrp" checked> <span>Include MRP (Price)</span>
+          </label>
+          <label class="share-option-row">
+              <input type="checkbox" id="shareCost"> <span>Include Cost Price</span>
+          </label>
+          <label class="share-option-row">
+              <input type="checkbox" id="shareQty" checked> <span>Include Quantity</span>
+          </label>
+          <label class="share-option-row">
+              <input type="checkbox" id="shareCategory" checked> <span>Include Category</span>
+          </label>
+          <label class="share-option-row">
+              <input type="checkbox" id="shareNotes" checked> <span>Include Notes</span>
+          </label>
+      </div>
+
+      <div class="modal-btnbar">
+        <button type="button" id="generatePdfBtn" class="rounded-sky-btn">🖨️ Generate PDF / Print</button>
+      </div>
+    </div>
   </div>
 
   <div class="modal-backdrop hide" id="deleteModalBackdrop">
@@ -540,10 +738,7 @@
   <script>
     /****************************************************************
      * BIOMETRIC (FINGERPRINT/FACE ID) LOGIC
-     * Using 'platform' attachment to force device sensor instead of passkey/usb
      ****************************************************************/
-    
-    // Helpers for WebAuthn Buffer conversion
     const strToBuffer = (str) => Uint8Array.from(str, c => c.charCodeAt(0));
     const randomBuffer = (len) => {
       const arr = new Uint8Array(len);
@@ -551,86 +746,50 @@
       return arr;
     };
 
-    // Check if biometric is set up
     function hasBiometricSetup() {
        return !!localStorage.getItem('dealer-bio-cred-id');
     }
 
-    // 1. Setup/Register Fingerprint (Called from Settings)
     async function registerBiometric() {
         if (!window.PublicKeyCredential) {
             alert("Biometrics not supported on this browser.");
             return;
         }
-
         const userId = window.localStorage.getItem('dealer-hash') || 'default-user';
-        
         try {
             const publicKeyCredentialCreationOptions = {
                 challenge: randomBuffer(32),
-                rp: { 
-                    name: "Al Rahman Electronics", 
-                    id: window.location.hostname 
-                },
-                user: {
-                    id: strToBuffer(userId),
-                    name: "dealer@local",
-                    displayName: "Dealer"
-                },
+                rp: { name: "Al Rahman Electronics", id: window.location.hostname },
+                user: { id: strToBuffer(userId), name: "dealer@local", displayName: "Dealer" },
                 pubKeyCredParams: [{ alg: -7, type: "public-key" }, { alg: -257, type: "public-key" }],
-                authenticatorSelection: {
-                    authenticatorAttachment: "platform", // Forces device sensor
-                    userVerification: "required",
-                    residentKey: "preferred"
-                },
+                authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required", residentKey: "preferred" },
                 timeout: 60000,
                 attestation: "none"
             };
-
-            const credential = await navigator.credentials.create({
-                publicKey: publicKeyCredentialCreationOptions
-            });
-
+            const credential = await navigator.credentials.create({ publicKey: publicKeyCredentialCreationOptions });
             const credId = btoa(String.fromCharCode(...new Uint8Array(credential.rawId)));
             localStorage.setItem('dealer-bio-cred-id', credId);
-            
             alert("Fingerprint setup successful! You can now use it to unlock.");
             checkBiometricButtonVisibility();
-
         } catch (err) {
             console.error(err);
-            if(err.name === 'NotAllowedError') {
-                alert("Setup cancelled or timed out.");
-            } else if (window.location.protocol === 'file:') {
-                alert("Security Error: Biometrics do not work on local files (file://). You must use a server (localhost or https).");
-            } else {
-                alert("Setup failed: " + err.message);
-            }
+            if(err.name === 'NotAllowedError') alert("Setup cancelled or timed out.");
+            else if (window.location.protocol === 'file:') alert("Security Error: Biometrics do not work on local files (file://).");
+            else alert("Setup failed: " + err.message);
         }
     }
 
-    // 2. Authenticate/Unlock (Called from Login Screen)
     async function authenticateBiometric() {
         if (!hasBiometricSetup()) return;
-
         try {
             const publicKeyCredentialRequestOptions = {
                 challenge: randomBuffer(32),
                 rpId: window.location.hostname,
-                userVerification: "required", // Forces the biometric prompt
-                allowCredentials: [{
-                    id: Uint8Array.from(atob(localStorage.getItem('dealer-bio-cred-id')), c => c.charCodeAt(0)),
-                    type: 'public-key',
-                    transports: ['internal']
-                }]
+                userVerification: "required",
+                allowCredentials: [{ id: Uint8Array.from(atob(localStorage.getItem('dealer-bio-cred-id')), c => c.charCodeAt(0)), type: 'public-key', transports: ['internal'] }]
             };
-
-            const assertion = await navigator.credentials.get({
-                publicKey: publicKeyCredentialRequestOptions
-            });
-
+            const assertion = await navigator.credentials.get({ publicKey: publicKeyCredentialRequestOptions });
             if (assertion) {
-                // Success! Unlock the app.
                 showDealerApp();
                 const keepLoggedInToggle = document.getElementById('keepLoggedInToggle');
                 if (keepLoggedInToggle.checked) {
@@ -649,21 +808,15 @@
         }
     }
 
-    // UI: Show/Hide the biometric button on login screen
     function checkBiometricButtonVisibility() {
         const btn = document.getElementById('biometricUnlockBtn');
-        if(hasBiometricSetup() && getHasPIN()) {
-            btn.style.display = 'flex';
-        } else {
-            btn.style.display = 'none';
-        }
+        if(hasBiometricSetup() && getHasPIN()) btn.style.display = 'flex';
+        else btn.style.display = 'none';
     }
 
     /****************************************************************
      * EXISTING APP LOGIC
      ****************************************************************/
-    
-    // Modal background scroll lock
     (function() {
       function lockBodyScroll() {
         if (!document.body.classList.contains('modal-open')) {
@@ -708,29 +861,17 @@
     /****************************************************************
      * Keep-logged-in authentication logic
      ****************************************************************/
-    const KEEP_LOGGED_TIMEOUT_MS = 5*60*1000; // 5 minutes
+    const KEEP_LOGGED_TIMEOUT_MS = 5*60*1000;
 
-    function setKeepSessionActive(expiresAt) {
-      try { sessionStorage.setItem('dealer-keep-expires', String(expiresAt)); } catch(e) {}
-    }
-    function getKeepSessionActive() {
-      try {
-        const val = sessionStorage.getItem('dealer-keep-expires');
-        return val && /^\d+$/.test(val) ? parseInt(val, 10) : null;
-      } catch(e) { return null; }
-    }
-    function clearKeepSession() {
-      try { sessionStorage.removeItem('dealer-keep-expires'); } catch(e) {}
-    }
+    function setKeepSessionActive(expiresAt) { try { sessionStorage.setItem('dealer-keep-expires', String(expiresAt)); } catch(e) {} }
+    function getKeepSessionActive() { try { const val = sessionStorage.getItem('dealer-keep-expires'); return val && /^\d+$/.test(val) ? parseInt(val, 10) : null; } catch(e) { return null; } }
+    function clearKeepSession() { try { sessionStorage.removeItem('dealer-keep-expires'); } catch(e) {} }
     function showTimeoutNotice(msg) {
       const t = document.getElementById('timeoutNotice');
       t.textContent = msg || '';
       t.style.display = msg ? 'block' : 'none';
     }
-    function isSessionStillActive() {
-      const expiresAt = getKeepSessionActive();
-      return !!expiresAt && Date.now() < expiresAt;
-    }
+    function isSessionStillActive() { const expiresAt = getKeepSessionActive(); return !!expiresAt && Date.now() < expiresAt; }
     function showTimeoutCountdownIfAny() {
       const expiresAt = getKeepSessionActive();
       if (expiresAt && Date.now() < expiresAt) {
@@ -765,10 +906,7 @@
       timeoutCountdownInterval = setInterval(check, 800);
       check();
     }
-    function stopSessionTimeoutMonitor() {
-      if (timeoutCountdownInterval) clearInterval(timeoutCountdownInterval);
-      showTimeoutNotice("");
-    }
+    function stopSessionTimeoutMonitor() { if (timeoutCountdownInterval) clearInterval(timeoutCountdownInterval); showTimeoutNotice(""); }
     function manualLogoutDueToTimeout() {
       stopSessionTimeoutMonitor();
       clearKeepSession();
@@ -777,14 +915,8 @@
       updatePINUI(getHasPIN());
     }
     function addSessionAutoLogoutHandlers() {
-      window.addEventListener('pagehide', function(e) {
-        clearKeepSession();
-      });
-      document.addEventListener('visibilitychange', function() {
-        if (document.hidden) {
-          clearKeepSession();
-        }
-      });
+      window.addEventListener('pagehide', function(e) { clearKeepSession(); });
+      document.addEventListener('visibilitychange', function() { if (document.hidden) { clearKeepSession(); } });
     }
     addSessionAutoLogoutHandlers();
 
@@ -801,58 +933,34 @@
         display: "standalone",
         background_color: "#161B22",
         theme_color: "#161B22",
-        icons: [
-          { src: imgIcon, sizes: "192x192", type: "image/png" },
-          { src: imgIcon, sizes: "512x512", type: "image/png" }
-        ]
+        icons: [{ src: imgIcon, sizes: "192x192", type: "image/png" }, { src: imgIcon, sizes: "512x512", type: "image/png" }]
       };
       const manifestBlob = new Blob([JSON.stringify(manifestObj)], { type: 'application/json' });
       const manifestURL = URL.createObjectURL(manifestBlob);
       (function setManifestLink() {
         let existing = document.querySelector('link[rel="manifest"]');
-        if (!existing) {
-          existing = document.createElement('link');
-          existing.rel = 'manifest';
-          document.head.appendChild(existing);
-        }
+        if (!existing) { existing = document.createElement('link'); existing.rel = 'manifest'; document.head.appendChild(existing); }
         existing.href = manifestURL;
       })();
 
       const swScript = `
-        const CACHE_NAME = 'local-dealer-cache-v3';
+        const CACHE_NAME = 'local-dealer-cache-v7';
         const OFFLINE_URL = self.registration.scope.endsWith('/') ? self.registration.scope + 'index.html' : self.registration.scope + '/index.html';
-        const FILES_TO_CACHE = [
-          OFFLINE_URL,
-          './index.html'
-        ];
-        self.addEventListener('install', function(event) {
-          event.waitUntil(
-            caches.open(CACHE_NAME).then(function(cache) {
-              return cache.addAll(FILES_TO_CACHE);
-            })
-          );
-          self.skipWaiting();
-        });
-        self.addEventListener('activate', function(event) {
-          event.waitUntil(self.clients.claim());
-        });
+        const FILES_TO_CACHE = [ OFFLINE_URL, './index.html' ];
+        self.addEventListener('install', function(event) { event.waitUntil(caches.open(CACHE_NAME).then(function(cache) { return cache.addAll(FILES_TO_CACHE); })); self.skipWaiting(); });
+        self.addEventListener('activate', function(event) { event.waitUntil(self.clients.claim()); });
         self.addEventListener('fetch', function(event) {
           if (event.request.method !== 'GET') return;
-          event.respondWith(
-            caches.match(event.request, {ignoreSearch:true}).then(function(response) {
+          event.respondWith(caches.match(event.request, {ignoreSearch:true}).then(function(response) {
               if (response) return response;
               return fetch(event.request).then(function(resp) {
                 if (resp && resp.status === 200 && resp.type === 'basic' && /\.(html|js|css|png|jpg|jpeg|svg|woff2?|json)$/i.test(event.request.url)) {
                   const respClone = resp.clone();
-                  caches.open(CACHE_NAME).then(function(cache) {
-                    cache.put(event.request, respClone);
-                  });
+                  caches.open(CACHE_NAME).then(function(cache) { cache.put(event.request, respClone); });
                 }
                 return resp;
               }).catch(function() {
-                if (event.request.mode === 'navigate' || event.request.destination === 'document') {
-                  return caches.match(OFFLINE_URL);
-                }
+                if (event.request.mode === 'navigate' || event.request.destination === 'document') return caches.match(OFFLINE_URL);
                 return undefined;
               });
             })
@@ -862,137 +970,82 @@
       try {
         const swBlob = new Blob([swScript], { type: 'text/javascript' });
         const swURL = URL.createObjectURL(swBlob);
-        if ('serviceWorker' in navigator) {
-          window.addEventListener('load', function() {
-            navigator.serviceWorker.register(swURL);
-          });
-        }
+        if ('serviceWorker' in navigator) { window.addEventListener('load', function() { navigator.serviceWorker.register(swURL); }); }
       } catch (e) {}
     })();
 
-    /**************************************************************
-     * Start animation
-     **************************************************************/
     window.addEventListener('DOMContentLoaded', function(){
-      setTimeout(function() {
-        document.querySelectorAll(".card").forEach((el,i)=> {
-          setTimeout(()=>{ el.classList.add('show') }, 160+60*i);
-        });
-      }, 180);
+      setTimeout(function() { document.querySelectorAll(".card").forEach((el,i)=> { setTimeout(()=>{ el.classList.add('show') }, 160+60*i); }); }, 180);
     });
 
-    /**************************************************************
-     * PWA install prompt
-     **************************************************************/
     let deferredPrompt;
     const installBtn = document.getElementById('installPromptBtn');
     const installAsAppBtn = document.getElementById('installAsAppBtn');
     const mobileInstall = document.getElementById('mobileInstallInstructions');
-
-    function isMobileChromeStandaloneCapable() {
-      const ua = navigator.userAgent || '';
-      return /Android/.test(ua) && /Chrome\/[.0-9]* Mobile/.test(ua) && !window.matchMedia('(display-mode: standalone)').matches;
-    }
+    function isMobileChromeStandaloneCapable() { const ua = navigator.userAgent || ''; return /Android/.test(ua) && /Chrome\/[.0-9]* Mobile/.test(ua) && !window.matchMedia('(display-mode: standalone)').matches; }
 
     window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      deferredPrompt = e;
-      installBtn.style.display = 'inline-block';
-      installAsAppBtn.style.display = 'inline-block';
-      mobileInstall.style.display = 'none';
+      e.preventDefault(); deferredPrompt = e; installBtn.style.display = 'inline-block'; installAsAppBtn.style.display = 'inline-block'; mobileInstall.style.display = 'none';
     });
 
     installBtn && (installBtn.onclick = async function() {
       installBtn.disabled = true;
-      if (deferredPrompt) {
-        deferredPrompt.prompt();
-        await deferredPrompt.userChoice;
-        deferredPrompt = null;
-        installBtn.style.display = 'none';
-        installAsAppBtn.style.display = 'none';
-        installBtn.disabled = false;
-      } else {
-        installBtn.disabled = false;
-      }
+      if (deferredPrompt) { deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; installBtn.style.display = 'none'; installAsAppBtn.style.display = 'none'; installBtn.disabled = false; }
     });
 
     installAsAppBtn && (installAsAppBtn.onclick = async function() {
       installAsAppBtn.disabled = true;
-      if (deferredPrompt) {
-        deferredPrompt.prompt();
-        await deferredPrompt.userChoice;
-        deferredPrompt = null;
-        installBtn.style.display = 'none';
-        installAsAppBtn.style.display = 'none';
-        installAsAppBtn.disabled = false;
-      } else {
-        alert("Install prompt not available right now. Use Chrome's menu: Add to Home screen.");
-        installAsAppBtn.disabled = false;
-      }
+      if (deferredPrompt) { deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; installBtn.style.display = 'none'; installAsAppBtn.style.display = 'none'; installAsAppBtn.disabled = false; } else { alert("Install prompt not available right now."); installAsAppBtn.disabled = false; }
     });
 
-    window.addEventListener('appinstalled', ()=>{
-      installBtn.style.display='none';
-      installAsAppBtn.style.display='none';
-      deferredPrompt = null;
-      mobileInstall.style.display='none';
-    });
+    window.addEventListener('appinstalled', ()=>{ installBtn.style.display='none'; installAsAppBtn.style.display='none'; deferredPrompt = null; mobileInstall.style.display='none'; });
 
     window.addEventListener('DOMContentLoaded', function() {
       setTimeout(() => {
-        if (!window.matchMedia('(display-mode: standalone)').matches &&
-            !window.matchMedia('(display-mode: fullscreen)').matches &&
-            isMobileChromeStandaloneCapable()
-        ) {
-          if ((installBtn.style.display === "none" || getComputedStyle(installBtn).display === "none") &&
-              (installAsAppBtn.style.display === "none" || getComputedStyle(installAsAppBtn).display === "none"))
-          {
-            mobileInstall.innerHTML =
-              "To install this app: tap <b><span style='font-size:1.22em;'>⋮</span></b> at the top right of Chrome, and choose <b>Add to Home screen</b>.";
-            mobileInstall.style.display = "inline-block";
+        if (!window.matchMedia('(display-mode: standalone)').matches && !window.matchMedia('(display-mode: fullscreen)').matches && isMobileChromeStandaloneCapable()) {
+          if ((installBtn.style.display === "none" || getComputedStyle(installBtn).display === "none") && (installAsAppBtn.style.display === "none" || getComputedStyle(installAsAppBtn).display === "none")) {
+            mobileInstall.innerHTML = "To install this app: tap <b><span style='font-size:1.22em;'>⋮</span></b> at the top right of Chrome, and choose <b>Add to Home screen</b>."; mobileInstall.style.display = "inline-block";
           }
         }
       }, 1100);
     });
 
-    /**************************************************************
-     * Android Back Button Logic
-     **************************************************************/
     (function handleAndroidBackButton() {
-      function isStandalone() {
-        return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
-               (window.navigator.standalone === true);
-      }
+      // Updated: Now permissive so back button works in Browser too, not just Standalone
       let openedModals = [];
-      const modalPriority = ['productModalBackdrop', 'deleteModalBackdrop', 'settingsBackdrop', 'detailModalBackdrop'];
+      // Added imageViewerOverlay to priority list
+      const modalPriority = ['imageViewerOverlay', 'productModalBackdrop', 'deleteModalBackdrop', 'settingsBackdrop', 'detailModalBackdrop', 'shareModalBackdrop'];
 
-      function pushMainStateToHistory() {
-        if (!isStandalone()) return;
-        try { history.replaceState({dealerAppMain: true}, document.title, window.location.href); } catch (e) {}
-      }
-      function pushModalState(modalId) {
-        if (!isStandalone()) return;
-        try {
-          history.pushState({modal: modalId}, document.title, window.location.href);
-          openedModals.push(modalId);
-        } catch (e) {}
-      }
+      function pushMainStateToHistory() { try { history.replaceState({dealerAppMain: true}, document.title, window.location.href); } catch (e) {} }
+      function pushModalState(modalId) { try { history.pushState({modal: modalId}, document.title, window.location.href); openedModals.push(modalId); } catch (e) {} }
+      
       function enablePwaBackHandler() {
         pushMainStateToHistory();
         window.addEventListener('popstate', function(e) {
           if (document.getElementById('dealerApp').style.display !== 'none') {
-            const topOpenModal = (() => {
-              for (let i = 0; i < modalPriority.length; ++i) {
-                const el = document.getElementById(modalPriority[i]);
-                if (el && !el.classList.contains('hide')) return modalPriority[i];
-              }
-              return null;
+            const topOpenModal = (() => { 
+                for (let i = 0; i < modalPriority.length; ++i) { 
+                    const el = document.getElementById(modalPriority[i]); 
+                    if (!el) continue;
+                    // Check if open (image viewer uses 'show', others use absence of 'hide')
+                    if (modalPriority[i] === 'imageViewerOverlay') {
+                         if (el.classList.contains('show')) return modalPriority[i];
+                    } else {
+                         if (!el.classList.contains('hide')) return modalPriority[i];
+                    }
+                } 
+                return null; 
             })();
-
-            if (topOpenModal) {
-              document.getElementById(topOpenModal).classList.add('hide');
-              setTimeout(()=>{},10);
-              return;
+            
+            if (topOpenModal) { 
+                if (topOpenModal === 'imageViewerOverlay') {
+                    document.getElementById(topOpenModal).classList.remove('show');
+                    document.getElementById('imageViewerImg').src = '';
+                } else {
+                    document.getElementById(topOpenModal).classList.add('hide'); 
+                }
+                setTimeout(()=>{},10); 
+                return; 
             }
             pushMainStateToHistory();
           }
@@ -1003,42 +1056,29 @@
           const el = document.getElementById(id);
           if (!el) return;
           const observer = new MutationObserver(() => {
-            if (!el.classList.contains('hide')) {
-              if (!openedModals.includes(id)) pushModalState(id);
-            } else {
-              const idx = openedModals.indexOf(id);
-              if (idx !== -1) openedModals.splice(idx, 1);
-            }
+            let isOpen = false;
+            if (id === 'imageViewerOverlay') isOpen = el.classList.contains('show');
+            else isOpen = !el.classList.contains('hide');
+            
+            if (isOpen) { if (!openedModals.includes(id)) pushModalState(id); } 
+            else { const idx = openedModals.indexOf(id); if (idx !== -1) openedModals.splice(idx, 1); }
           });
           observer.observe(el, { attributes: true, attributeFilter: ['class'] });
         });
       }
-      window.__enablePwaBackHandler = function() {
-        enablePwaBackHandler();
-        setupModalHistoryTracking();
-      };
+      window.__enablePwaBackHandler = function() { enablePwaBackHandler(); setupModalHistoryTracking(); };
     })();
 
-    /**************************************************************
-     * PIN hashing & auth helpers
-     **************************************************************/
     async function hashPIN(pin) {
       let salt = window.localStorage.getItem('dealer-app-salt');
-      if (!salt) {
-        const arr = new Uint8Array(16);
-        window.crypto.getRandomValues(arr);
-        salt = Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('');
-        window.localStorage.setItem('dealer-app-salt', salt);
-      }
+      if (!salt) { const arr = new Uint8Array(16); window.crypto.getRandomValues(arr); salt = Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join(''); window.localStorage.setItem('dealer-app-salt', salt); }
       const encoder = new TextEncoder();
       try {
         const baseKey = await window.crypto.subtle.importKey('raw', encoder.encode(pin), 'PBKDF2', false, ['deriveBits']);
         const rawBits = await window.crypto.subtle.deriveBits({ name: "PBKDF2", salt: encoder.encode(salt), iterations: 3000, hash: "SHA-256" }, baseKey, 256);
         const hashArr = new Uint8Array(rawBits);
         return Array.from(hashArr).map(b => b.toString(16).padStart(2,'0')).join('');
-      } catch (e) {
-        return pin + salt; // Fallback
-      }
+      } catch (e) { return pin + salt; }
     }
     function getHasPIN() { return !!window.localStorage.getItem('dealer-hash'); }
     
@@ -1053,21 +1093,9 @@
       document.getElementById('dealerApp').style.display = 'none';
       const loginModal = document.getElementById('login-modal');
       loginModal.style.display = 'flex';
-      if (msg) { 
-        document.getElementById('login-error').textContent = msg; 
-        document.getElementById('login-error').style.color = 'var(--danger)';
-      } else { 
-        document.getElementById('login-error').textContent = ''; 
-        document.getElementById('login-error').style.color = '';
-      }
+      if (msg) { document.getElementById('login-error').textContent = msg; document.getElementById('login-error').style.color = 'var(--danger)'; } else { document.getElementById('login-error').textContent = ''; document.getElementById('login-error').style.color = ''; }
       document.getElementById('loginPIN').value = '';
-      
-      // FIXED: Only focus PIN (showing keyboard) if fingerprint is NOT setup
-      if (!hasBiometricSetup()) {
-          setTimeout(()=>document.getElementById('loginPIN').focus(),120);
-      }
-      
-      // Check if we should show fingerprint button
+      if (!hasBiometricSetup()) { setTimeout(()=>document.getElementById('loginPIN').focus(),120); }
       checkBiometricButtonVisibility();
     }
     
@@ -1075,20 +1103,8 @@
 
     window.addEventListener('load', ()=> {
       updatePINUI(getHasPIN());
-      if (!checkQuickAutoUnlock()) {
-        showLoginModal();
-        
-        // FIXED: Automatically trigger fingerprint scan on load
-        if (hasBiometricSetup()) {
-             // Slight delay to ensure modal is rendered
-             setTimeout(authenticateBiometric, 400); 
-        }
-      }
-      setTimeout(function() {
-        if ("serviceWorker" in navigator && window.matchMedia('(display-mode: standalone)').matches) {
-          try { history.replaceState({start:true}, document.title, window.location.href); } catch (e) {}
-        }
-      }, 180);
+      if (!checkQuickAutoUnlock()) { showLoginModal(); if (hasBiometricSetup()) { setTimeout(authenticateBiometric, 400); } }
+      setTimeout(function() { if ("serviceWorker" in navigator && window.matchMedia('(display-mode: standalone)').matches) { try { history.replaceState({start:true}, document.title, window.location.href); } catch (e) {} } }, 180);
     });
 
     const loginBtn = document.getElementById('loginBtn');
@@ -1097,11 +1113,9 @@
     const loginError = document.getElementById('login-error');
     const pinLabel = document.getElementById('pinLabel');
     const keepLoggedInToggle = document.getElementById('keepLoggedInToggle');
-    // Grab the new buttons
     const setupBiometricBtn = document.getElementById('setupBiometricBtn');
     const biometricUnlockBtn = document.getElementById('biometricUnlockBtn');
 
-    // Attach listeners for new buttons
     setupBiometricBtn.onclick = (e) => { e.preventDefault(); registerBiometric(); };
     biometricUnlockBtn.onclick = (e) => { e.preventDefault(); authenticateBiometric(); };
 
@@ -1111,116 +1125,41 @@
       const iconSpan = document.getElementById('showLoginPINBtnIcon');
       let visible = false;
       if (showBtn && pinInput) {
-        showBtn.addEventListener('click', function(e) {
-          e.preventDefault();
-          visible = !visible;
-          pinInput.type = visible ? 'text' : 'password';
-          iconSpan.textContent = visible ? '🙈' : '👁️'; 
-          showBtn.setAttribute('aria-label', visible ? "Hide PIN" : "Show PIN");
-        });
-        pinInput.addEventListener('keydown', function(e) {
-          if (visible && e.key === "Escape") {
-            pinInput.type = 'password';
-            visible = false;
-            iconSpan.textContent = '👁️';
-            showBtn.setAttribute('aria-label', "Show PIN");
-          }
-        });
+        showBtn.addEventListener('click', function(e) { e.preventDefault(); visible = !visible; pinInput.type = visible ? 'text' : 'password'; iconSpan.textContent = visible ? '🙈' : '👁️'; showBtn.setAttribute('aria-label', visible ? "Hide PIN" : "Show PIN"); });
+        pinInput.addEventListener('keydown', function(e) { if (visible && e.key === "Escape") { pinInput.type = 'password'; visible = false; iconSpan.textContent = '👁️'; showBtn.setAttribute('aria-label', "Show PIN"); } });
       }
     })();
 
     function updatePINUI(hasPIN) {
-      if (hasPIN) {
-        loginBtn.textContent = "Unlock";
-        pinLabel.textContent = "Enter your PIN / Password:";
-        loginPIN.placeholder = "Enter PIN or password";
-        loginPIN.autocomplete = "current-password";
-      } else {
-        loginBtn.textContent = "Set PIN";
-        pinLabel.textContent = "Create a secure PIN / Password:";
-        loginPIN.placeholder = "Set PIN or password";
-        loginPIN.autocomplete = "new-password";
-      }
-      loginError.textContent = '';
-      loginError.style.color = '';
-      checkBiometricButtonVisibility();
+      if (hasPIN) { loginBtn.textContent = "Unlock"; pinLabel.textContent = "Enter your PIN / Password:"; loginPIN.placeholder = "Enter PIN or password"; loginPIN.autocomplete = "current-password"; } else { loginBtn.textContent = "Set PIN"; pinLabel.textContent = "Create a secure PIN / Password:"; loginPIN.placeholder = "Set PIN or password"; loginPIN.autocomplete = "new-password"; }
+      loginError.textContent = ''; loginError.style.color = ''; checkBiometricButtonVisibility();
     }
 
     loginForm.onsubmit = async function(e) {
-      e.preventDefault();
-      loginError.textContent = '';
-      loginError.style.color = '';
+      e.preventDefault(); loginError.textContent = ''; loginError.style.color = '';
       const pinVal = (loginPIN.value || '').trim();
       const hasPIN = getHasPIN();
-      if (!pinVal || pinVal.length < 4) {
-        loginError.style.color = 'var(--danger)';
-        loginError.textContent = hasPIN ? "Enter your PIN/Password." : "PIN/password must be at least 4 characters.";
-        return;
-      }
+      if (!pinVal || pinVal.length < 4) { loginError.style.color = 'var(--danger)'; loginError.textContent = hasPIN ? "Enter your PIN/Password." : "PIN/password must be at least 4 characters."; return; }
       loginBtn.disabled = true;
       try {
         const hash = await hashPIN(pinVal);
         if (!hasPIN) {
           window.localStorage.setItem('dealer-hash', hash);
-          justSetPIN = true;
-          updatePINUI(true);
-          loginError.style.color = 'var(--success)';
-          loginError.textContent = "PIN set. Now use it to unlock.";
-          loginBtn.disabled = false;
-          loginPIN.value = '';
-          setTimeout(()=>{
-            loginError.textContent = '';
-            loginError.style.color='';
-          }, 1500);
-          keepLoggedInToggle.checked = false;
-          return;
+          justSetPIN = true; updatePINUI(true); loginError.style.color = 'var(--success)'; loginError.textContent = "PIN set. Now use it to unlock."; loginBtn.disabled = false; loginPIN.value = '';
+          setTimeout(()=>{ loginError.textContent = ''; loginError.style.color=''; }, 1500); keepLoggedInToggle.checked = false; return;
         }
         const userHash = window.localStorage.getItem('dealer-hash');
         if (userHash === hash) {
-          if (keepLoggedInToggle.checked) {
-            setKeepSessionActive(Date.now() + KEEP_LOGGED_TIMEOUT_MS);
-            startSessionTimeoutMonitor();
-          } else {
-            clearKeepSession();
-            stopSessionTimeoutMonitor();
-          }
-          showDealerApp();
-          loginBtn.disabled = false;
-          loginError.textContent = '';
-          loginError.style.color = '';
-          justSetPIN = false;
-        } else {
-          loginBtn.disabled = false;
-          loginError.style.color='var(--danger)';
-          loginError.textContent = 'Incorrect PIN / Password.';
-        }
-      } catch (ex) {
-        loginBtn.disabled = false;
-        loginError.style.color='var(--danger)';
-        loginError.textContent = 'An error occurred. Try again.';
-      }
+          if (keepLoggedInToggle.checked) { setKeepSessionActive(Date.now() + KEEP_LOGGED_TIMEOUT_MS); startSessionTimeoutMonitor(); } else { clearKeepSession(); stopSessionTimeoutMonitor(); }
+          showDealerApp(); loginBtn.disabled = false; loginError.textContent = ''; loginError.style.color = ''; justSetPIN = false;
+        } else { loginBtn.disabled = false; loginError.style.color='var(--danger)'; loginError.textContent = 'Incorrect PIN / Password.'; }
+      } catch (ex) { loginBtn.disabled = false; loginError.style.color='var(--danger)'; loginError.textContent = 'An error occurred. Try again.'; }
     };
 
-    keepLoggedInToggle.onchange = function() {
-      showTimeoutNotice("");
-      if (!this.checked) clearKeepSession();
-    };
+    keepLoggedInToggle.onchange = function() { showTimeoutNotice(""); if (!this.checked) clearKeepSession(); };
+    document.getElementById('login-modal').addEventListener('transitionend', function() { loginPIN.value = ''; });
+    function doLogout(showMsg) { stopSessionTimeoutMonitor(); clearKeepSession(); document.getElementById('dealerApp').style.display = 'none'; showLoginModal(showMsg || 'You have been logged out.'); updatePINUI(getHasPIN()); }
 
-    document.getElementById('login-modal').addEventListener('transitionend', function() {
-      loginPIN.value = '';
-    });
-
-    function doLogout(showMsg) {
-      stopSessionTimeoutMonitor();
-      clearKeepSession();
-      document.getElementById('dealerApp').style.display = 'none';
-      showLoginModal(showMsg || 'You have been logged out.');
-      updatePINUI(getHasPIN());
-    }
-
-    /**************************************************************
-     * Settings Modal Logic 
-     **************************************************************/
     const settingsBtn = document.getElementById('settingsBtn');
     const settingsBackdrop = document.getElementById('settingsBackdrop');
     const closeSettingsBtn = document.getElementById('closeSettingsBtn');
@@ -1229,30 +1168,13 @@
     const resetPinCancel = document.getElementById('resetPinCancel');
     const resetPinError = document.getElementById('resetPinError');
 
-    settingsBtn.onclick = () => {
-      settingsBackdrop.classList.remove('hide');
-      document.getElementById('oldPin').value = '';
-      document.getElementById('newPin').value = '';
-      document.getElementById('confirmPin').value = '';
-      resetPinError.textContent = '';
-      resetPinError.style.color = '';
-    };
+    settingsBtn.onclick = () => { settingsBackdrop.classList.remove('hide'); document.getElementById('oldPin').value = ''; document.getElementById('newPin').value = ''; document.getElementById('confirmPin').value = ''; resetPinError.textContent = ''; resetPinError.style.color = ''; };
     closeSettingsBtn.onclick = () => settingsBackdrop.classList.add('hide');
-
-    logoutBtn.onclick = () => {
-      settingsBackdrop.classList.add('hide');
-      doLogout();
-    };
-
-    resetPinCancel.onclick = () => {
-      resetPinError.textContent = '';
-      resetPinError.style.color = '';
-      settingsBackdrop.classList.add('hide');
-    };
+    logoutBtn.onclick = () => { settingsBackdrop.classList.add('hide'); doLogout(); };
+    resetPinCancel.onclick = () => { resetPinError.textContent = ''; resetPinError.style.color = ''; settingsBackdrop.classList.add('hide'); };
 
     resetPinSubmit.onclick = async function() {
-      resetPinError.textContent = '';
-      resetPinError.style.color = '';
+      resetPinError.textContent = ''; resetPinError.style.color = '';
       const oldPin = (document.getElementById('oldPin').value || '').trim();
       const newPin = (document.getElementById('newPin').value || '').trim();
       const confirmPin = (document.getElementById('confirmPin').value || '').trim();
@@ -1264,83 +1186,64 @@
       try {
         const oldHash = await hashPIN(oldPin);
         const stored = window.localStorage.getItem('dealer-hash');
-        if (stored !== oldHash) {
-          resetPinError.textContent = "Current PIN is incorrect.";
-          resetPinError.style.color='var(--danger)';
-          resetPinSubmit.disabled = false;
-          return;
-        }
+        if (stored !== oldHash) { resetPinError.textContent = "Current PIN is incorrect."; resetPinError.style.color='var(--danger)'; resetPinSubmit.disabled = false; return; }
         const newHash = await hashPIN(newPin);
         window.localStorage.setItem('dealer-hash', newHash);
-        resetPinError.style.color = 'var(--success)';
-        resetPinError.textContent = "PIN updated successfully.";
-        setTimeout(()=>{
-          resetPinError.textContent = '';
-          resetPinError.style.color = '';
-          settingsBackdrop.classList.add('hide');
-        }, 1000);
-      } catch (err) {
-        resetPinError.textContent = "Failed to update PIN.";
-        resetPinError.style.color='var(--danger)';
-      }
+        resetPinError.style.color = 'var(--success)'; resetPinError.textContent = "PIN updated successfully.";
+        setTimeout(()=>{ resetPinError.textContent = ''; resetPinError.style.color = ''; settingsBackdrop.classList.add('hide'); }, 1000);
+      } catch (err) { resetPinError.textContent = "Failed to update PIN."; resetPinError.style.color='var(--danger)'; }
       resetPinSubmit.disabled = false;
     };
 
-    /**************************************************************
-     * Product Logic (Add/Edit/Delete/Import)
-     **************************************************************/
     const productListElem = document.getElementById('productList');
     const noProductsElem = document.getElementById('noProducts');
     let products = [];
     let selectedProductIds = new Set();
 
-    function saveProducts() {
-      try { window.localStorage.setItem('dealer-products', JSON.stringify(products)); } catch(e){}
-      refreshProductList();
-    }
-    function loadProducts() {
-      products = [];
-      try {
-        const str = window.localStorage.getItem('dealer-products');
-        if (str) products = JSON.parse(str) || [];
-      } catch (e) { products = []; }
-    }
-    function escapeHTML(v) {
-      if (typeof v !== "string") return v === undefined || v === null ? "" : String(v);
-      return v.replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'" :'&#39;','"':'&quot;'}[c]));
-    }
+    function saveProducts() { try { window.localStorage.setItem('dealer-products', JSON.stringify(products)); } catch(e){} refreshProductList(); }
+    function loadProducts() { products = []; try { const str = window.localStorage.getItem('dealer-products'); if (str) products = JSON.parse(str) || []; } catch (e) { products = []; } }
+    function escapeHTML(v) { if (typeof v !== "string") return v === undefined || v === null ? "" : String(v); return v.replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'" :'&#39;','"':'&quot;'}[c])); }
 
-    function handleCheckboxChange(productId, checked) {
-      if (checked) selectedProductIds.add(productId);
-      else selectedProductIds.delete(productId);
-      updateMultiSelectControls();
-    }
-
+    function handleCheckboxChange(productId, checked) { if (checked) selectedProductIds.add(productId); else selectedProductIds.delete(productId); updateMultiSelectControls(); }
+    
+    // Updated updateMultiSelectControls to handle share button
     function updateMultiSelectControls() {
       const multiSelectControls = document.getElementById('multiSelectControls');
       const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+      const shareSelectedBtn = document.getElementById('shareSelectedBtn');
       const selectedCountText = document.getElementById('selectedCountText');
       const selectAllCheckbox = document.getElementById('selectAllCheckbox');
-      if (selectedProductIds.size > 0) {
-        multiSelectControls.classList.add('active');
-        deleteSelectedBtn.disabled = false;
-        selectedCountText.textContent = `${selectedProductIds.size} selected`;
-      } else {
-        multiSelectControls.classList.remove('active');
-        deleteSelectedBtn.disabled = true;
-        selectedCountText.textContent = "";
+      
+      if (selectedProductIds.size > 0) { 
+          multiSelectControls.classList.add('active'); 
+          deleteSelectedBtn.disabled = false; 
+          shareSelectedBtn.disabled = false;
+          selectedCountText.textContent = `${selectedProductIds.size} selected`; 
+      } else { 
+          multiSelectControls.classList.remove('active'); 
+          deleteSelectedBtn.disabled = true; 
+          shareSelectedBtn.disabled = true;
+          selectedCountText.textContent = ""; 
       }
-      if (products.length && selectedProductIds.size === products.length) {
-        selectAllCheckbox.checked = true;
-        selectAllCheckbox.indeterminate = false;
-      } else if (selectedProductIds.size > 0) {
-        selectAllCheckbox.checked = false;
-        selectAllCheckbox.indeterminate = true;
-      } else {
-        selectAllCheckbox.checked = false;
-        selectAllCheckbox.indeterminate = false;
-      }
+      
+      if (products.length && selectedProductIds.size === products.length) { selectAllCheckbox.checked = true; selectAllCheckbox.indeterminate = false; } else if (selectedProductIds.size > 0) { selectAllCheckbox.checked = false; selectAllCheckbox.indeterminate = true; } else { selectAllCheckbox.checked = false; selectAllCheckbox.indeterminate = false; }
     }
+    
+    // --- FULL SCREEN VIEWER LOGIC ---
+    const imageViewerOverlay = document.getElementById('imageViewerOverlay');
+    const imageViewerImg = document.getElementById('imageViewerImg');
+    const imageViewerClose = document.getElementById('imageViewerClose');
+    
+    function openImageViewer(src) {
+        if(!src) return;
+        imageViewerImg.src = src;
+        imageViewerOverlay.classList.add('show');
+    }
+    
+    imageViewerClose.onclick = () => { imageViewerOverlay.classList.remove('show'); imageViewerImg.src = ''; };
+    imageViewerOverlay.onclick = (e) => {
+        if(e.target === imageViewerOverlay) { imageViewerOverlay.classList.remove('show'); imageViewerImg.src = ''; }
+    };
 
     function createProductCard(product, idx) {
       const li = document.createElement('li');
@@ -1362,63 +1265,59 @@
           ${product.notes?`<div class="prod-details">${escapeHTML(String(product.notes)).slice(0,55)}</div>`:""}
         </div>
         <div class="prod-actions">
-          <button type="button" title="Edit" aria-label="Edit product" role="button" class="edit" data-id="${product.id}">✏️</button>
+           <button type="button" title="Edit" aria-label="Edit product" role="button" class="edit" data-id="${product.id}">✏️</button>
+           <button type="button" title="Share PDF" aria-label="Share product" role="button" class="share" data-id="${product.id}">📤</button>
         </div>
       `;
       if (selectedProductIds.has(product.id)) li.classList.add('selected');
       const checkbox = li.querySelector('.prod-select-checkbox');
       if (checkbox) {
-        checkbox.addEventListener('change', (e) => {
-          handleCheckboxChange(product.id, checkbox.checked);
-        });
+        checkbox.addEventListener('change', (e) => { handleCheckboxChange(product.id, checkbox.checked); });
         checkbox.addEventListener('click', (e)=>e.stopPropagation());
         checkbox.addEventListener('keydown', (e)=>e.stopPropagation());
       }
+      
       const editBtn = li.querySelector('.edit');
       if (editBtn) editBtn.onclick = (e)=>{ e.stopPropagation(); showProductModal('edit', product); };
-      li.addEventListener('click', function(e){
-        if(e.target.classList.contains('prod-select-checkbox')) return;
-        if(!e.target.closest('.prod-actions')) showDetailModal(product);
-      });
-      li.addEventListener('keydown', function(e){
-        if((e.key==="Enter"||e.key===" ") && !e.target.closest('.prod-actions')) { e.preventDefault(); showDetailModal(product); }
-      });
+      
+      const shareBtn = li.querySelector('.share');
+      if (shareBtn) shareBtn.onclick = (e)=>{ e.stopPropagation(); openShareModal(product); };
+      
+      // -- NEW: Click thumbnail to open full screen --
+      const thumb = li.querySelector('.prod-img');
+      if (thumb && product.photo) {
+          thumb.onclick = (e) => {
+              e.stopPropagation();
+              openImageViewer(product.photo);
+          };
+      }
+
+      li.addEventListener('click', function(e){ if(e.target.classList.contains('prod-select-checkbox')) return; if(!e.target.closest('.prod-actions')) showDetailModal(product); });
+      li.addEventListener('keydown', function(e){ if((e.key==="Enter"||e.key===" ") && !e.target.closest('.prod-actions')) { e.preventDefault(); showDetailModal(product); } });
       return li;
     }
 
-    document.getElementById("selectAllCheckbox").addEventListener("change", function() {
-      if (this.checked) {
-        products.forEach(prod => selectedProductIds.add(prod.id));
-      } else {
-        selectedProductIds.clear();
-      }
-      refreshProductList();
-      updateMultiSelectControls();
-    });
+    document.getElementById("selectAllCheckbox").addEventListener("change", function() { if (this.checked) { products.forEach(prod => selectedProductIds.add(prod.id)); } else { selectedProductIds.clear(); } refreshProductList(); updateMultiSelectControls(); });
+    document.getElementById("deleteSelectedBtn").onclick = function() { if (selectedProductIds.size === 0) return; if (!confirm(`Are you sure you want to delete ${selectedProductIds.size} selected item(s)?`)) return; products = products.filter(p => !selectedProductIds.has(p.id)); selectedProductIds.clear(); saveProducts(); updateMultiSelectControls(); };
 
-    document.getElementById("deleteSelectedBtn").onclick = function() {
-      if (selectedProductIds.size === 0) return;
-      if (!confirm(`Are you sure you want to delete ${selectedProductIds.size} selected item(s)?`)) return;
-      products = products.filter(p => !selectedProductIds.has(p.id));
-      selectedProductIds.clear();
-      saveProducts();
-      updateMultiSelectControls();
+    // BULK SHARE BUTTON HANDLER
+    document.getElementById("shareSelectedBtn").onclick = function() {
+        if (selectedProductIds.size === 0) return;
+        const itemsToShare = products.filter(p => selectedProductIds.has(p.id));
+        if(itemsToShare.length > 0) {
+            openShareModal(null, itemsToShare);
+        }
     };
 
     const detailModalBackdrop = document.getElementById('detailModalBackdrop');
     const detailModalBody = document.getElementById('detailModalBody');
-    function disableDetailBackgroundScroll() {
-      document.body.classList.add('detail-modal-open');
-    }
-    function enableDetailBackgroundScroll() {
-      document.body.classList.remove('detail-modal-open');
-    }
+    function disableDetailBackgroundScroll() { document.body.classList.add('detail-modal-open'); }
+    function enableDetailBackgroundScroll() { document.body.classList.remove('detail-modal-open'); }
     function showDetailModal(product) {
       const nameSafe = escapeHTML(product.name || 'Unnamed');
       const photoBlock = product.photo ? `<img src="${escapeHTML(product.photo)}" class="prod-detail-photo" alt="${nameSafe}"/>` : `<div class="prod-detail-photo" style="font-size:60px;padding:22px 0 12px 0;">📦</div>`;
       const mrpNum = Number(product.mrp) || 0;
       const costNum = (product.cost !== undefined && product.cost !== null) ? Number(product.cost) : null;
-
       detailModalBody.innerHTML = `
         <div style="text-align:center;">${photoBlock}</div>
         <ul style="list-style:none;padding:0;margin:10px 0 0 0;display:flex;flex-direction:column;gap:.57em;">
@@ -1430,35 +1329,40 @@
         </ul>
         ${product.notes?`<div style="margin-top:.8em;color:var(--text-muted);background:#213047;border-radius:8px;padding:.7em .9em">${escapeHTML(String(product.notes))}</div>`:""}
       `;
-      detailModalBackdrop.classList.remove('hide');
-      disableDetailBackgroundScroll();
-      setTimeout(()=>document.getElementById('closeDetailModalBtn').focus(),100);
+      // Allow clicking the detail image to also open full screen
+      setTimeout(()=>{
+          const detailImg = detailModalBody.querySelector('.prod-detail-photo');
+          if(detailImg && product.photo) {
+              detailImg.style.cursor = 'zoom-in';
+              detailImg.onclick = () => openImageViewer(product.photo);
+          }
+      }, 50);
+
+      detailModalBackdrop.classList.remove('hide'); disableDetailBackgroundScroll(); setTimeout(()=>document.getElementById('closeDetailModalBtn').focus(),100);
     }
-    document.getElementById('closeDetailModalBtn').onclick = function(){
-      detailModalBackdrop.classList.add('hide');
-      detailModalBody.innerHTML = '';
-      enableDetailBackgroundScroll();
-    };
+    document.getElementById('closeDetailModalBtn').onclick = function(){ detailModalBackdrop.classList.add('hide'); detailModalBody.innerHTML = ''; enableDetailBackgroundScroll(); };
+    
+    // Keydown handlers for closing modals
     document.addEventListener('keydown', function(e){
       if (e.key === "Escape") {
         let closedAModal = false;
-        if (!detailModalBackdrop.classList.contains('hide')) { 
-          detailModalBackdrop.classList.add('hide'); detailModalBody.innerHTML='';
-          enableDetailBackgroundScroll();
-          closedAModal = true;
-        }
-        if (!productModalBackdrop.classList.contains('hide')) { productModalBackdrop.classList.add('hide'); closedAModal = true; }
-        if (!deleteModalBackdrop.classList.contains('hide')) { deleteModalBackdrop.classList.add('hide'); closedAModal = true; }
-        if (!settingsBackdrop.classList.contains('hide')) { settingsBackdrop.classList.add('hide'); closedAModal = true; }
+        if(imageViewerOverlay.classList.contains('show')) { imageViewerOverlay.classList.remove('show'); imageViewerImg.src = ''; closedAModal=true; }
+        else if (!detailModalBackdrop.classList.contains('hide')) { detailModalBackdrop.classList.add('hide'); detailModalBody.innerHTML=''; enableDetailBackgroundScroll(); closedAModal = true; }
+        else if (!productModalBackdrop.classList.contains('hide')) { productModalBackdrop.classList.add('hide'); closedAModal = true; }
+        else if (!deleteModalBackdrop.classList.contains('hide')) { deleteModalBackdrop.classList.add('hide'); closedAModal = true; }
+        else if (!settingsBackdrop.classList.contains('hide')) { settingsBackdrop.classList.add('hide'); closedAModal = true; }
+        else if (!shareModalBackdrop.classList.contains('hide')) { shareModalBackdrop.classList.add('hide'); closedAModal = true; }
         if (closedAModal) enableDetailBackgroundScroll();
       }
     });
+    
     function maybeResetBodyScroll() {
       if (
         detailModalBackdrop.classList.contains('hide') &&
         (!productModalBackdrop || productModalBackdrop.classList.contains('hide')) &&
         (!settingsBackdrop || settingsBackdrop.classList.contains('hide')) &&
-        (!deleteModalBackdrop || deleteModalBackdrop.classList.contains('hide'))
+        (!deleteModalBackdrop || deleteModalBackdrop.classList.contains('hide')) &&
+        (!shareModalBackdrop || shareModalBackdrop.classList.contains('hide'))
       ) {
         enableDetailBackgroundScroll();
       }
@@ -1480,11 +1384,7 @@
         (String(prod.category||"").toLowerCase().includes(q)) ||
         (String(prod.notes||"").toLowerCase().includes(q))
       );
-      if (!filtered.length) {
-        noProductsElem.style.display = "";
-        document.getElementById('multiSelectControls').classList.remove('active');
-        return;
-      }
+      if (!filtered.length) { noProductsElem.style.display = ""; document.getElementById('multiSelectControls').classList.remove('active'); return; }
       noProductsElem.style.display = "none";
       filtered.sort((a,b) => (Number(b.qty)-Number(a.qty)) || (String(a.name||'').localeCompare(String(b.name||''))));
       filtered.forEach((prod,i)=>productListElem.appendChild(createProductCard(prod,i)));
@@ -1510,7 +1410,7 @@
     const imageCompressMsg = document.getElementById('imageCompressMsg');
     let currentProductPhotoDataUrl = null;
 
-    async function compressImageFile(file, maxDim = 260, quality = 0.72) {
+    async function compressImageFile(file, maxDim = 800, quality = 0.82) {
       return new Promise((resolve, reject) => {
         if (!/^image\//.test(file.type)) return reject("Not an image file.");
         let img = new window.Image();
@@ -1543,54 +1443,26 @@
       prodPhotoFileContainer.innerHTML = '';
       if (currentProductPhotoDataUrl) {
         const img = document.createElement('img');
-        img.src = currentProductPhotoDataUrl;
-        img.alt = "Product Photo";
-        img.className = 'photo-preview-img-thumb';
+        img.src = currentProductPhotoDataUrl; img.alt = "Product Photo"; img.className = 'photo-preview-img-thumb';
         const removeBtn = document.createElement('button');
-        removeBtn.type = 'button';
-        removeBtn.className = 'remove-photo-btn';
-        removeBtn.title = 'Remove image';
-        removeBtn.innerHTML = '✖';
-        removeBtn.onclick = function() {
-          currentProductPhotoDataUrl = null;
-          prodPhoto.value = '';
-          prodPhotoFileName.textContent = '';
-          uploadBtnInnerText.textContent = 'Choose Image';
-          imageCompressMsg.style.display = 'none';
-          updatePhotoPreviewUI();
-        };
-        prodPhotoFileContainer.appendChild(img);
-        prodPhotoFileContainer.appendChild(removeBtn);
+        removeBtn.type = 'button'; removeBtn.className = 'remove-photo-btn'; removeBtn.title = 'Remove image'; removeBtn.innerHTML = '✖';
+        removeBtn.onclick = function() { currentProductPhotoDataUrl = null; prodPhoto.value = ''; prodPhotoFileName.textContent = ''; uploadBtnInnerText.textContent = 'Choose Image'; imageCompressMsg.style.display = 'none'; updatePhotoPreviewUI(); };
+        prodPhotoFileContainer.appendChild(img); prodPhotoFileContainer.appendChild(removeBtn);
       }
     }
 
     function showProductModal(mode, product) {
-      productModal.reset();
-      modalError.textContent = '';
-      prodPhotoFileName.textContent = '';
-      uploadBtnInnerText.textContent = 'Choose Image';
-      currentProductPhotoDataUrl = null;
-      imageCompressMsg.style.display = 'none';
-      updatePhotoPreviewUI();
+      productModal.reset(); modalError.textContent = ''; prodPhotoFileName.textContent = ''; uploadBtnInnerText.textContent = 'Choose Image'; currentProductPhotoDataUrl = null; imageCompressMsg.style.display = 'none'; updatePhotoPreviewUI();
       if (mode === 'add') {
-        modalTitle.textContent = "Add Product";
-        productEditing = null;
+        modalTitle.textContent = "Add Product"; productEditing = null;
         prodName.value = ""; prodMrp.value = ""; prodCost.value = ""; prodQty.value = ""; prodCategory.value = ""; prodNotes.value = ""; prodPhoto.value = "";
       } else {
-        modalTitle.textContent = "Edit Product";
-        productEditing = product;
+        modalTitle.textContent = "Edit Product"; productEditing = product;
         prodName.value = product.name || ""; prodMrp.value = product.mrp !== undefined ? product.mrp : ""; prodCost.value = product.cost !== undefined ? product.cost : ""; prodQty.value = product.qty !== undefined ? product.qty : ""; prodCategory.value = product.category || ""; prodNotes.value = product.notes || ""; prodPhoto.value = "";
-        if (product.photo) {
-          currentProductPhotoDataUrl = product.photo;
-          updatePhotoPreviewUI();
-        }
+        if (product.photo) { currentProductPhotoDataUrl = product.photo; updatePhotoPreviewUI(); }
       }
       productModalBackdrop.classList.remove('hide');
-      if (!document.body.classList.contains('modal-open')) {
-        document.body.dataset.scrollY = window.scrollY;
-        document.body.style.top = `-${window.scrollY}px`;
-        document.body.classList.add('modal-open');
-      }
+      if (!document.body.classList.contains('modal-open')) { document.body.dataset.scrollY = window.scrollY; document.body.style.top = `-${window.scrollY}px`; document.body.classList.add('modal-open'); }
       setTimeout(()=>prodName.focus(),150);
       firstSubmitAttempt = true;
     }
@@ -1600,98 +1472,42 @@
 
     prodPhoto.addEventListener('change', function () {
       if (prodPhoto.files && prodPhoto.files.length) {
-        const file = prodPhoto.files[0];
-        prodPhotoFileName.textContent = file.name;
-        uploadBtnInnerText.textContent = "Image Selected";
-        imageCompressMsg.textContent = "Compressing image...";
-        imageCompressMsg.style.display = 'block';
-        const filePromise = compressImageFile(file, 260, 0.72).then(dataUrl => {
-          const kb = Math.round((dataUrl.length * 3 / 4) / 1024);
-          currentProductPhotoDataUrl = dataUrl;
-          updatePhotoPreviewUI();
-          imageCompressMsg.textContent = `Photo compressed: ~${kb} KB (max 260px, JPEG)`;
-          imageCompressMsg.style.display = 'block';
-        }).catch(err => {
-          modalError.textContent = "Image compression failed. Please select another file.";
-          prodPhoto.value = '';
-          prodPhotoFileName.textContent = '';
-          uploadBtnInnerText.textContent = 'Choose Image';
-          imageCompressMsg.textContent = '';
-          imageCompressMsg.style.display = 'none';
-          currentProductPhotoDataUrl = null;
-          updatePhotoPreviewUI();
-        });
+        const file = prodPhoto.files[0]; prodPhotoFileName.textContent = file.name; uploadBtnInnerText.textContent = "Image Selected"; imageCompressMsg.textContent = "Compressing image..."; imageCompressMsg.style.display = 'block';
+        // UPDATED: Increased max dimension to 800 and quality to 0.82
+        const filePromise = compressImageFile(file, 800, 0.82).then(dataUrl => {
+          const kb = Math.round((dataUrl.length * 3 / 4) / 1024); currentProductPhotoDataUrl = dataUrl; updatePhotoPreviewUI();
+          imageCompressMsg.textContent = `Photo compressed: ~${kb} KB (max 800px, JPEG)`; imageCompressMsg.style.display = 'block';
+        }).catch(err => { modalError.textContent = "Image compression failed. Please select another file."; prodPhoto.value = ''; prodPhotoFileName.textContent = ''; uploadBtnInnerText.textContent = 'Choose Image'; imageCompressMsg.textContent = ''; imageCompressMsg.style.display = 'none'; currentProductPhotoDataUrl = null; updatePhotoPreviewUI(); });
         prodPhotoLastPendingPromise = filePromise;
       } else {
-        prodPhotoFileName.textContent = '';
-        uploadBtnInnerText.textContent = 'Choose Image';
-        currentProductPhotoDataUrl = null;
-        imageCompressMsg.style.display = 'none';
-        updatePhotoPreviewUI();
-        prodPhotoLastPendingPromise = null;
+        prodPhotoFileName.textContent = ''; uploadBtnInnerText.textContent = 'Choose Image'; currentProductPhotoDataUrl = null; imageCompressMsg.style.display = 'none'; updatePhotoPreviewUI(); prodPhotoLastPendingPromise = null;
       }
     });
 
     document.getElementById('addProductBtn').onclick = ()=>showProductModal('add');
     document.getElementById('closeModalBtn').onclick = ()=>{
       productModalBackdrop.classList.add('hide');
-      if (document.body.classList.contains('modal-open')) {
-        document.body.classList.remove('modal-open');
-        const scrollY = document.body.dataset.scrollY ? parseInt(document.body.dataset.scrollY, 10) : 0;
-        document.body.style.top = '';
-        window.scrollTo(0, scrollY);
-        delete document.body.dataset.scrollY;
-      }
+      if (document.body.classList.contains('modal-open')) { document.body.classList.remove('modal-open'); const scrollY = document.body.dataset.scrollY ? parseInt(document.body.dataset.scrollY, 10) : 0; document.body.style.top = ''; window.scrollTo(0, scrollY); delete document.body.dataset.scrollY; }
       imageCompressMsg.style.display = 'none';
     };
 
     productModal.onsubmit = async function(e) {
-      e.preventDefault();
-      modalError.textContent = "";
+      e.preventDefault(); modalError.textContent = "";
       if (firstSubmitAttempt && prodPhoto.files && prodPhoto.files.length && !currentProductPhotoDataUrl && prodPhotoLastPendingPromise) {
         try { await prodPhotoLastPendingPromise; } catch (err) { modalError.textContent = "Image failed to load, please select again."; return; }
-        firstSubmitAttempt = false;
-        productModal.onsubmit(e);
-        return;
+        firstSubmitAttempt = false; productModal.onsubmit(e); return;
       }
       firstSubmitAttempt = false;
-      const name = (prodName.value || '').trim();
-      const mrpVal = prodMrp.value;
-      const costVal = prodCost.value;
-      const qtyVal = prodQty.value;
-      const category = (prodCategory.value || '').trim();
-      const notes = (prodNotes.value || '').trim();
+      const name = (prodName.value || '').trim(); const mrpVal = prodMrp.value; const costVal = prodCost.value; const qtyVal = prodQty.value; const category = (prodCategory.value || '').trim(); const notes = (prodNotes.value || '').trim();
       if (!name) { modalError.textContent = "Name required."; return; }
       if (mrpVal === "" || isNaN(Number(mrpVal)) || Number(mrpVal) < 0) { modalError.textContent = "Valid MRP required."; return; }
       if (qtyVal === "" || isNaN(Number(qtyVal)) || Number(qtyVal) < 0) { modalError.textContent = "Valid quantity required."; return; }
-      let photoData = null;
-      if (currentProductPhotoDataUrl) photoData = currentProductPhotoDataUrl;
-      const productObj = {
-        id: productEditing ? productEditing.id : genID(),
-        name,
-        mrp: Number(mrpVal),
-        cost: costVal !== "" ? Number(costVal) : null,
-        qty: Number(qtyVal),
-        category,
-        notes,
-        photo: photoData
-      };
-      if (!productEditing) products.push(productObj);
-      else {
-        const idx = products.findIndex(p => p.id === productEditing.id);
-        if (idx >= 0) products[idx] = productObj; else products.push(productObj);
-      }
-      saveProducts();
-      productModalBackdrop.classList.add('hide');
-      if (document.body.classList.contains('modal-open')) {
-        document.body.classList.remove('modal-open');
-        const scrollY = document.body.dataset.scrollY ? parseInt(document.body.dataset.scrollY, 10) : 0;
-        document.body.style.top = '';
-        window.scrollTo(0, scrollY);
-        delete document.body.dataset.scrollY;
-      }
-      selectedProductIds.clear();
-      updateMultiSelectControls();
+      let photoData = null; if (currentProductPhotoDataUrl) photoData = currentProductPhotoDataUrl;
+      const productObj = { id: productEditing ? productEditing.id : genID(), name, mrp: Number(mrpVal), cost: costVal !== "" ? Number(costVal) : null, qty: Number(qtyVal), category, notes, photo: photoData };
+      if (!productEditing) products.push(productObj); else { const idx = products.findIndex(p => p.id === productEditing.id); if (idx >= 0) products[idx] = productObj; else products.push(productObj); }
+      saveProducts(); productModalBackdrop.classList.add('hide');
+      if (document.body.classList.contains('modal-open')) { document.body.classList.remove('modal-open'); const scrollY = document.body.dataset.scrollY ? parseInt(document.body.dataset.scrollY, 10) : 0; document.body.style.top = ''; window.scrollTo(0, scrollY); delete document.body.dataset.scrollY; }
+      selectedProductIds.clear(); updateMultiSelectControls();
     };
 
     const deleteModalBackdrop = document.getElementById('deleteModalBackdrop');
@@ -1699,79 +1515,153 @@
     const deleteName = document.getElementById('deleteName');
     let productToDelete = null;
 
-    function showDeleteModal(product) {
-      deleteModalBackdrop.classList.remove('hide');
-      deleteName.textContent = product.name || '';
-      productToDelete = product;
-      setTimeout(()=>document.getElementById('cancelDeleteBtn').focus(),60);
-    }
-    document.getElementById('closeDeleteBtn').onclick =
-    document.getElementById('cancelDeleteBtn').onclick = () => {
-      deleteModalBackdrop.classList.add('hide'); productToDelete = null;
-    };
-    deleteModal.onsubmit = function(e){
-      e.preventDefault();
-      if (!productToDelete) return;
-      products = products.filter(p => p.id !== productToDelete.id);
-      saveProducts();
-      deleteModalBackdrop.classList.add('hide'); productToDelete = null;
-      selectedProductIds.delete(productToDelete.id);
-      updateMultiSelectControls();
-    };
+    function showDeleteModal(product) { deleteModalBackdrop.classList.remove('hide'); deleteName.textContent = product.name || ''; productToDelete = product; setTimeout(()=>document.getElementById('cancelDeleteBtn').focus(),60); }
+    document.getElementById('closeDeleteBtn').onclick = document.getElementById('cancelDeleteBtn').onclick = () => { deleteModalBackdrop.classList.add('hide'); productToDelete = null; };
+    deleteModal.onsubmit = function(e){ e.preventDefault(); if (!productToDelete) return; products = products.filter(p => p.id !== productToDelete.id); saveProducts(); deleteModalBackdrop.classList.add('hide'); productToDelete = null; selectedProductIds.delete(productToDelete.id); updateMultiSelectControls(); };
     function genID() { return 'p' + (Date.now() + ('' + Math.random()).slice(2,7)); }
 
     document.getElementById('exportBtn').onclick = function() {
       const dataStr = JSON.stringify(products || [], null, 2);
       const blob = new Blob([dataStr], {type:"application/json"});
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a'); a.style.display='none'; a.href = url; a.download = 'dealer-products-backup.json'; document.body.appendChild(a); a.click(); URL.revokeObjectURL(url);
-      setTimeout(()=>{ document.body.removeChild(a); },200);
+      const a = document.createElement('a'); a.style.display='none'; a.href = url; a.download = 'dealer-products-backup.json'; document.body.appendChild(a); a.click(); URL.revokeObjectURL(url); setTimeout(()=>{ document.body.removeChild(a); },200);
     };
 
-    document.getElementById('importBtn').onclick = function () {
-      let fileInput = document.getElementById('hiddenImport');
-      if (fileInput) fileInput.value = '';
-      if (fileInput) fileInput.click();
-    };
+    document.getElementById('importBtn').onclick = function () { let fileInput = document.getElementById('hiddenImport'); if (fileInput) fileInput.value = ''; if (fileInput) fileInput.click(); };
 
     document.getElementById('hiddenImport').onchange = async function (e) {
       const fileInput = e.target;
       if (!fileInput.files || !fileInput.files.length) return;
       const file = fileInput.files[0];
-      if (!(file && (file.type === 'application/json' || /\.json$/i.test(file.name)))) {
-        alert('Please select a .json backup/export file.');
-        return;
-      }
+      if (!(file && (file.type === 'application/json' || /\.json$/i.test(file.name)))) { alert('Please select a .json backup/export file.'); return; }
       try {
         let text = '';
         if (file.text) text = await file.text();
-        else {
-          text = await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = e => resolve(e.target.result);
-            reader.onerror = reject;
-            reader.readAsText(file);
-          });
-        }
-        let arr = JSON.parse(text);
-        if (!Array.isArray(arr)) throw new Error('Invalid file - data not array');
+        else { text = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = e => resolve(e.target.result); reader.onerror = reject; reader.readAsText(file); }); }
+        let arr = JSON.parse(text); if (!Array.isArray(arr)) throw new Error('Invalid file - data not array');
         arr = arr.filter(prod => prod && typeof prod === 'object' && 'name' in prod && 'qty' in prod);
         if (!arr.length) throw new Error('No valid products in file!');
         if (!confirm(`Import will OVERWRITE your current products with ${arr.length} product(s).\nAre you sure?`)) return;
-        window.localStorage.setItem('dealer-products', JSON.stringify(arr));
-        products = arr;
-        refreshProductList();
-        selectedProductIds.clear();
-        updateMultiSelectControls();
-        alert('Import successful. Product list replaced.');
-      } catch (ex) {
-        alert("Failed to import products: " + (ex.message || ex));
-      }
+        window.localStorage.setItem('dealer-products', JSON.stringify(arr)); products = arr; refreshProductList(); selectedProductIds.clear(); updateMultiSelectControls(); alert('Import successful. Product list replaced.');
+      } catch (ex) { alert("Failed to import products: " + (ex.message || ex)); }
     };
 
-    window.addEventListener('load', function() {
-      loadProducts();
-    });
+    window.addEventListener('load', function() { loadProducts(); });
+    
+    
+    /****************************************************************
+     * SHARE / PDF LOGIC
+     ****************************************************************/
+    const shareModalBackdrop = document.getElementById('shareModalBackdrop');
+    const closeShareBtn = document.getElementById('closeShareBtn');
+    const generatePdfBtn = document.getElementById('generatePdfBtn');
+    const shareSubtitle = document.getElementById('shareSubtitle');
+    
+    // Checkboxes
+    const chkPhoto = document.getElementById('sharePhoto');
+    const chkMrp = document.getElementById('shareMrp');
+    const chkCost = document.getElementById('shareCost');
+    const chkQty = document.getElementById('shareQty');
+    const chkCategory = document.getElementById('shareCategory');
+    const chkNotes = document.getElementById('shareNotes');
+    
+    // Updated: Now accepts array of products
+    let productsToShareQueue = [];
+    
+    function openShareModal(product, list = null) {
+        if(list) {
+            productsToShareQueue = list;
+            shareSubtitle.textContent = `Generate PDF for ${list.length} selected product(s).`;
+        } else {
+            productsToShareQueue = [product];
+            shareSubtitle.textContent = "Select fields to include in the generated PDF/Print.";
+        }
+
+        // Set defaults
+        chkPhoto.checked = true;
+        chkMrp.checked = true;
+        chkCost.checked = false; // Hide cost by default
+        chkQty.checked = true;
+        chkCategory.checked = true;
+        chkNotes.checked = true;
+        
+        shareModalBackdrop.classList.remove('hide');
+    }
+    
+    closeShareBtn.onclick = () => { shareModalBackdrop.classList.add('hide'); productsToShareQueue = []; };
+    
+    generatePdfBtn.onclick = function() {
+        if(productsToShareQueue.length === 0) return;
+        
+        const printableArea = document.getElementById('printableArea');
+        let fullHtml = '';
+
+        // Generate HTML for ALL selected products
+        productsToShareQueue.forEach(prod => {
+            let html = `
+                <div class="print-product-page">
+                    <div class="print-header">
+                        <img src="https://github.com/ashardiyan/test/blob/main/Al%20Rahman%20Electronics-02.png?raw=true" class="print-logo" />
+                        <div class="print-title">Al Rahman Electronics</div>
+                        <div style="font-size:14px;color:#555">Product Specification Sheet</div>
+                        <div style="font-size:12px;color:#777">Generated: ${new Date().toLocaleDateString()}</div>
+                    </div>
+                    
+                    <h1 style="text-align:center;margin-top:20px;">${escapeHTML(prod.name)}</h1>
+            `;
+            
+            if(chkPhoto.checked && prod.photo) {
+                html += `<img src="${prod.photo}" class="print-product-img" />`;
+            }
+            
+            html += `<table class="print-details-table"><tbody>`;
+            
+            if(chkCategory.checked && prod.category) {
+                html += `<tr><td class="print-label">Category</td><td>${escapeHTML(prod.category)}</td></tr>`;
+            }
+            
+            if(chkQty.checked) {
+                html += `<tr><td class="print-label">In Stock</td><td>${prod.qty}</td></tr>`;
+            }
+            
+            if(chkMrp.checked) {
+                html += `<tr><td class="print-label">Price (MRP)</td><td>₨ ${Number(prod.mrp).toLocaleString()}</td></tr>`;
+            }
+            
+            if(chkCost.checked && prod.cost !== null && prod.cost !== undefined) {
+                 html += `<tr><td class="print-label">Cost Price</td><td>₨ ${Number(prod.cost).toLocaleString()}</td></tr>`;
+            }
+            
+            html += `</tbody></table>`;
+            
+            if(chkNotes.checked && prod.notes) {
+                html += `
+                    <div class="print-notes-box">
+                        <strong>Notes:</strong><br/>
+                        ${escapeHTML(prod.notes)}
+                    </div>
+                `;
+            }
+            
+            html += `
+                    <div style="text-align:center; margin-top:50px; font-size:12px; color:#888;">
+                        Thank you for your interest.For any detail contact on this Phone number:0300-3685270!
+                    </div>
+                </div> `;
+            fullHtml += html;
+        });
+
+        printableArea.innerHTML = fullHtml;
+        
+        // Close modal and Print
+        shareModalBackdrop.classList.add('hide');
+        setTimeout(() => {
+            window.print();
+            // Clear queue after printing
+            productsToShareQueue = [];
+        }, 300);
+    };
+
   </script>
 </body>
 </html>
