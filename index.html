@@ -524,7 +524,9 @@
       
       .prod-actions{ gap: 8px; }
       .prod-actions button{font-size: 1.15em; padding: 4px;}
-      .prod-select-checkbox { margin-right: 12px; transform: scale(1.25); /* Restored size */}
+      
+      /* Fixed: Select Button Checkbox spacing and hit area */
+      .prod-select-checkbox { margin-right: 12px; transform: scale(1.35); padding: 5px; }
       
       .modal{padding:12vw 2vw 3vw 2vw; min-width:unset;}
       #detailModal .prod-detail-photo{ width:64px; height:64px;}
@@ -1753,6 +1755,120 @@
 
     window.addEventListener('load', function() { loadProducts(); });
     
+    
+    /****************************************************************
+     * SHARE / PDF LOGIC
+     ****************************************************************/
+    const shareModalBackdrop = document.getElementById('shareModalBackdrop');
+    const closeShareBtn = document.getElementById('closeShareBtn');
+    const generatePdfBtn = document.getElementById('generatePdfBtn');
+    const shareSubtitle = document.getElementById('shareSubtitle');
+    
+    // Checkboxes
+    const chkPhoto = document.getElementById('sharePhoto');
+    const chkMrp = document.getElementById('shareMrp');
+    const chkCost = document.getElementById('shareCost');
+    const chkQty = document.getElementById('shareQty');
+    const chkCategory = document.getElementById('shareCategory');
+    const chkNotes = document.getElementById('shareNotes');
+    
+    // Updated: Now accepts array of products
+    let productsToShareQueue = [];
+    
+    function openShareModal(product, list = null) {
+        if(list) {
+            productsToShareQueue = list;
+            shareSubtitle.textContent = `Generate PDF for ${list.length} selected product(s).`;
+        } else {
+            productsToShareQueue = [product];
+            shareSubtitle.textContent = "Select fields to include in the generated PDF/Print.";
+        }
+
+        // Set defaults
+        chkPhoto.checked = true;
+        chkMrp.checked = true;
+        chkCost.checked = false; // Hide cost by default
+        chkQty.checked = true;
+        chkCategory.checked = true;
+        chkNotes.checked = true;
+        
+        shareModalBackdrop.classList.remove('hide');
+    }
+    
+    closeShareBtn.onclick = () => { shareModalBackdrop.classList.add('hide'); productsToShareQueue = []; };
+    
+    generatePdfBtn.onclick = function() {
+        if(productsToShareQueue.length === 0) return;
+        
+        const printableArea = document.getElementById('printableArea');
+        let fullHtml = '';
+
+        // Generate HTML for ALL selected products
+        productsToShareQueue.forEach(prod => {
+            let html = `
+                <div class="print-product-page">
+                    <div class="print-header">
+                        <img src="https://github.com/ashardiyan/test/blob/main/Al%20Rahman%20Electronics-02.png?raw=true" class="print-logo" />
+                        <div class="print-title">Al Rehman Electronics</div>
+                        <div style="font-size:14px;color:#555">Product Specification Sheet</div>
+                        <div style="font-size:12px;color:#777">Generated: ${new Date().toLocaleDateString()}</div>
+                    </div>
+                    
+                    <h1 style="text-align:center;margin-top:20px;">${escapeHTML(prod.name)}</h1>
+            `;
+            
+            if(chkPhoto.checked && prod.photo) {
+                html += `<img src="${prod.photo}" class="print-product-img" />`;
+            }
+            
+            html += `<table class="print-details-table"><tbody>`;
+            
+            if(chkCategory.checked && prod.category) {
+                html += `<tr><td class="print-label">Category</td><td>${escapeHTML(prod.category)}</td></tr>`;
+            }
+            
+            if(chkQty.checked) {
+                html += `<tr><td class="print-label">In Stock</td><td>${prod.qty}</td></tr>`;
+            }
+            
+            if(chkMrp.checked) {
+                html += `<tr><td class="print-label">Price (MRP)</td><td>₨ ${Number(prod.mrp).toLocaleString()}</td></tr>`;
+            }
+            
+            if(chkCost.checked && prod.cost !== null && prod.cost !== undefined) {
+                 html += `<tr><td class="print-label">Cost Price</td><td>₨ ${Number(prod.cost).toLocaleString()}</td></tr>`;
+            }
+            
+            html += `</tbody></table>`;
+            
+            if(chkNotes.checked && prod.notes) {
+                html += `
+                    <div class="print-notes-box">
+                        <strong>Notes:</strong><br/>
+                        ${escapeHTML(prod.notes)}
+                    </div>
+                `;
+            }
+            
+            html += `
+                    <div style="text-align:center; margin-top:50px; font-size:12px; color:#888;">
+                        Thank you for your interest.For any detail contact on this Phone number:0300-3685270!
+                    </div>
+                </div> `;
+            fullHtml += html;
+        });
+
+        printableArea.innerHTML = fullHtml;
+        
+        // Close modal and Print
+        shareModalBackdrop.classList.add('hide');
+        setTimeout(() => {
+            window.print();
+            // Clear queue after printing
+            productsToShareQueue = [];
+        }, 300);
+    };
+
   </script>
 </body>
 </html>
