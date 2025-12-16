@@ -246,17 +246,34 @@
       display: block;
     }
 
-    .prod-card { background:var(--bg3); border-radius:13px; margin-bottom:16px; box-shadow:0 2px 10px #2c345128; display:flex; gap:19px; align-items:center; padding:18px 20px; position:relative; animation:fadeUp .35s; opacity:0; transform:translateY(25px); animation-fill-mode:forwards; cursor:pointer; border:2px solid transparent; transition:box-shadow .14s, border-color .16s; }
+    /* -----------  PRODUCT CARD LIST-VIEW SIZING  ----------- */
+    .prod-card { 
+      background:var(--bg3); 
+      border-radius:13px; 
+      margin-bottom:16px; 
+      box-shadow:0 2px 10px #2c345128; 
+      display:flex; 
+      gap:19px; 
+      align-items:center; 
+      padding:18px 20px; 
+      position:relative; 
+      animation:fadeUp .35s; 
+      opacity:0; 
+      transform:translateY(25px); 
+      animation-fill-mode:forwards; 
+      cursor:pointer; 
+      border:2px solid transparent; 
+      transition:box-shadow .14s, border-color .16s; 
+    }
     .prod-card.show { opacity:1; transform:none; }
     .prod-card:hover { border-color:var(--accent2); box-shadow:0 6px 24px #18346023; }
     
-    /* Thumbnail style for product list - now click able */
     .prod-img { 
         min-width:43px; width:43px; height:43px; 
         border-radius:10px; background:#21293f; 
         flex-shrink:0; display:flex; align-items:center; justify-content:center; 
         color:var(--accent2); font-size:1.45em; overflow:hidden; 
-        cursor: zoom-in; /* Cursor changed to indicate zoom */
+        cursor: zoom-in;
     }
     .prod-photo-thumb { max-width:100%; max-height:43px; border-radius:8px; object-fit:cover; background:#232b36; display:block; }
     
@@ -463,17 +480,32 @@
       overflow: hidden !important;
     }
 
+    /* --------- SMALLER PRODUCT CARD ON MOBILE ---------- */
     @media (max-width:650px){
-      .container{padding:14px 1vw 23px 1vw;}
-      .card{padding:.8rem .4rem 1.05rem .75rem;}
-      .app-title{font-size:1.2rem;}
-      .prod-card{padding:12px 7px;}
-      .modal{padding:14vw 3vw 7vw 3vw; min-width:unset;}
-      #detailModal .prod-detail-photo{ width:74px; height:74px;}
-      #mobileInstallInstructions{max-width:94vw;font-size:0.96em;}
-      #multiSelectControls{font-size:0.99em; flex-wrap:wrap;}
-      .photo-preview-img-thumb { max-width:32px; max-height:32px; }
-      .remove-photo-btn { width:22px; height:22px; font-size:1em;}
+      html, body { font-size: 14px; }
+      .container{padding:10px 2vw 17px 2vw;}
+      .card{padding:.54rem .26rem 0.7rem .47rem;}
+      .app-title{font-size:1.02rem;}
+      .prod-card{
+        padding:7.5px 5px;
+        gap:9px;
+        border-radius:9px;
+        margin-bottom:7.5px;
+        min-height: 46px;
+      }
+      .prod-img{ min-width:32px; width:32px; height:32px; font-size:1.01em; border-radius:7px;}
+      .prod-photo-thumb { max-width:100%; max-height:32px; border-radius:6px; }
+      .prod-name{ font-size:.99em; margin-bottom:0.5px;}
+      .prod-details{ font-size:.86em; margin-top:0.3px; margin-bottom:0.3px;}
+      .prod-actions{ gap:5px; }
+      .prod-actions button{font-size:1em; padding:2px 2.5px;}
+      .prod-select-checkbox { margin-right: 8px; transform: scale(1.11);}
+      .modal{padding:12vw 2vw 3vw 2vw; min-width:unset;}
+      #detailModal .prod-detail-photo{ width:64px; height:64px;}
+      #mobileInstallInstructions{max-width:98vw;font-size:0.92em;}
+      #multiSelectControls{font-size:0.96em; flex-wrap:wrap;}
+      .photo-preview-img-thumb { max-width:22px; max-height:22px; }
+      .remove-photo-btn { width:18px; height:18px; font-size:.95em;}
     }
     ::selection{background:var(--accent2); color:#fff;}
     a{color:var(--accent);}
