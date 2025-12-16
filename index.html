@@ -1084,6 +1084,20 @@
       function enablePwaBackHandler() {
         pushMainStateToHistory();
         window.addEventListener('popstate', function(e) {
+            
+          // --- FIX: SEARCH BACK LOGIC ---
+          // If we have text in search bar, and user pressed back, clear search instead of exiting
+          const searchInput = document.getElementById('productSearch');
+          if (document.getElementById('dealerApp').style.display !== 'none' && searchInput && searchInput.value) {
+               // We consumed the popstate, now clear the UI
+               searchInput.value = '';
+               refreshProductList();
+               // We want to stop here.
+               // Note: Since we didn't push a specific 'modal' state for search, popping might put us back 1 step. 
+               // This is handled by the search input logic adding a state below.
+               return; 
+          }
+
           if (document.getElementById('dealerApp').style.display !== 'none') {
             const topOpenModal = (() => { 
                 for (let i = 0; i < modalPriority.length; ++i) { 
@@ -1261,6 +1275,9 @@
     const noProductsElem = document.getElementById('noProducts');
     let products = [];
     let selectedProductIds = new Set();
+    
+    // --- FIX: TRACK FILTERED PRODUCTS FOR SELECT ALL ---
+    let currentFilteredProducts = []; 
 
     function saveProducts() { try { window.localStorage.setItem('dealer-products', JSON.stringify(products)); } catch(e){} refreshProductList(); }
     function loadProducts() { products = []; try { const str = window.localStorage.getItem('dealer-products'); if (str) products = JSON.parse(str) || []; } catch (e) { products = []; } }
@@ -1291,7 +1308,27 @@
           selectedCountText.textContent = ""; 
       }
       
-      if (products.length && selectedProductIds.size === products.length) { selectAllCheckbox.checked = true; selectAllCheckbox.indeterminate = false; } else if (selectedProductIds.size > 0) { selectAllCheckbox.checked = false; selectAllCheckbox.indeterminate = true; } else { selectAllCheckbox.checked = false; selectAllCheckbox.indeterminate = false; }
+      // Fix Select All Checkbox Status (Based on Visible items)
+      // If currently filtered list is empty, uncheck.
+      // If all items in filtered list are selected, check.
+      if (currentFilteredProducts.length > 0) {
+          const allVisibleSelected = currentFilteredProducts.every(p => selectedProductIds.has(p.id));
+          const someVisibleSelected = currentFilteredProducts.some(p => selectedProductIds.has(p.id));
+          
+          if(allVisibleSelected) {
+              selectAllCheckbox.checked = true;
+              selectAllCheckbox.indeterminate = false;
+          } else if (someVisibleSelected) {
+              selectAllCheckbox.checked = false;
+              selectAllCheckbox.indeterminate = true;
+          } else {
+              selectAllCheckbox.checked = false;
+              selectAllCheckbox.indeterminate = false;
+          }
+      } else {
+          selectAllCheckbox.checked = false;
+          selectAllCheckbox.indeterminate = false;
+      }
     }
     
     // --- FULL SCREEN VIEWER LOGIC ---
@@ -1364,7 +1401,19 @@
       return li;
     }
 
-    document.getElementById("selectAllCheckbox").addEventListener("change", function() { if (this.checked) { products.forEach(prod => selectedProductIds.add(prod.id)); } else { selectedProductIds.clear(); } refreshProductList(); updateMultiSelectControls(); });
+    // --- FIX: SELECT ALL VISIBLE ONLY ---
+    document.getElementById("selectAllCheckbox").addEventListener("change", function() { 
+        if (this.checked) { 
+            // Only select filtered visible items
+            currentFilteredProducts.forEach(prod => selectedProductIds.add(prod.id)); 
+        } else { 
+            // Only Deselect filtered visible items
+            currentFilteredProducts.forEach(prod => selectedProductIds.delete(prod.id)); 
+        } 
+        refreshProductList(); 
+        updateMultiSelectControls(); 
+    });
+    
     document.getElementById("deleteSelectedBtn").onclick = function() { if (selectedProductIds.size === 0) return; if (!confirm(`Are you sure you want to delete ${selectedProductIds.size} selected item(s)?`)) return; products = products.filter(p => !selectedProductIds.has(p.id)); selectedProductIds.clear(); saveProducts(); updateMultiSelectControls(); };
 
     // BULK SHARE BUTTON HANDLER
@@ -1467,7 +1516,22 @@
     window.addEventListener('popstate', maybeResetBodyScroll);
 
     const searchInput = document.getElementById('productSearch');
-    searchInput.addEventListener('input', function(){ refreshProductList(); });
+    
+    // --- FIX: SEARCH STATE LOGIC ---
+    let isSearchState = false;
+    searchInput.addEventListener('input', function(){ 
+        const hasText = (this.value || '').trim().length > 0;
+        
+        // If typing starts, push a state so back button clears it
+        if(hasText && !isSearchState) {
+             try {
+                history.pushState({search: true}, document.title, window.location.href);
+                isSearchState = true;
+             } catch(e) {}
+        }
+        refreshProductList(); 
+    });
+    
     searchInput.addEventListener('keydown', function(e){ if(e.key==='Escape'){ searchInput.value=''; refreshProductList(); } });
 
     // OPTIMIZED: Updated Search Logic (Multi-term) and Rendering (DocumentFragment)
@@ -1492,6 +1556,9 @@
              return terms.every(term => searchString.includes(term));
           });
       }
+      
+      // Store current filter for "Select All" Logic
+      currentFilteredProducts = filtered;
 
       if (!filtered.length) { noProductsElem.style.display = ""; document.getElementById('multiSelectControls').classList.remove('active'); return; }
       noProductsElem.style.display = "none";
@@ -1852,7 +1919,7 @@
             
             html += `
                     <div style="text-align:center; margin-top:50px; font-size:12px; color:#888;">
-                        Thank you for your interest.For any detail contact on this Phone number:0300-3685270!
+                        Thank you for your interest.For any detail contact on this Phone number:0300-3685270
                     </div>
                 </div> `;
             fullHtml += html;
