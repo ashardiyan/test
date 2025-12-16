@@ -8,10 +8,13 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <link rel="icon" type="image/png" sizes="192x192" href="https://github.com/ashardiyan/test/blob/main/Al%20Rahman%20Electronics-02.png?raw=true">
-  <link rel="apple-touch-icon" type="image/png" sizes="192x192" href="https://github.com/ashardiyan/test/blob/main/Al%20Rahman%20Electronics-02.png?raw=true">
+  
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+  
+  <link rel="icon" type="image/png" sizes="192x192" href="https://github.com/ashardiyan/test/blob/main/Al%20Rahman%20Electronics-02.png?raw=true">
+  <link rel="apple-touch-icon" type="image/png" sizes="192x192" href="https://github.com/ashardiyan/test/blob/main/Al%20Rahman%20Electronics-02.png?raw=true">
+
   <style>
     :root {
       --bg1: #0C1220;
@@ -56,9 +59,11 @@
     #mobileInstallInstructions { display:none; margin-left:10px; padding:8px 10px; border-radius:8px; background:#1a2233; color:var(--accent2); font-size:.93em; font-style:italic; box-shadow:0 2px 8px #222c3d22; max-width:310px; line-height:1.45; }
 
     .main-content { display:flex; flex-direction:column; gap:0; align-items:stretch; width:100%; }
-    .card { background:var(--bg2); border-radius:var(--radius-card); box-shadow:var(--shadow); margin-bottom:32px; padding:1.6rem 1.6rem 1.3rem; animation:fadeUp .7s cubic-bezier(.43,.8,.52,1.18); opacity:0; transform:translateY(36px); animation-fill-mode:forwards; border:none; transition:box-shadow .15s, background .16s; }
+    
+    .card { background:var(--bg2); border-radius:var(--radius-card); box-shadow:var(--shadow); margin-bottom:32px; padding:1.6rem 1.6rem 1.3rem; animation:fadeUp .5s ease-out; opacity:0; transform:translateY(20px); animation-fill-mode:forwards; border:none; transition:box-shadow .15s, background .16s; }
     .card.show { opacity:1; transform:none; }
-    @keyframes fadeUp { 0%{opacity:0;transform:translateY(45px);}65%{opacity:.6;}100%{opacity:1;transform:translateY(0);} }
+    @keyframes fadeUp { 0%{opacity:0;transform:translateY(20px);}100%{opacity:1;transform:translateY(0);} }
+    
     .products-top-actions { display:flex; align-items:flex-end; gap:11px; margin-bottom:17px; flex-wrap:wrap; }
     .product-search-wrap { position:relative; flex:1 1 192px; max-width:370px; margin-bottom:0; }
     #productSearch { width:100%; border-radius:8px; border:none; background:var(--bg3); color:var(--text); font-size:1.06em; padding:9px 38px 9px 15px; outline:none; box-shadow:0 1.5px 6px #35455a23; transition:border .13s; border:1.5px solid #23314a; }
@@ -99,6 +104,19 @@
       cursor: pointer;
       margin-left: 0;
     }
+    #exportSelectedBtn {
+      background: #18313c;
+      color: var(--button-skyblue);
+      border: 1.5px solid var(--button-skyblue);
+      border-radius: var(--rounded-btn);
+      padding: 10px 16px;
+      font-size: 0.95em;
+      font-weight: 700;
+      cursor: pointer;
+      margin-left: 0;
+    }
+    #exportSelectedBtn:disabled { background:#333; color:#777; border-color:transparent; cursor:not-allowed;}
+    
     #deleteSelectedBtn:disabled, #shareSelectedBtn:disabled { background: #333; color:#777; cursor: not-allowed; border-color:transparent;}
     #selectAllCheckbox { accent-color: var(--accent2); margin-left:4px; margin-right:0; transform: scale(1.1); }
 
@@ -142,6 +160,7 @@
       color: #fff;
       border-color: #1095b7;
     }
+    
     /* Biometric Button */
     #biometricUnlockBtn {
       background: linear-gradient(90deg, #10b981 30%, #059669 100%);
@@ -153,7 +172,6 @@
       gap: 8px;
     }
 
-    /* Remove tap highlight globally */
     button, .rounded-sky-btn, .prod-actions button, .modal-close, input[type="button"], input[type="submit"], .remove-photo-btn {
       -webkit-tap-highlight-color: transparent !important;
       tap-highlight-color: transparent !important;
@@ -206,7 +224,6 @@
       cursor: pointer;
     }
 
-    /* --- Photo REMOVE X button --- */
     .remove-photo-btn {
       display: inline-flex;
       align-items: center;
@@ -257,13 +274,14 @@
       align-items:center; 
       padding:18px 20px; 
       position:relative; 
-      animation:fadeUp .35s; 
+      animation:fadeUp .3s ease-out; 
       opacity:0; 
-      transform:translateY(25px); 
+      transform:translateY(15px); 
       animation-fill-mode:forwards; 
       cursor:pointer; 
       border:2px solid transparent; 
       transition:box-shadow .14s, border-color .16s; 
+      content-visibility: auto; 
     }
     .prod-card.show { opacity:1; transform:none; }
     .prod-card:hover { border-color:var(--accent2); box-shadow:0 6px 24px #18346023; }
@@ -293,7 +311,7 @@
     .no-products { text-align:center; color:var(--text-muted); font-size:1.12em; margin:34px 0 14px 0; letter-spacing:.01em; }
     .modal-backdrop { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(18,23,32,0.92); z-index:4999; display:flex; align-items:center; justify-content:center; opacity:1; visibility:visible; transition:opacity .21s; }
     .modal-backdrop.hide { opacity:0; visibility:hidden; pointer-events:none; }
-    .modal { min-width:320px; max-width:98vw; background:var(--bg2); border-radius:var(--radius-card); box-shadow:var(--shadow); z-index:6000; padding:36px 22px 23px 22px; animation:fadeUp .4s; display:flex; flex-direction:column; align-items:stretch; position:relative; }
+    .modal { min-width:320px; max-width:98vw; background:var(--bg2); border-radius:var(--radius-card); box-shadow:var(--shadow); z-index:6000; padding:36px 22px 23px 22px; animation:fadeUp .3s; display:flex; flex-direction:column; align-items:stretch; position:relative; }
     .modal h3 { margin:0 0 18px 0; color:var(--accent2); text-align:center; font-weight:800; font-size:1.26em; letter-spacing:-.2px; }
     .modal-close { position:absolute; top:13px; right:14px; background:none; border:none; color:var(--accent2); font-size:1.24em; cursor:pointer; font-weight:bold; outline:none; }
     .modal label { font-weight:600; font-size:.96em; color:var(--text-muted); margin-bottom:4px; }
@@ -304,7 +322,6 @@
     .modal .error { font-size:.98em; color:var(--danger); margin-bottom:7px; min-height:18px; text-align:left; }
     #detailModal .prod-detail-photo { display:block; width:124px; height:124px; object-fit:cover; border-radius:19px; margin:6px auto 0 auto; box-shadow:0 2px 12px #1b314e22; background:#21293f; }
 
-    /* --- Show/hide password button styles (for login screen) --- */
     .show-password-wrap {
       display: flex;
       align-items: center;
@@ -336,7 +353,6 @@
       box-shadow: none !important;
     }
     
-    /* --- SHARE MODAL CHECKBOXES --- */
     .share-options {
         display: flex;
         flex-direction: column;
@@ -425,7 +441,6 @@
             background: white !important;
             color: black !important;
         }
-        /* Each product gets a page or section */
         .print-product-page {
             page-break-after: always;
             margin-bottom: 50px;
@@ -480,26 +495,37 @@
       overflow: hidden !important;
     }
 
-    /* --------- SMALLER PRODUCT CARD ON MOBILE ---------- */
+    /* --------- MOBILE OPTIMIZATIONS (BIGGER PRODUCT LIST) ---------- */
     @media (max-width:650px){
-      html, body { font-size: 14px; }
+      html, body { font-size: 15.5px; /* Increased from 14px */ }
       .container{padding:10px 2vw 17px 2vw;}
       .card{padding:.54rem .26rem 0.7rem .47rem;}
       .app-title{font-size:1.02rem;}
+      
+      /* Bigger Product Card */
       .prod-card{
-        padding:7.5px 5px;
-        gap:9px;
-        border-radius:9px;
-        margin-bottom:7.5px;
-        min-height: 46px;
+        padding: 12px 10px;   /* Increased padding */
+        gap: 14px;            /* Increased gap */
+        border-radius: 9px;
+        margin-bottom: 10px;
+        min-height: 64px;     /* Increased height */
       }
-      .prod-img{ min-width:32px; width:32px; height:32px; font-size:1.01em; border-radius:7px;}
-      .prod-photo-thumb { max-width:100%; max-height:32px; border-radius:6px; }
-      .prod-name{ font-size:.99em; margin-bottom:0.5px;}
-      .prod-details{ font-size:.86em; margin-top:0.3px; margin-bottom:0.3px;}
-      .prod-actions{ gap:5px; }
-      .prod-actions button{font-size:1em; padding:2px 2.5px;}
-      .prod-select-checkbox { margin-right: 8px; transform: scale(1.11);}
+      
+      /* Bigger Image */
+      .prod-img{ 
+          min-width: 48px; width: 48px; height: 48px; 
+          font-size: 1.5em; border-radius: 9px;
+      }
+      .prod-photo-thumb { max-width:100%; max-height:48px; border-radius:8px; }
+      
+      /* Bigger Text */
+      .prod-name{ font-size: 1.1em; margin-bottom: 1px;}
+      .prod-details{ font-size: 0.92em; margin-top: 2px; margin-bottom: 2px;}
+      
+      .prod-actions{ gap: 8px; }
+      .prod-actions button{font-size: 1.15em; padding: 4px;}
+      .prod-select-checkbox { margin-right: 12px; transform: scale(1.25); /* Restored size */}
+      
       .modal{padding:12vw 2vw 3vw 2vw; min-width:unset;}
       #detailModal .prod-detail-photo{ width:64px; height:64px;}
       #mobileInstallInstructions{max-width:98vw;font-size:0.92em;}
@@ -510,7 +536,7 @@
     ::selection{background:var(--accent2); color:#fff;}
     a{color:var(--accent);}
     .hidden { display:none !important; }
-    /* Style for keep-logged-in toggle */
+    
     .keep-logged-toggle {
       display: flex;
       align-items: center;
@@ -613,9 +639,10 @@
               <input type="checkbox" id="selectAllCheckbox" title="Select all" />
               <span style="user-select:none;">Select all</span>
             </label>
-            <div style="display:flex;gap:6px;">
+            <div style="display:flex;gap:6px; flex-wrap:wrap;">
                 <button type="button" id="deleteSelectedBtn" disabled>🗑️ Delete</button>
-                <button type="button" id="shareSelectedBtn" disabled>📤 Share Selected</button>
+                <button type="button" id="exportSelectedBtn" disabled>💾 Export JSON</button>
+                <button type="button" id="shareSelectedBtn" disabled>📤 Share PDF</button>
             </div>
             <span id="selectedCountText" style="color:var(--danger);font-weight:600;font-size:0.99em;margin-left:5px;"></span>
           </div>
@@ -976,7 +1003,7 @@
       })();
 
       const swScript = `
-        const CACHE_NAME = 'local-dealer-cache-v7';
+        const CACHE_NAME = 'local-dealer-cache-v8';
         const OFFLINE_URL = self.registration.scope.endsWith('/') ? self.registration.scope + 'index.html' : self.registration.scope + '/index.html';
         const FILES_TO_CACHE = [ OFFLINE_URL, './index.html' ];
         self.addEventListener('install', function(event) { event.waitUntil(caches.open(CACHE_NAME).then(function(cache) { return cache.addAll(FILES_TO_CACHE); })); self.skipWaiting(); });
@@ -1006,8 +1033,9 @@
       } catch (e) {}
     })();
 
+    // OPTIMIZATION: Removed the heavy setTimeout loop that slowed down rendering
     window.addEventListener('DOMContentLoaded', function(){
-      setTimeout(function() { document.querySelectorAll(".card").forEach((el,i)=> { setTimeout(()=>{ el.classList.add('show') }, 160+60*i); }); }, 180);
+      setTimeout(function() { document.querySelectorAll(".card").forEach((el,i)=> { el.classList.add('show'); }); }, 100);
     });
 
     let deferredPrompt;
@@ -1117,7 +1145,7 @@
     function showDealerApp() {
       document.getElementById('dealerApp').style.display = '';
       document.getElementById('login-modal').style.display = 'none';
-      setTimeout(refreshProductList, 220);
+      setTimeout(refreshProductList, 100);
       if (typeof window.__enablePwaBackHandler === 'function') window.__enablePwaBackHandler();
     }
     
@@ -1238,11 +1266,12 @@
 
     function handleCheckboxChange(productId, checked) { if (checked) selectedProductIds.add(productId); else selectedProductIds.delete(productId); updateMultiSelectControls(); }
     
-    // Updated updateMultiSelectControls to handle share button
+    // UPDATED: Now handles Export Selected Button
     function updateMultiSelectControls() {
       const multiSelectControls = document.getElementById('multiSelectControls');
       const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
       const shareSelectedBtn = document.getElementById('shareSelectedBtn');
+      const exportSelectedBtn = document.getElementById('exportSelectedBtn');
       const selectedCountText = document.getElementById('selectedCountText');
       const selectAllCheckbox = document.getElementById('selectAllCheckbox');
       
@@ -1250,11 +1279,13 @@
           multiSelectControls.classList.add('active'); 
           deleteSelectedBtn.disabled = false; 
           shareSelectedBtn.disabled = false;
+          if(exportSelectedBtn) exportSelectedBtn.disabled = false;
           selectedCountText.textContent = `${selectedProductIds.size} selected`; 
       } else { 
           multiSelectControls.classList.remove('active'); 
           deleteSelectedBtn.disabled = true; 
           shareSelectedBtn.disabled = true;
+          if(exportSelectedBtn) exportSelectedBtn.disabled = true;
           selectedCountText.textContent = ""; 
       }
       
@@ -1281,8 +1312,10 @@
       const li = document.createElement('li');
       li.className = 'prod-card';
       li.setAttribute('tabindex','0');
-      setTimeout(()=>li.classList.add('show'), 121+idx*64);
-      let imgHTML = product.photo ? `<img src="${escapeHTML(product.photo)}" class="prod-photo-thumb" alt="Product Photo">` : `<span>📦</span>`;
+      // OPTIMIZATION: Removed artificial delay, used CSS class immediately
+      li.classList.add('show');
+
+      let imgHTML = product.photo ? `<img src="${escapeHTML(product.photo)}" class="prod-photo-thumb" alt="Product Photo" loading="lazy">` : `<span>📦</span>`;
       const nameSafe = escapeHTML(product.name || "Unnamed");
       const qtyNum = Number(product.qty) || 0;
       const mrpNum = Number(product.mrp) || 0;
@@ -1340,6 +1373,34 @@
             openShareModal(null, itemsToShare);
         }
     };
+
+    // NEW: Export ONLY Selected Items
+    const exportSelectedBtn = document.getElementById('exportSelectedBtn');
+    if (exportSelectedBtn) {
+        exportSelectedBtn.onclick = function() {
+            if (selectedProductIds.size === 0) return;
+            
+            // Filter only the selected products
+            const itemsToExport = products.filter(p => selectedProductIds.has(p.id));
+            
+            const now = new Date();
+            const dateStr = now.toISOString().slice(0,10);
+            const filename = `dealer-shared-${itemsToExport.length}-items-${dateStr}.json`;
+
+            const dataStr = JSON.stringify(itemsToExport, null, 2);
+            const blob = new Blob([dataStr], {type:"application/json"});
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a'); 
+            a.style.display='none'; 
+            a.href = url; 
+            a.download = filename; 
+            document.body.appendChild(a); 
+            a.click(); 
+            URL.revokeObjectURL(url); 
+            setTimeout(()=>{ document.body.removeChild(a); }, 200);
+        };
+    }
 
     const detailModalBackdrop = document.getElementById('detailModalBackdrop');
     const detailModalBody = document.getElementById('detailModalBody');
@@ -1407,19 +1468,40 @@
     searchInput.addEventListener('input', function(){ refreshProductList(); });
     searchInput.addEventListener('keydown', function(e){ if(e.key==='Escape'){ searchInput.value=''; refreshProductList(); } });
 
+    // OPTIMIZED: Updated Search Logic (Multi-term) and Rendering (DocumentFragment)
     function refreshProductList() {
       loadProducts();
       productListElem.innerHTML = '';
       let q = (searchInput.value || '').trim().toLowerCase();
-      let filtered = !q ? products : products.filter(prod =>
-        (String(prod.name||"").toLowerCase().includes(q)) ||
-        (String(prod.category||"").toLowerCase().includes(q)) ||
-        (String(prod.notes||"").toLowerCase().includes(q))
-      );
+      
+      // Smart Search: Split query into terms (e.g. "sam 128" -> ["sam", "128"])
+      const terms = q.split(/\s+/).filter(t => t.length > 0);
+      
+      let filtered = products;
+      if (terms.length > 0) {
+          filtered = products.filter(prod => {
+             const searchString = (
+                 (prod.name || "") + " " + 
+                 (prod.category || "") + " " + 
+                 (prod.notes || "")
+             ).toLowerCase();
+             
+             // Check if ALL terms are present
+             return terms.every(term => searchString.includes(term));
+          });
+      }
+
       if (!filtered.length) { noProductsElem.style.display = ""; document.getElementById('multiSelectControls').classList.remove('active'); return; }
       noProductsElem.style.display = "none";
       filtered.sort((a,b) => (Number(b.qty)-Number(a.qty)) || (String(a.name||'').localeCompare(String(b.name||''))));
-      filtered.forEach((prod,i)=>productListElem.appendChild(createProductCard(prod,i)));
+      
+      // Performance: Use DocumentFragment
+      const fragment = document.createDocumentFragment();
+      filtered.forEach((prod,i) => {
+          fragment.appendChild(createProductCard(prod,i));
+      });
+      productListElem.appendChild(fragment);
+      
       updateMultiSelectControls();
     }
 
@@ -1552,148 +1634,125 @@
     deleteModal.onsubmit = function(e){ e.preventDefault(); if (!productToDelete) return; products = products.filter(p => p.id !== productToDelete.id); saveProducts(); deleteModalBackdrop.classList.add('hide'); productToDelete = null; selectedProductIds.delete(productToDelete.id); updateMultiSelectControls(); };
     function genID() { return 'p' + (Date.now() + ('' + Math.random()).slice(2,7)); }
 
+    /****************************************************************
+     * NEW EXPORT & IMPORT (MERGE/REPLACE) LOGIC
+     ****************************************************************/
     document.getElementById('exportBtn').onclick = function() {
+      const now = new Date();
+      // Format filename: dealer-backup-YYYY-MM-DD_HH-MM.json
+      const dateStr = now.toISOString().slice(0,10);
+      const timeStr = now.toTimeString().slice(0,5).replace(':','-');
+      const filename = `dealer-backup-${dateStr}_${timeStr}.json`;
+
       const dataStr = JSON.stringify(products || [], null, 2);
       const blob = new Blob([dataStr], {type:"application/json"});
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a'); a.style.display='none'; a.href = url; a.download = 'dealer-products-backup.json'; document.body.appendChild(a); a.click(); URL.revokeObjectURL(url); setTimeout(()=>{ document.body.removeChild(a); },200);
+      
+      const a = document.createElement('a'); 
+      a.style.display='none'; 
+      a.href = url; 
+      a.download = filename; 
+      document.body.appendChild(a); 
+      a.click(); 
+      URL.revokeObjectURL(url); 
+      setTimeout(()=>{ document.body.removeChild(a); }, 200);
     };
 
-    document.getElementById('importBtn').onclick = function () { let fileInput = document.getElementById('hiddenImport'); if (fileInput) fileInput.value = ''; if (fileInput) fileInput.click(); };
+    // Trigger Hidden Input
+    document.getElementById('importBtn').onclick = function () { 
+        let fileInput = document.getElementById('hiddenImport'); 
+        if (fileInput) fileInput.value = ''; 
+        if (fileInput) fileInput.click(); 
+    };
 
     document.getElementById('hiddenImport').onchange = async function (e) {
       const fileInput = e.target;
       if (!fileInput.files || !fileInput.files.length) return;
       const file = fileInput.files[0];
-      if (!(file && (file.type === 'application/json' || /\.json$/i.test(file.name)))) { alert('Please select a .json backup/export file.'); return; }
+
+      if (!(file && (file.type === 'application/json' || /\.json$/i.test(file.name)))) { 
+          alert('Please select a valid .json backup file.'); 
+          return; 
+      }
+
       try {
-        let text = '';
-        if (file.text) text = await file.text();
-        else { text = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = e => resolve(e.target.result); reader.onerror = reject; reader.readAsText(file); }); }
-        let arr = JSON.parse(text); if (!Array.isArray(arr)) throw new Error('Invalid file - data not array');
-        arr = arr.filter(prod => prod && typeof prod === 'object' && 'name' in prod && 'qty' in prod);
-        if (!arr.length) throw new Error('No valid products in file!');
-        if (!confirm(`Import will OVERWRITE your current products with ${arr.length} product(s).\nAre you sure?`)) return;
-        window.localStorage.setItem('dealer-products', JSON.stringify(arr)); products = arr; refreshProductList(); selectedProductIds.clear(); updateMultiSelectControls(); alert('Import successful. Product list replaced.');
-      } catch (ex) { alert("Failed to import products: " + (ex.message || ex)); }
+        let text = await file.text();
+        let importedArr = JSON.parse(text); 
+        
+        if (!Array.isArray(importedArr)) throw new Error('Invalid file format. Data must be an array.');
+        
+        // Filter out garbage data
+        importedArr = importedArr.filter(p => p && typeof p === 'object' && p.name);
+        
+        if (!importedArr.length) throw new Error('No valid products found in this file.');
+
+        // --- ASK THE USER WHAT TO DO ---
+        const userWantsToMerge = confirm(
+            `Found ${importedArr.length} products in file.\n\n` +
+            `• Click [OK] to MERGE.\n(Adds new items and updates existing ones. Safe.)\n\n` +
+            `• Click [Cancel] to REPLACE.\n(Deletes everything currently in app and restores backup.)`
+        );
+
+        if (userWantsToMerge) {
+            // === MERGE LOGIC ===
+            const productMap = new Map();
+            
+            // 1. Put current products into a Map (ID -> Product)
+            products.forEach(p => productMap.set(p.id, p));
+            
+            let addedCount = 0;
+            let updatedCount = 0;
+            
+            // 2. Loop through imported items
+            importedArr.forEach(p => {
+                // If product has no ID, generate one
+                if (!p.id) p.id = genID();
+
+                if (productMap.has(p.id)) {
+                    // Item exists: Update it with new data
+                    productMap.set(p.id, p); 
+                    updatedCount++;
+                } else {
+                    // Item is new: Add it
+                    productMap.set(p.id, p);
+                    addedCount++;
+                }
+            });
+            
+            // 3. Convert Map back to Array
+            products = Array.from(productMap.values());
+            alert(`Import Successful!\n\n🆕 Added: ${addedCount}\n🔄 Updated: ${updatedCount}`);
+
+        } else {
+            // === REPLACE LOGIC ===
+            // Double check before deleting data
+            if(!confirm("⚠️ WARNING: This will DELETE all current products and replace them with the backup.\n\nAre you sure?")) {
+                return; // User cancelled
+            }
+            
+            // Replace array entirely
+            products = importedArr;
+            
+            // Ensure all imported items have IDs
+            products.forEach(p => {
+                 if(!p.id) p.id = genID();
+            });
+            alert(`Restore Successful! App now has ${products.length} products.`);
+        }
+
+        // Save and Refresh UI
+        saveProducts(); 
+        refreshProductList(); 
+        selectedProductIds.clear(); 
+        updateMultiSelectControls(); 
+
+      } catch (ex) { 
+          alert("Failed to import: " + (ex.message || ex)); 
+      }
     };
 
     window.addEventListener('load', function() { loadProducts(); });
     
-    
-    /****************************************************************
-     * SHARE / PDF LOGIC
-     ****************************************************************/
-    const shareModalBackdrop = document.getElementById('shareModalBackdrop');
-    const closeShareBtn = document.getElementById('closeShareBtn');
-    const generatePdfBtn = document.getElementById('generatePdfBtn');
-    const shareSubtitle = document.getElementById('shareSubtitle');
-    
-    // Checkboxes
-    const chkPhoto = document.getElementById('sharePhoto');
-    const chkMrp = document.getElementById('shareMrp');
-    const chkCost = document.getElementById('shareCost');
-    const chkQty = document.getElementById('shareQty');
-    const chkCategory = document.getElementById('shareCategory');
-    const chkNotes = document.getElementById('shareNotes');
-    
-    // Updated: Now accepts array of products
-    let productsToShareQueue = [];
-    
-    function openShareModal(product, list = null) {
-        if(list) {
-            productsToShareQueue = list;
-            shareSubtitle.textContent = `Generate PDF for ${list.length} selected product(s).`;
-        } else {
-            productsToShareQueue = [product];
-            shareSubtitle.textContent = "Select fields to include in the generated PDF/Print.";
-        }
-
-        // Set defaults
-        chkPhoto.checked = true;
-        chkMrp.checked = true;
-        chkCost.checked = false; // Hide cost by default
-        chkQty.checked = true;
-        chkCategory.checked = true;
-        chkNotes.checked = true;
-        
-        shareModalBackdrop.classList.remove('hide');
-    }
-    
-    closeShareBtn.onclick = () => { shareModalBackdrop.classList.add('hide'); productsToShareQueue = []; };
-    
-    generatePdfBtn.onclick = function() {
-        if(productsToShareQueue.length === 0) return;
-        
-        const printableArea = document.getElementById('printableArea');
-        let fullHtml = '';
-
-        // Generate HTML for ALL selected products
-        productsToShareQueue.forEach(prod => {
-            let html = `
-                <div class="print-product-page">
-                    <div class="print-header">
-                        <img src="https://github.com/ashardiyan/test/blob/main/Al%20Rahman%20Electronics-02.png?raw=true" class="print-logo" />
-                        <div class="print-title">Al Rehman Electronics</div>
-                        <div style="font-size:14px;color:#555">Product Specification Sheet</div>
-                        <div style="font-size:12px;color:#777">Generated: ${new Date().toLocaleDateString()}</div>
-                    </div>
-                    
-                    <h1 style="text-align:center;margin-top:20px;">${escapeHTML(prod.name)}</h1>
-            `;
-            
-            if(chkPhoto.checked && prod.photo) {
-                html += `<img src="${prod.photo}" class="print-product-img" />`;
-            }
-            
-            html += `<table class="print-details-table"><tbody>`;
-            
-            if(chkCategory.checked && prod.category) {
-                html += `<tr><td class="print-label">Category</td><td>${escapeHTML(prod.category)}</td></tr>`;
-            }
-            
-            if(chkQty.checked) {
-                html += `<tr><td class="print-label">In Stock</td><td>${prod.qty}</td></tr>`;
-            }
-            
-            if(chkMrp.checked) {
-                html += `<tr><td class="print-label">Price (MRP)</td><td>₨ ${Number(prod.mrp).toLocaleString()}</td></tr>`;
-            }
-            
-            if(chkCost.checked && prod.cost !== null && prod.cost !== undefined) {
-                 html += `<tr><td class="print-label">Cost Price</td><td>₨ ${Number(prod.cost).toLocaleString()}</td></tr>`;
-            }
-            
-            html += `</tbody></table>`;
-            
-            if(chkNotes.checked && prod.notes) {
-                html += `
-                    <div class="print-notes-box">
-                        <strong>Notes:</strong><br/>
-                        ${escapeHTML(prod.notes)}
-                    </div>
-                `;
-            }
-            
-            html += `
-                    <div style="text-align:center; margin-top:50px; font-size:12px; color:#888;">
-                        Thank you for your interest.For any detail contact on this Phone number:0300-3685270!
-                    </div>
-                </div> `;
-            fullHtml += html;
-        });
-
-        printableArea.innerHTML = fullHtml;
-        
-        // Close modal and Print
-        shareModalBackdrop.classList.add('hide');
-        setTimeout(() => {
-            window.print();
-            // Clear queue after printing
-            productsToShareQueue = [];
-        }, 300);
-    };
-
   </script>
 </body>
 </html>
