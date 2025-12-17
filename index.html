@@ -263,16 +263,16 @@
       display: block;
     }
 
-    /* -----------  PRODUCT CARD LIST-VIEW SIZING  ----------- */
+    /* -----------  PRODUCT CARD LIST-VIEW SIZING (UPDATED FOR BIGGER SIZE)  ----------- */
     .prod-card { 
       background:var(--bg3); 
-      border-radius:13px; 
-      margin-bottom:16px; 
+      border-radius:15px; /* Slightly more rounded */
+      margin-bottom:18px; 
       box-shadow:0 2px 10px #2c345128; 
       display:flex; 
-      gap:19px; 
+      gap:22px; /* Increased gap */
       align-items:center; 
-      padding:18px 20px; 
+      padding:22px 22px; /* Increased padding */
       position:relative; 
       animation:fadeUp .3s ease-out; 
       opacity:0; 
@@ -287,21 +287,21 @@
     .prod-card:hover { border-color:var(--accent2); box-shadow:0 6px 24px #18346023; }
     
     .prod-img { 
-        min-width:43px; width:43px; height:43px; 
-        border-radius:10px; background:#21293f; 
+        min-width:54px; width:54px; height:54px; /* Increased size */
+        border-radius:12px; background:#21293f; 
         flex-shrink:0; display:flex; align-items:center; justify-content:center; 
-        color:var(--accent2); font-size:1.45em; overflow:hidden; 
+        color:var(--accent2); font-size:1.6em; overflow:hidden; 
         cursor: zoom-in;
     }
-    .prod-photo-thumb { max-width:100%; max-height:43px; border-radius:8px; object-fit:cover; background:#232b36; display:block; }
+    .prod-photo-thumb { max-width:100%; max-height:54px; border-radius:10px; object-fit:cover; background:#232b36; display:block; }
     
-    .prod-name { font-weight:700; font-size:1.15em; color:var(--text); letter-spacing:-0.5px; margin-bottom:1.5px; }
-    .prod-details { color:var(--gray); font-size:.97em; margin-top:2px; margin-bottom:2px; }
-    .prod-actions { margin-left:auto; display:flex; gap:7px; align-items:center; }
-    .prod-actions button { background:none; border:none; color:var(--accent2); font-size:1.32em; cursor:pointer; transition:color .13s; border-radius:5px; padding:3px 5px; outline:none; }
+    .prod-name { font-weight:700; font-size:1.24em; color:var(--text); letter-spacing:-0.5px; margin-bottom:2.5px; } /* Increased font */
+    .prod-details { color:var(--gray); font-size:1.02em; margin-top:2px; margin-bottom:2px; }
+    .prod-actions { margin-left:auto; display:flex; gap:9px; align-items:center; }
+    .prod-actions button { background:none; border:none; color:var(--accent2); font-size:1.45em; cursor:pointer; transition:color .13s; border-radius:5px; padding:4px 6px; outline:none; }
     .prod-select-checkbox {
       margin-right: 18px;
-      transform: scale(1.25);
+      transform: scale(1.4); /* Bigger Checkbox */
       accent-color: var(--accent2);
       cursor:pointer;
     }
@@ -502,31 +502,31 @@
       .card{padding:.54rem .26rem 0.7rem .47rem;}
       .app-title{font-size:1.02rem;}
       
-      /* Bigger Product Card */
+      /* Bigger Product Card on Mobile */
       .prod-card{
-        padding: 12px 10px;   /* Increased padding */
-        gap: 14px;            /* Increased gap */
-        border-radius: 9px;
-        margin-bottom: 10px;
-        min-height: 64px;     /* Increased height */
+        padding: 16px 14px;   /* Increased padding */
+        gap: 16px;            /* Increased gap */
+        border-radius: 12px;
+        margin-bottom: 12px;
+        min-height: 72px;     /* Increased height */
       }
       
-      /* Bigger Image */
+      /* Bigger Image on Mobile */
       .prod-img{ 
-          min-width: 48px; width: 48px; height: 48px; 
-          font-size: 1.5em; border-radius: 9px;
+          min-width: 60px; width: 60px; height: 60px; /* Bigger thumbnail */
+          font-size: 1.7em; border-radius: 11px;
       }
-      .prod-photo-thumb { max-width:100%; max-height:48px; border-radius:8px; }
+      .prod-photo-thumb { max-width:100%; max-height:60px; border-radius:11px; }
       
-      /* Bigger Text */
-      .prod-name{ font-size: 1.1em; margin-bottom: 1px;}
-      .prod-details{ font-size: 0.92em; margin-top: 2px; margin-bottom: 2px;}
+      /* Bigger Text on Mobile */
+      .prod-name{ font-size: 1.22em; margin-bottom: 2px;}
+      .prod-details{ font-size: 0.98em; margin-top: 3px; margin-bottom: 3px;}
       
-      .prod-actions{ gap: 8px; }
-      .prod-actions button{font-size: 1.15em; padding: 4px;}
+      .prod-actions{ gap: 10px; }
+      .prod-actions button{font-size: 1.3em; padding: 6px;}
       
       /* Fixed: Select Button Checkbox spacing and hit area */
-      .prod-select-checkbox { margin-right: 12px; transform: scale(1.35); padding: 5px; }
+      .prod-select-checkbox { margin-right: 14px; transform: scale(1.5); padding: 5px; }
       
       .modal{padding:12vw 2vw 3vw 2vw; min-width:unset;}
       #detailModal .prod-detail-photo{ width:64px; height:64px;}
@@ -1085,21 +1085,10 @@
         pushMainStateToHistory();
         window.addEventListener('popstate', function(e) {
             
-          // --- FIX: SEARCH BACK LOGIC ---
-          // If we have text in search bar, and user pressed back, clear search instead of exiting
-          const searchInput = document.getElementById('productSearch');
-          if (document.getElementById('dealerApp').style.display !== 'none' && searchInput && searchInput.value) {
-               // We consumed the popstate, now clear the UI
-               searchInput.value = '';
-               refreshProductList();
-               // We want to stop here.
-               // Note: Since we didn't push a specific 'modal' state for search, popping might put us back 1 step. 
-               // This is handled by the search input logic adding a state below.
-               return; 
-          }
-
-          if (document.getElementById('dealerApp').style.display !== 'none') {
-            const topOpenModal = (() => { 
+          // --- FIXED LOGIC: CHECK FOR MODALS FIRST, THEN SEARCH ---
+          
+          // 1. Check if any modal is currently visible
+          const topOpenModal = (() => { 
                 for (let i = 0; i < modalPriority.length; ++i) { 
                     const el = document.getElementById(modalPriority[i]); 
                     if (!el) continue;
@@ -1113,6 +1102,7 @@
                 return null; 
             })();
             
+            // 2. If a modal is open, close it and RETURN (Do not clear search)
             if (topOpenModal) { 
                 if (topOpenModal === 'imageViewerOverlay') {
                     document.getElementById(topOpenModal).classList.remove('show');
@@ -1123,8 +1113,18 @@
                 setTimeout(()=>{},10); 
                 return; 
             }
+
+            // 3. If NO modal is open, check if we have a search value to clear
+            const searchInput = document.getElementById('productSearch');
+            if (document.getElementById('dealerApp').style.display !== 'none' && searchInput && searchInput.value) {
+                 // We consumed the popstate, now clear the UI
+                 searchInput.value = '';
+                 refreshProductList();
+                 // We want to stop here.
+                 return; 
+            }
+
             pushMainStateToHistory();
-          }
         });
       }
       function setupModalHistoryTracking() {
