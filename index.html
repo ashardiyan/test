@@ -263,7 +263,7 @@
       display: block;
     }
 
-    /* -----------  PRODUCT CARD LIST-VIEW SIZING (UPDATED FOR BIGGER SIZE)  ----------- */
+    /* -----------  PRODUCT CARD LIST-VIEW SIZING  ----------- */
     .prod-card { 
       background:var(--bg3); 
       border-radius:15px; /* Slightly more rounded */
@@ -921,18 +921,23 @@
   <script>
     /****************************************************************
      * Keep-logged-in authentication logic
+     * UPDATED: Uses localStorage for persistence across app restarts
      ****************************************************************/
     const KEEP_LOGGED_TIMEOUT_MS = 5*60*1000;
 
-    function setKeepSessionActive(expiresAt) { try { sessionStorage.setItem('dealer-keep-expires', String(expiresAt)); } catch(e) {} }
-    function getKeepSessionActive() { try { const val = sessionStorage.getItem('dealer-keep-expires'); return val && /^\d+$/.test(val) ? parseInt(val, 10) : null; } catch(e) { return null; } }
-    function clearKeepSession() { try { sessionStorage.removeItem('dealer-keep-expires'); } catch(e) {} }
+    // CHANGED: Use localStorage so it survives app closure
+    function setKeepSessionActive(expiresAt) { try { localStorage.setItem('dealer-keep-expires', String(expiresAt)); } catch(e) {} }
+    function getKeepSessionActive() { try { const val = localStorage.getItem('dealer-keep-expires'); return val && /^\d+$/.test(val) ? parseInt(val, 10) : null; } catch(e) { return null; } }
+    function clearKeepSession() { try { localStorage.removeItem('dealer-keep-expires'); } catch(e) {} }
+    
     function showTimeoutNotice(msg) {
       const t = document.getElementById('timeoutNotice');
       t.textContent = msg || '';
       t.style.display = msg ? 'block' : 'none';
     }
+    
     function isSessionStillActive() { const expiresAt = getKeepSessionActive(); return !!expiresAt && Date.now() < expiresAt; }
+    
     function showTimeoutCountdownIfAny() {
       const expiresAt = getKeepSessionActive();
       if (expiresAt && Date.now() < expiresAt) {
@@ -968,6 +973,7 @@
       check();
     }
     function stopSessionTimeoutMonitor() { if (timeoutCountdownInterval) clearInterval(timeoutCountdownInterval); showTimeoutNotice(""); }
+    
     function manualLogoutDueToTimeout() {
       stopSessionTimeoutMonitor();
       clearKeepSession();
@@ -975,11 +981,9 @@
       showLoginModal("Session expired for security. Please login again.");
       updatePINUI(getHasPIN());
     }
-    function addSessionAutoLogoutHandlers() {
-      window.addEventListener('pagehide', function(e) { clearKeepSession(); });
-      document.addEventListener('visibilitychange', function() { if (document.hidden) { clearKeepSession(); } });
-    }
-    addSessionAutoLogoutHandlers();
+
+    // REMOVED: The visibilitychange listener that forced logout on minimize.
+    // This allows the 5-minute timer to persist even if app is backgrounded.
 
     /****************************************************************
      * Service Worker & PWA
