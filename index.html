@@ -621,7 +621,7 @@
 
       <label class="keep-logged-toggle" title="If checked, you stay logged in for 5 minutes unless the app is closed or device is locked.">
         <input type="checkbox" id="keepLoggedInToggle" />
-        <span>Keep me logged in for 5 Minutes</span>
+        <span>Keep me logged in for 30 Minutes</span>
       </label>
       <div id="timeoutNotice"></div>
 
@@ -953,7 +953,7 @@
      * Keep-logged-in authentication logic
      * UPDATED: Uses localStorage for persistence across app restarts
      ****************************************************************/
-    const KEEP_LOGGED_TIMEOUT_MS = 5*60*1000;
+    const KEEP_LOGGED_TIMEOUT_MS = 30*60*1000;
 
     // CHANGED: Use localStorage so it survives app closure
     function setKeepSessionActive(expiresAt) { try { localStorage.setItem('dealer-keep-expires', String(expiresAt)); } catch(e) {} }
