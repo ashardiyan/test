@@ -70,7 +70,6 @@
     #productSearch:focus { border-color:var(--accent); }
     .search-icon { position:absolute; right:13px; top:50%; transform:translateY(-50%); color:var(--accent2); font-size:1.15em; opacity:0.7; pointer-events:none; }
 
-    /* Multi-select controls */
     #multiSelectControls {
       display: none;
       gap: 8px;
@@ -122,7 +121,6 @@
 
     .product-list { margin:0; padding:0; list-style:none; }
 
-    /* Stylish Skyblue Buttons */
     .rounded-sky-btn {
       background: var(--button-gradient);
       color: #fff;
@@ -162,12 +160,17 @@
       border-color: #1095b7;
     }
     
-    /* Biometric Button */
+    /* Small Button Variant for Uploads */
+    .btn-small {
+        padding: 8px 12px !important;
+        font-size: 0.9em !important;
+    }
+    
     #biometricUnlockBtn {
       background: linear-gradient(90deg, #10b981 30%, #059669 100%);
       width: 100%;
       margin-top: 10px;
-      display: none; /* hidden by default */
+      display: none; 
       justify-content: center;
       align-items: center;
       gap: 8px;
@@ -201,7 +204,7 @@
     .modal-file-upload-wrap {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 8px;
       margin-bottom: 13px;
       margin-top: 2px;
     }
@@ -264,7 +267,6 @@
       display: block;
     }
 
-    /* -----------  PRODUCT CARD LIST-VIEW SIZING  ----------- */
     .prod-card { 
       background:var(--bg3); 
       border-radius:13px; 
@@ -309,7 +311,6 @@
     .prod-card.selected { border-color: var(--danger); background: #1b1d2d; box-shadow: 0 4px 16px #ef44441a;}
     .prod-card .prod-select-checkbox:focus { outline: 2px solid var(--accent2); outline-offset:1px;}
 
-    /* Category Header Style */
     .category-header {
         font-size: 0.95em;
         font-weight: 800;
@@ -325,7 +326,6 @@
     }
     .category-header:first-child { margin-top: 0; }
     
-    /* Category Filter Label */
     #activeCategoryDisplay {
         display: none;
         width: 100%;
@@ -345,7 +345,7 @@
     #activeCategoryDisplay:hover { background: rgba(6, 182, 212, 0.25); }
     #activeCategoryDisplay.show { display: flex; }
     #activeCategoryDisplay.show { box-sizing: border-box; }
-    /* Category Modal Grid */
+    
     .category-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
@@ -372,9 +372,8 @@
     .modal-backdrop.hide { opacity:0; visibility:hidden; pointer-events:none; }
     .modal { min-width:320px; max-width:98vw; background:var(--bg2); border-radius:var(--radius-card); box-shadow:var(--shadow); z-index:6000; padding:36px 22px 23px 22px; animation:fadeUp .3s; display:flex; flex-direction:column; align-items:stretch; position:relative; }
     
-    /* SPECIAL WIDER MODAL FOR CATEGORIES */
     #categoryModal {
-        max-width: 650px; /* Much wider than standard modal */
+        max-width: 650px; 
         width: 92%;
     }
     
@@ -387,7 +386,6 @@
     .modal button[type=submit] { background:linear-gradient(95deg,var(--accent2),var(--accent)); color:#fff; padding:11px 22px; font-size:1em; border:none; border-radius:8px; font-weight:700; cursor:pointer; box-shadow:0 2px 10px #1b314e28; margin:6px 0; transition:background .14s; outline:none; }
     .modal .error { font-size:.98em; color:var(--danger); margin-bottom:7px; min-height:18px; text-align:left; }
     
-   /* ---- PRODUCT DETAIL MODAL ---- */
 #detailModal {
   max-width: 260px;
   width: 85%;
@@ -582,7 +580,6 @@
       overflow: hidden !important;
     }
 
-    /* --------- MOBILE OPTIMIZATIONS  ---------- */
     @media (max-width:650px){
       html, body { font-size: 15.5px; }
       .container{padding:10px 2vw 17px 2vw;}
@@ -758,19 +755,27 @@
       <label for="prodQty">Quantity</label>
       <input type="number" id="prodQty" min="0" max="100000" required />
       <label for="prodCategory">Category</label>
-      <input type="text" id="prodCategory" maxlength="32" />
+      <input type="text" id="prodCategory" maxlength="32" placeholder="e.g. Washing Machine" />
       <label for="prodNotes">Notes</label>
       <textarea id="prodNotes" maxlength="120" placeholder=""></textarea>
-      <span class="modal-file-label">Photo <span title="Base64 photos use much more space than compressed images. Large images may slow the app. Compressed automatically." style="font-size:1.1em;color:var(--accent2)">[auto-compressed]</span></span>
+      <span class="modal-file-label">Photo <span title="Binary Blob storage used for maximum efficiency." style="font-size:1.1em;color:var(--accent2)">[efficient binary format]</span></span>
       <div class="modal-file-upload-wrap" id="fileUploadWrap">
-        <span class="modal-file-upload-btn rounded-sky-btn" id="uploadBtnText">
+        <span class="modal-file-upload-btn rounded-sky-btn btn-small" id="uploadBtnText" style="flex:1; text-align:center;">
           <svg width="18" height="18" style="margin-right:6px;vertical-align:-4px" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-          <span id="uploadBtnInnerText">Choose Image</span>
-          <input type="file" id="prodPhoto" accept="image/*" style="opacity:0;position:absolute;left:0;top:0;width:100%;height:100%;cursor:pointer;"/>
+          <span id="uploadBtnInnerText">Gallery</span>
+          <input type="file" id="prodPhoto" accept="image/jpeg, image/png" style="opacity:0;position:absolute;left:0;top:0;width:100%;height:100%;cursor:pointer;"/>
         </span>
-        <span id="prodPhotoFileContainer" class="photo-preview-wrap" style="min-width:1em;"></span>
+        
+        <span class="modal-file-upload-btn rounded-sky-btn btn-small" id="cameraBtnText" style="flex:1; text-align:center; background: var(--accent2);">
+          <span style="font-size:1.15em; margin-right:4px;">📷</span>
+          <span>Camera</span>
+          <input type="file" id="prodCamera" accept="image/jpeg, image/png" capture="environment" style="opacity:0;position:absolute;left:0;top:0;width:100%;height:100%;cursor:pointer;"/>
+        </span>
+      </div>
+      <div id="prodPhotoFileContainer" class="photo-preview-wrap" style="min-width:1em; margin-bottom: 8px;">
         <span id="prodPhotoFileName" style="color:var(--text-muted);font-size:.99em;"></span>
       </div>
+      
       <div class="modal-btnbar">
         <button type="submit" id="saveProductBtn" class="rounded-sky-btn">Save</button>
       </div>
@@ -1102,7 +1107,7 @@
       })();
 
       const swScript = `
-        const CACHE_NAME = 'local-dealer-cache-v8';
+        const CACHE_NAME = 'local-dealer-cache-v14';
         const OFFLINE_URL = self.registration.scope.endsWith('/') ? self.registration.scope + 'index.html' : self.registration.scope + '/index.html';
         const FILES_TO_CACHE = [ OFFLINE_URL, './index.html' ];
         self.addEventListener('install', function(event) { event.waitUntil(caches.open(CACHE_NAME).then(function(cache) { return cache.addAll(FILES_TO_CACHE); })); self.skipWaiting(); });
@@ -1132,7 +1137,6 @@
       } catch (e) {}
     })();
 
-    // OPTIMIZATION: Removed the heavy setTimeout loop that slowed down rendering
     window.addEventListener('DOMContentLoaded', function(){
       setTimeout(function() { document.querySelectorAll(".card").forEach((el,i)=> { el.classList.add('show'); }); }, 100);
     });
@@ -1180,12 +1184,10 @@
         pushMainStateToHistory();
         window.addEventListener('popstate', function(e) {
             
-          // 1. Check if any modal is currently visible
           const topOpenModal = (() => { 
                 for (let i = 0; i < modalPriority.length; ++i) { 
                     const el = document.getElementById(modalPriority[i]); 
                     if (!el) continue;
-                    // Check if open (image viewer uses 'show', others use absence of 'hide')
                     if (modalPriority[i] === 'imageViewerOverlay') {
                          if (el.classList.contains('show')) return modalPriority[i];
                     } else {
@@ -1195,7 +1197,6 @@
                 return null; 
             })();
             
-            // 2. If a modal is open, close it and RETURN
             if (topOpenModal) { 
                 if (topOpenModal === 'imageViewerOverlay') {
                     document.getElementById(topOpenModal).classList.remove('show');
@@ -1207,14 +1208,12 @@
                 return; 
             }
 
-            // 3. Check for active category filter
             if (activeCategoryFilter) {
                 activeCategoryFilter = null;
                 refreshProductList();
                 return;
             }
 
-            // 4. If NO modal/category is open, check if we have a search value to clear
             const searchInput = document.getElementById('productSearch');
             if (document.getElementById('dealerApp').style.display !== 'none' && searchInput && searchInput.value) {
                  searchInput.value = '';
@@ -1275,7 +1274,8 @@
     
     let justSetPIN = false;
 
-    window.addEventListener('load', ()=> {
+    window.addEventListener('load', async ()=> {
+      await loadProducts(); 
       updatePINUI(getHasPIN());
       if (!checkQuickAutoUnlock()) { showLoginModal(); if (hasBiometricSetup()) { setTimeout(authenticateBiometric, 400); } }
       setTimeout(function() { if ("serviceWorker" in navigator && window.matchMedia('(display-mode: standalone)').matches) { try { history.replaceState({start:true}, document.title, window.location.href); } catch (e) {} } }, 180);
@@ -1374,12 +1374,88 @@
     let products = [];
     let selectedProductIds = new Set();
     
-    // --- CATEGORY & FILTER VARIABLES ---
     let currentFilteredProducts = []; 
     let activeCategoryFilter = null; 
 
-    function saveProducts() { try { window.localStorage.setItem('dealer-products', JSON.stringify(products)); } catch(e){} refreshProductList(); }
-    function loadProducts() { products = []; try { const str = window.localStorage.getItem('dealer-products'); if (str) products = JSON.parse(str) || []; } catch (e) { products = []; } }
+    // ***************************************************************
+    // * INDEXED DB STORAGE ENGINE (Replaces LocalStorage)         *
+    // ***************************************************************
+    const DB_NAME = 'DealerDB';
+    const STORE_NAME = 'products';
+    const DB_VERSION = 1;
+
+    function openDB() {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open(DB_NAME, DB_VERSION);
+            request.onupgradeneeded = function(e) {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains(STORE_NAME)) {
+                    db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+                }
+            };
+            request.onsuccess = e => resolve(e.target.result);
+            request.onerror = e => reject(e.target.error);
+        });
+    }
+
+    async function saveProductsToDB(productsArray) {
+        const db = await openDB();
+        // Clear old
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        await new Promise((resolve, reject) => {
+            const req = store.clear();
+            req.onsuccess = resolve;
+            req.onerror = reject;
+        });
+
+        // Add new
+        const tx2 = db.transaction(STORE_NAME, 'readwrite');
+        const store2 = tx2.objectStore(STORE_NAME);
+        productsArray.forEach(p => store2.put(p));
+        return new Promise((resolve, reject) => {
+            tx2.oncomplete = resolve;
+            tx2.onerror = reject;
+        });
+    }
+
+    async function loadProductsFromDB() {
+        // MIGRATION STEP: Check if LocalStorage has old data
+        const localData = localStorage.getItem('dealer-products');
+        if (localData) {
+            try {
+                const parsed = JSON.parse(localData);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    console.log("Migrating data from LocalStorage to IndexedDB...");
+                    await saveProductsToDB(parsed);
+                    localStorage.removeItem('dealer-products'); // Clear LocalStorage
+                    console.log("Migration Complete. LocalStorage cleared.");
+                    return parsed;
+                }
+            } catch(e) { console.error("Migration check failed", e); }
+        }
+
+        const db = await openDB();
+        const tx = db.transaction(STORE_NAME, 'readonly');
+        const store = tx.objectStore(STORE_NAME);
+        return new Promise((resolve, reject) => {
+            const req = store.getAll();
+            req.onsuccess = () => resolve(req.result || []);
+            req.onerror = () => reject(req.error);
+        });
+    }
+
+    async function saveProducts() { 
+        // We update memory immediately, but save async
+        try { await saveProductsToDB(products); } catch(e){ console.error("Save failed", e); }
+        refreshProductList(); 
+    }
+    
+    async function loadProducts() { 
+        products = []; 
+        try { products = await loadProductsFromDB(); } catch (e) { products = []; } 
+    }
+
     function escapeHTML(v) { if (typeof v !== "string") return v === undefined || v === null ? "" : String(v); return v.replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'" :'&#39;','"':'&quot;'}[c])); }
 
     function handleCheckboxChange(productId, checked) { if (checked) selectedProductIds.add(productId); else selectedProductIds.delete(productId); updateMultiSelectControls(); }
@@ -1426,7 +1502,6 @@
       }
     }
     
-    // --- FULL SCREEN VIEWER LOGIC ---
     const imageViewerOverlay = document.getElementById('imageViewerOverlay');
     const imageViewerImg = document.getElementById('imageViewerImg');
     const imageViewerClose = document.getElementById('imageViewerClose');
@@ -1442,13 +1517,25 @@
         if(e.target === imageViewerOverlay) { imageViewerOverlay.classList.remove('show'); imageViewerImg.src = ''; }
     };
 
+    // --- HELPER: GET URL FROM BLOB OR STRING ---
+    // If it's a blob (new data), create object URL. If string (old data), use as is.
+    function getPhotoSrc(photo) {
+        if (!photo) return null;
+        if (photo instanceof Blob) {
+            return URL.createObjectURL(photo);
+        }
+        return photo; // Base64 string
+    }
+
     function createProductCard(product, idx) {
       const li = document.createElement('li');
       li.className = 'prod-card';
       li.setAttribute('tabindex','0');
       li.classList.add('show');
 
-      let imgHTML = product.photo ? `<img src="${escapeHTML(product.photo)}" class="prod-photo-thumb" alt="Product Photo" loading="lazy">` : `<span>📦</span>`;
+      const imgSrc = getPhotoSrc(product.photo);
+      let imgHTML = imgSrc ? `<img src="${imgSrc}" class="prod-photo-thumb" alt="Product Photo" loading="lazy">` : `<span>📦</span>`;
+      
       const nameSafe = escapeHTML(product.name || "Unnamed");
       const qtyNum = Number(product.qty) || 0;
       const mrpNum = Number(product.mrp) || 0;
@@ -1482,10 +1569,10 @@
       if (shareBtn) shareBtn.onclick = (e)=>{ e.stopPropagation(); openShareModal(product); };
       
       const thumb = li.querySelector('.prod-img');
-      if (thumb && product.photo) {
+      if (thumb && imgSrc) {
           thumb.onclick = (e) => {
               e.stopPropagation();
-              openImageViewer(product.photo);
+              openImageViewer(imgSrc);
           };
       }
 
@@ -1514,20 +1601,88 @@
         }
     };
 
-    const exportSelectedBtn = document.getElementById('exportSelectedBtn');
-    if (exportSelectedBtn) {
-        exportSelectedBtn.onclick = function() {
-            if (selectedProductIds.size === 0) return;
-            const itemsToExport = products.filter(p => selectedProductIds.has(p.id));
-            const now = new Date();
-            const dateStr = now.toISOString().slice(0,10);
-            const filename = `dealer-shared-${itemsToExport.length}-items-${dateStr}.json`;
-            const dataStr = JSON.stringify(itemsToExport, null, 2);
-            const blob = new Blob([dataStr], {type:"application/json"});
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a'); a.style.display='none'; a.href = url; a.download = filename; document.body.appendChild(a); a.click(); URL.revokeObjectURL(url); setTimeout(()=>{ document.body.removeChild(a); }, 200);
-        };
-    }
+    // --- UPDATED EXPORT LOGIC: CONVERT BLOBS TO BASE64 STRINGS ---
+    document.getElementById('exportBtn').onclick = async function() {
+      const now = new Date();
+      const dateStr = now.toISOString().slice(0,10);
+      const timeStr = now.toTimeString().slice(0,5).replace(':','-');
+      const filename = `dealer-backup-${dateStr}_${timeStr}.json`;
+      
+      // Convert Blobs to Base64 for JSON storage
+      const dataToExport = await Promise.all(products.map(async (p) => {
+          let photoData = p.photo;
+          if (p.photo instanceof Blob) {
+              photoData = await new Promise((resolve) => {
+                  const reader = new FileReader();
+                  reader.onloadend = () => resolve(reader.result);
+                  reader.readAsDataURL(p.photo);
+              });
+          }
+          return { ...p, photo: photoData };
+      }));
+
+      const dataStr = JSON.stringify(dataToExport, null, 2);
+      const blob = new Blob([dataStr], {type:"application/json"});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.style.display='none'; a.href = url; a.download = filename; document.body.appendChild(a); a.click(); URL.revokeObjectURL(url); setTimeout(()=>{ document.body.removeChild(a); }, 200);
+    };
+
+    document.getElementById('importBtn').onclick = function () { 
+        let fileInput = document.getElementById('hiddenImport'); 
+        if (fileInput) fileInput.value = ''; 
+        if (fileInput) fileInput.click(); 
+    };
+
+    // --- UPDATED IMPORT LOGIC: CONVERT BASE64 STRINGS BACK TO BLOBS ---
+    document.getElementById('hiddenImport').onchange = async function (e) {
+      const fileInput = e.target;
+      if (!fileInput.files || !fileInput.files.length) return;
+      const file = fileInput.files[0];
+
+      if (!(file && (file.type === 'application/json' || /\.json$/i.test(file.name)))) { alert('Please select a valid .json backup file.'); return; }
+
+      try {
+        let text = await file.text();
+        let importedArr = JSON.parse(text); 
+        if (!Array.isArray(importedArr)) throw new Error('Invalid file format. Data must be an array.');
+        
+        // Convert Base64 strings back to Blobs for efficiency
+        importedArr = await Promise.all(importedArr.map(async (p) => {
+            if (p.photo && typeof p.photo === 'string' && p.photo.startsWith('data:')) {
+                try {
+                    const res = await fetch(p.photo);
+                    const blob = await res.blob();
+                    p.photo = blob;
+                } catch(err) { /* fallback to string */ }
+            }
+            return p;
+        }));
+
+        importedArr = importedArr.filter(p => p && typeof p === 'object' && p.name);
+        if (!importedArr.length) throw new Error('No valid products found in this file.');
+
+        const userWantsToMerge = confirm(`Found ${importedArr.length} products in file.\n\n• Click [OK] to MERGE.\n(Adds new items and updates existing ones. Safe.)\n\n• Click [Cancel] to REPLACE.\n(Deletes everything currently in app and restores backup.)`);
+
+        if (userWantsToMerge) {
+            const productMap = new Map();
+            products.forEach(p => productMap.set(p.id, p));
+            let addedCount = 0;
+            let updatedCount = 0;
+            importedArr.forEach(p => {
+                if (!p.id) p.id = genID();
+                if (productMap.has(p.id)) { productMap.set(p.id, p); updatedCount++; } else { productMap.set(p.id, p); addedCount++; }
+            });
+            products = Array.from(productMap.values());
+            alert(`Import Successful!\n\n🆕 Added: ${addedCount}\n🔄 Updated: ${updatedCount}`);
+        } else {
+            if(!confirm("⚠️ WARNING: This will DELETE all current products and replace them with the backup.\n\nAre you sure?")) { return; }
+            products = importedArr;
+            products.forEach(p => { if(!p.id) p.id = genID(); });
+            alert(`Restore Successful! App now has ${products.length} products.`);
+        }
+        saveProducts(); selectedProductIds.clear(); updateMultiSelectControls(); 
+      } catch (ex) { alert("Failed to import: " + (ex.message || ex)); }
+    };
 
     const detailModalBackdrop = document.getElementById('detailModalBackdrop');
     const detailModalBody = document.getElementById('detailModalBody');
@@ -1535,7 +1690,8 @@
     function enableDetailBackgroundScroll() { document.body.classList.remove('detail-modal-open'); }
     function showDetailModal(product) {
       const nameSafe = escapeHTML(product.name || 'Unnamed');
-      const photoBlock = product.photo ? `<img src="${escapeHTML(product.photo)}" class="prod-detail-photo" alt="${nameSafe}"/>` : `<div class="prod-detail-photo" style="font-size:60px;padding:22px 0 12px 0;">📦</div>`;
+      const imgSrc = getPhotoSrc(product.photo);
+      const photoBlock = imgSrc ? `<img src="${imgSrc}" class="prod-detail-photo" alt="${nameSafe}"/>` : `<div class="prod-detail-photo" style="font-size:60px;padding:22px 0 12px 0;">📦</div>`;
       const mrpNum = Number(product.mrp) || 0;
       const costNum = (product.cost !== undefined && product.cost !== null) ? Number(product.cost) : null;
       detailModalBody.innerHTML = `
@@ -1551,9 +1707,9 @@
       `;
       setTimeout(()=>{
           const detailImg = detailModalBody.querySelector('.prod-detail-photo');
-          if(detailImg && product.photo) {
+          if(detailImg && imgSrc) {
               detailImg.style.cursor = 'zoom-in';
-              detailImg.onclick = () => openImageViewer(product.photo);
+              detailImg.onclick = () => openImageViewer(imgSrc);
           }
       }, 50);
 
@@ -1611,11 +1767,22 @@
 
     categoryBtn.onclick = function() {
         const uniqueCategories = [...new Set(products.map(p => p.category ? p.category.trim() : "").filter(c => c))];
-        uniqueCategories.sort();
+        uniqueCategories.sort((a,b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+        
+        const seenLower = new Set();
+        const cleanedCats = [];
+        uniqueCategories.forEach(c => {
+            const low = c.toLowerCase();
+            if(!seenLower.has(low)){
+                seenLower.add(low);
+                const niceName = c.charAt(0).toUpperCase() + c.slice(1);
+                cleanedCats.push(niceName);
+            }
+        });
         
         let html = `<div class="category-item-btn ${activeCategoryFilter === null ? 'active' : ''}" onclick="selectCategory(null)">All Categories</div>`;
-        uniqueCategories.forEach(cat => {
-            const isActive = activeCategoryFilter === cat ? 'active' : '';
+        cleanedCats.forEach(cat => {
+            const isActive = (activeCategoryFilter && activeCategoryFilter.toLowerCase() === cat.toLowerCase()) ? 'active' : '';
             html += `<div class="category-item-btn ${isActive}" onclick="selectCategory('${escapeHTML(cat)}')">${escapeHTML(cat)}</div>`;
         });
         
@@ -1630,7 +1797,6 @@
         categoryModalBackdrop.classList.add('hide');
         refreshProductList();
         
-        // Push state so back button works to clear filter
         if(activeCategoryFilter) {
             try { history.pushState({category: true}, document.title, window.location.href); } catch(e){}
         }
@@ -1641,16 +1807,13 @@
         refreshProductList();
     };
 
-    // --- REFRESH LIST: SORTING & GROUPING ---
     function refreshProductList() {
-      loadProducts();
       productListElem.innerHTML = '';
       let q = (searchInput.value || '').trim().toLowerCase();
       const terms = q.split(/\s+/).filter(t => t.length > 0);
       
       let filtered = products;
 
-      // 1. Apply Search
       if (terms.length > 0) {
           filtered = products.filter(prod => {
              const searchString = ((prod.name || "") + " " + (prod.category || "") + " " + (prod.notes || "")).toLowerCase();
@@ -1658,10 +1821,12 @@
           });
       }
 
-      // 2. Apply Category Filter
       if (activeCategoryFilter) {
-          filtered = filtered.filter(p => (p.category || '').trim() === activeCategoryFilter);
-          activeCategoryDisplay.textContent = `Filtered by: ${activeCategoryFilter} ✖`;
+          const targetLower = activeCategoryFilter.toLowerCase();
+          filtered = filtered.filter(p => (p.category || '').trim().toLowerCase() === targetLower);
+          
+          const displayNice = activeCategoryFilter.charAt(0).toUpperCase() + activeCategoryFilter.slice(1);
+          activeCategoryDisplay.textContent = `Filtered by: ${displayNice} ✖`;
           activeCategoryDisplay.classList.add('show');
       } else {
           activeCategoryDisplay.classList.remove('show');
@@ -1672,7 +1837,6 @@
       if (!filtered.length) { noProductsElem.style.display = ""; document.getElementById('multiSelectControls').classList.remove('active'); return; }
       noProductsElem.style.display = "none";
       
-      // 3. Sort: Category (A-Z) -> Name (A-Z)
       filtered.sort((a,b) => {
           const catA = (a.category || '').trim().toLowerCase();
           const catB = (b.category || '').trim().toLowerCase();
@@ -1682,19 +1846,23 @@
       });
       
       const fragment = document.createDocumentFragment();
-      let lastCategory = "@@INIT@@";
+      let lastCategoryLower = "@@INIT@@";
 
       filtered.forEach((prod,i) => {
-          // 4. Inject Category Header
-          const currentCat = (prod.category || '').trim();
-          const displayCat = currentCat || "Uncategorized";
+          const currentCatRaw = (prod.category || '').trim();
+          const currentCatLower = currentCatRaw.toLowerCase();
           
-          if (displayCat.toLowerCase() !== lastCategory.toLowerCase()) {
+          let displayCat = currentCatRaw || "Uncategorized";
+          if (displayCat !== "Uncategorized") {
+              displayCat = displayCat.charAt(0).toUpperCase() + displayCat.slice(1);
+          }
+          
+          if (currentCatLower !== lastCategoryLower) {
               const header = document.createElement('div');
               header.className = 'category-header';
               header.textContent = `--- ${displayCat} ---`;
               fragment.appendChild(header);
-              lastCategory = displayCat;
+              lastCategoryLower = currentCatLower;
           }
 
           fragment.appendChild(createProductCard(prod,i));
@@ -1712,6 +1880,7 @@
     const prodCategory = document.getElementById('prodCategory');
     const prodNotes = document.getElementById('prodNotes');
     const prodPhoto = document.getElementById('prodPhoto');
+    const prodCamera = document.getElementById('prodCamera');
     const productModalBackdrop = document.getElementById('productModalBackdrop');
     const productModal = document.getElementById('productModal');
     const modalTitle = document.getElementById('modalTitle');
@@ -1721,13 +1890,52 @@
     const prodPhotoFileContainer = document.getElementById('prodPhotoFileContainer');
     const fileUploadWrap = document.getElementById('fileUploadWrap');
     const imageCompressMsg = document.getElementById('imageCompressMsg');
-    let currentProductPhotoDataUrl = null;
+    
+    // CHANGED: This variable now holds a BLOB, not a DataURL string
+    let currentProductBlob = null;
 
-    async function compressImageFile(file, maxDim = 800, quality = 0.82) {
+    /****************************************************************
+     * BINARY BLOB COMPRESSION (NO BASE64 STRINGS)
+     ****************************************************************/
+    async function compressImageFileToBlob(file, maxDim = 600, quality = 0.70) { 
+      // 1. SAFETY CHECK
+      if (file.size > 20 * 1024 * 1024) return Promise.reject("File too large (>20MB).");
+      if (!/^image\//.test(file.type)) return Promise.reject("Not an image file.");
+      
+      // 2. ATTEMPT: createImageBitmap (Low Memory)
+      if ('createImageBitmap' in window) {
+          try {
+              const bitmap = await createImageBitmap(file);
+              let { width, height } = bitmap;
+              if (width > maxDim || height > maxDim) {
+                  const scale = maxDim / Math.max(width, height);
+                  width = Math.round(width * scale);
+                  height = Math.round(height * scale);
+              }
+              const canvas = document.createElement('canvas');
+              canvas.width = width;
+              canvas.height = height;
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(bitmap, 0, 0, width, height);
+              bitmap.close(); 
+              
+              return new Promise((resolve, reject) => {
+                  canvas.toBlob(blob => {
+                      canvas.width = 0; canvas.height = 0; 
+                      if (!blob) return reject("Compression error.");
+                      resolve(blob);
+                  }, 'image/jpeg', quality);
+              });
+          } catch(e) {
+              console.warn("createImageBitmap failed, falling back.", e);
+          }
+      }
+
+      // 3. FALLBACK: Standard Image Load
       return new Promise((resolve, reject) => {
-        if (!/^image\//.test(file.type)) return reject("Not an image file.");
         let img = new window.Image();
         let url = URL.createObjectURL(file);
+        
         img.onload = function() {
           let [w, h] = [img.naturalWidth, img.naturalHeight];
           if (w > maxDim || h > maxDim) {
@@ -1738,41 +1946,69 @@
           canvas.width = w; canvas.height = h;
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, w, h);
-          canvas.toBlob(blob => {
-            if (!blob) return reject("Compression error.");
-            const reader = new FileReader();
-            reader.onload = e => resolve(reader.result);
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-          }, 'image/jpeg', quality);
           URL.revokeObjectURL(url);
+          img.src = ""; img = null;
+
+          canvas.toBlob(blob => {
+            canvas.width = 0; canvas.height = 0; 
+            if (!blob) return reject("Compression error.");
+            resolve(blob);
+          }, 'image/jpeg', quality);
         };
-        img.onerror = () => { URL.revokeObjectURL(url); reject("Invalid image"); };
+        img.onerror = () => { URL.revokeObjectURL(url); img = null; reject("Invalid image data"); };
         img.src = url;
       });
     }
 
     function updatePhotoPreviewUI() {
       prodPhotoFileContainer.innerHTML = '';
-      if (currentProductPhotoDataUrl) {
+      if (currentProductBlob) {
         const img = document.createElement('img');
-        img.src = currentProductPhotoDataUrl; img.alt = "Product Photo"; img.className = 'photo-preview-img-thumb';
+        
+        // --- FIX: Handle BOTH Blob (New) and String (Old) ---
+        if (currentProductBlob instanceof Blob) {
+             img.src = URL.createObjectURL(currentProductBlob);
+        } else {
+             // It is likely a base64 string from old data
+             img.src = currentProductBlob; 
+        }
+        
+        img.alt = "Product Photo"; 
+        img.className = 'photo-preview-img-thumb';
         const removeBtn = document.createElement('button');
         removeBtn.type = 'button'; removeBtn.className = 'remove-photo-btn'; removeBtn.title = 'Remove image'; removeBtn.innerHTML = '✖';
-        removeBtn.onclick = function() { currentProductPhotoDataUrl = null; prodPhoto.value = ''; prodPhotoFileName.textContent = ''; uploadBtnInnerText.textContent = 'Choose Image'; imageCompressMsg.style.display = 'none'; updatePhotoPreviewUI(); };
+        removeBtn.onclick = function() { 
+            currentProductBlob = null; 
+            prodPhoto.value = ''; 
+            prodCamera.value = '';
+            prodPhotoFileName.textContent = ''; 
+            imageCompressMsg.style.display = 'none'; 
+            updatePhotoPreviewUI(); 
+        };
         prodPhotoFileContainer.appendChild(img); prodPhotoFileContainer.appendChild(removeBtn);
       }
     }
 
     function showProductModal(mode, product) {
-      productModal.reset(); modalError.textContent = ''; prodPhotoFileName.textContent = ''; uploadBtnInnerText.textContent = 'Choose Image'; currentProductPhotoDataUrl = null; imageCompressMsg.style.display = 'none'; updatePhotoPreviewUI();
+      productModal.reset(); 
+      modalError.textContent = ''; 
+      prodPhotoFileName.textContent = ''; 
+      currentProductBlob = null; 
+      imageCompressMsg.style.display = 'none'; 
+      updatePhotoPreviewUI();
+      
       if (mode === 'add') {
         modalTitle.textContent = "Add Product"; productEditing = null;
-        prodName.value = ""; prodMrp.value = ""; prodCost.value = ""; prodQty.value = ""; prodCategory.value = activeCategoryFilter || ""; prodNotes.value = ""; prodPhoto.value = "";
+        prodName.value = ""; prodMrp.value = ""; prodCost.value = ""; prodQty.value = ""; prodCategory.value = activeCategoryFilter || ""; prodNotes.value = ""; prodPhoto.value = ""; prodCamera.value = "";
       } else {
         modalTitle.textContent = "Edit Product"; productEditing = product;
-        prodName.value = product.name || ""; prodMrp.value = product.mrp !== undefined ? product.mrp : ""; prodCost.value = product.cost !== undefined ? product.cost : ""; prodQty.value = product.qty !== undefined ? product.qty : ""; prodCategory.value = product.category || ""; prodNotes.value = product.notes || ""; prodPhoto.value = "";
-        if (product.photo) { currentProductPhotoDataUrl = product.photo; updatePhotoPreviewUI(); }
+        prodName.value = product.name || ""; prodMrp.value = product.mrp !== undefined ? product.mrp : ""; prodCost.value = product.cost !== undefined ? product.cost : ""; prodQty.value = product.qty !== undefined ? product.qty : ""; prodCategory.value = product.category || ""; prodNotes.value = product.notes || ""; prodPhoto.value = ""; prodCamera.value = "";
+        
+        // Handle existing photo (Blob or String)
+        if (product.photo) {
+            currentProductBlob = product.photo; 
+            updatePhotoPreviewUI();
+        }
       }
       productModalBackdrop.classList.remove('hide');
       if (!document.body.classList.contains('modal-open')) { document.body.dataset.scrollY = window.scrollY; document.body.style.top = `-${window.scrollY}px`; document.body.classList.add('modal-open'); }
@@ -1783,16 +2019,44 @@
     let firstSubmitAttempt = true;
     let prodPhotoLastPendingPromise = null;
 
+    // --- SHARED IMAGE HANDLER FOR BOTH BUTTONS ---
+    function handleImageSelection(file) {
+        if(!file) return;
+        prodPhotoFileName.textContent = file.name; 
+        imageCompressMsg.textContent = "Processing image..."; 
+        imageCompressMsg.style.display = 'block';
+        
+        const filePromise = compressImageFileToBlob(file, 600, 0.70).then(blob => {
+          const kb = Math.round(blob.size / 1024); 
+          currentProductBlob = blob; // Store Blob, NOT string
+          updatePhotoPreviewUI();
+          imageCompressMsg.textContent = `Photo processed: ~${kb} KB`; 
+          imageCompressMsg.style.display = 'block';
+        }).catch(err => { 
+            console.error(err);
+            modalError.textContent = String(err) || "Photo processing failed."; 
+            prodPhoto.value = ''; 
+            prodCamera.value = '';
+            prodPhotoFileName.textContent = ''; 
+            imageCompressMsg.style.display = 'none'; 
+            currentProductBlob = null; 
+            updatePhotoPreviewUI(); 
+        });
+        prodPhotoLastPendingPromise = filePromise;
+    }
+
     prodPhoto.addEventListener('change', function () {
       if (prodPhoto.files && prodPhoto.files.length) {
-        const file = prodPhoto.files[0]; prodPhotoFileName.textContent = file.name; uploadBtnInnerText.textContent = "Image Selected"; imageCompressMsg.textContent = "Compressing image..."; imageCompressMsg.style.display = 'block';
-        const filePromise = compressImageFile(file, 800, 0.82).then(dataUrl => {
-          const kb = Math.round((dataUrl.length * 3 / 4) / 1024); currentProductPhotoDataUrl = dataUrl; updatePhotoPreviewUI();
-          imageCompressMsg.textContent = `Photo compressed: ~${kb} KB (max 800px, JPEG)`; imageCompressMsg.style.display = 'block';
-        }).catch(err => { modalError.textContent = "Image compression failed. Please select another file."; prodPhoto.value = ''; prodPhotoFileName.textContent = ''; uploadBtnInnerText.textContent = 'Choose Image'; imageCompressMsg.textContent = ''; imageCompressMsg.style.display = 'none'; currentProductPhotoDataUrl = null; updatePhotoPreviewUI(); });
-        prodPhotoLastPendingPromise = filePromise;
+          handleImageSelection(prodPhoto.files[0]);
       } else {
-        prodPhotoFileName.textContent = ''; uploadBtnInnerText.textContent = 'Choose Image'; currentProductPhotoDataUrl = null; imageCompressMsg.style.display = 'none'; updatePhotoPreviewUI(); prodPhotoLastPendingPromise = null;
+          currentProductBlob = null; 
+          updatePhotoPreviewUI();
+      }
+    });
+    
+    prodCamera.addEventListener('change', function () {
+      if (prodCamera.files && prodCamera.files.length) {
+          handleImageSelection(prodCamera.files[0]);
       }
     });
 
@@ -1805,19 +2069,30 @@
 
     productModal.onsubmit = async function(e) {
       e.preventDefault(); modalError.textContent = "";
-      if (firstSubmitAttempt && prodPhoto.files && prodPhoto.files.length && !currentProductPhotoDataUrl && prodPhotoLastPendingPromise) {
+      if (firstSubmitAttempt && (prodPhoto.files.length || prodCamera.files.length) && !currentProductBlob && prodPhotoLastPendingPromise) {
         try { await prodPhotoLastPendingPromise; } catch (err) { modalError.textContent = "Image failed to load, please select again."; return; }
         firstSubmitAttempt = false; productModal.onsubmit(e); return;
       }
       firstSubmitAttempt = false;
-      const name = (prodName.value || '').trim(); const mrpVal = prodMrp.value; const costVal = prodCost.value; const qtyVal = prodQty.value; const category = (prodCategory.value || '').trim(); const notes = (prodNotes.value || '').trim();
+      const name = (prodName.value || '').trim(); const mrpVal = prodMrp.value; const costVal = prodCost.value; const qtyVal = prodQty.value; const notes = (prodNotes.value || '').trim();
+      
+      let category = (prodCategory.value || '').trim();
+      if(category.length > 0) {
+          category = category.charAt(0).toUpperCase() + category.slice(1);
+      }
+      
       if (!name) { modalError.textContent = "Name required."; return; }
       if (mrpVal === "" || isNaN(Number(mrpVal)) || Number(mrpVal) < 0) { modalError.textContent = "Valid MRP required."; return; }
       if (qtyVal === "" || isNaN(Number(qtyVal)) || Number(qtyVal) < 0) { modalError.textContent = "Valid quantity required."; return; }
-      let photoData = null; if (currentProductPhotoDataUrl) photoData = currentProductPhotoDataUrl;
-      const productObj = { id: productEditing ? productEditing.id : genID(), name, mrp: Number(mrpVal), cost: costVal !== "" ? Number(costVal) : null, qty: Number(qtyVal), category, notes, photo: photoData };
+      
+      // Store the BLOB directly
+      const productObj = { id: productEditing ? productEditing.id : genID(), name, mrp: Number(mrpVal), cost: costVal !== "" ? Number(costVal) : null, qty: Number(qtyVal), category, notes, photo: currentProductBlob };
+      
       if (!productEditing) products.push(productObj); else { const idx = products.findIndex(p => p.id === productEditing.id); if (idx >= 0) products[idx] = productObj; else products.push(productObj); }
-      saveProducts(); productModalBackdrop.classList.add('hide');
+      
+      saveProducts();
+      
+      productModalBackdrop.classList.add('hide');
       if (document.body.classList.contains('modal-open')) { document.body.classList.remove('modal-open'); const scrollY = document.body.dataset.scrollY ? parseInt(document.body.dataset.scrollY, 10) : 0; document.body.style.top = ''; window.scrollTo(0, scrollY); delete document.body.dataset.scrollY; }
       selectedProductIds.clear(); updateMultiSelectControls();
     };
@@ -1832,65 +2107,6 @@
     deleteModal.onsubmit = function(e){ e.preventDefault(); if (!productToDelete) return; products = products.filter(p => p.id !== productToDelete.id); saveProducts(); deleteModalBackdrop.classList.add('hide'); productToDelete = null; selectedProductIds.delete(productToDelete.id); updateMultiSelectControls(); };
     function genID() { return 'p' + (Date.now() + ('' + Math.random()).slice(2,7)); }
 
-    /****************************************************************
-     * NEW EXPORT & IMPORT (MERGE/REPLACE) LOGIC
-     ****************************************************************/
-    document.getElementById('exportBtn').onclick = function() {
-      const now = new Date();
-      const dateStr = now.toISOString().slice(0,10);
-      const timeStr = now.toTimeString().slice(0,5).replace(':','-');
-      const filename = `dealer-backup-${dateStr}_${timeStr}.json`;
-      const dataStr = JSON.stringify(products || [], null, 2);
-      const blob = new Blob([dataStr], {type:"application/json"});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a'); a.style.display='none'; a.href = url; a.download = filename; document.body.appendChild(a); a.click(); URL.revokeObjectURL(url); setTimeout(()=>{ document.body.removeChild(a); }, 200);
-    };
-
-    document.getElementById('importBtn').onclick = function () { 
-        let fileInput = document.getElementById('hiddenImport'); 
-        if (fileInput) fileInput.value = ''; 
-        if (fileInput) fileInput.click(); 
-    };
-
-    document.getElementById('hiddenImport').onchange = async function (e) {
-      const fileInput = e.target;
-      if (!fileInput.files || !fileInput.files.length) return;
-      const file = fileInput.files[0];
-
-      if (!(file && (file.type === 'application/json' || /\.json$/i.test(file.name)))) { alert('Please select a valid .json backup file.'); return; }
-
-      try {
-        let text = await file.text();
-        let importedArr = JSON.parse(text); 
-        if (!Array.isArray(importedArr)) throw new Error('Invalid file format. Data must be an array.');
-        importedArr = importedArr.filter(p => p && typeof p === 'object' && p.name);
-        if (!importedArr.length) throw new Error('No valid products found in this file.');
-
-        const userWantsToMerge = confirm(`Found ${importedArr.length} products in file.\n\n• Click [OK] to MERGE.\n(Adds new items and updates existing ones. Safe.)\n\n• Click [Cancel] to REPLACE.\n(Deletes everything currently in app and restores backup.)`);
-
-        if (userWantsToMerge) {
-            const productMap = new Map();
-            products.forEach(p => productMap.set(p.id, p));
-            let addedCount = 0;
-            let updatedCount = 0;
-            importedArr.forEach(p => {
-                if (!p.id) p.id = genID();
-                if (productMap.has(p.id)) { productMap.set(p.id, p); updatedCount++; } else { productMap.set(p.id, p); addedCount++; }
-            });
-            products = Array.from(productMap.values());
-            alert(`Import Successful!\n\n🆕 Added: ${addedCount}\n🔄 Updated: ${updatedCount}`);
-        } else {
-            if(!confirm("⚠️ WARNING: This will DELETE all current products and replace them with the backup.\n\nAre you sure?")) { return; }
-            products = importedArr;
-            products.forEach(p => { if(!p.id) p.id = genID(); });
-            alert(`Restore Successful! App now has ${products.length} products.`);
-        }
-        saveProducts(); selectedProductIds.clear(); updateMultiSelectControls(); 
-      } catch (ex) { alert("Failed to import: " + (ex.message || ex)); }
-    };
-
-    window.addEventListener('load', function() { loadProducts(); });
-    
     /****************************************************************
      * SHARE / PDF LOGIC
      ****************************************************************/
@@ -1926,6 +2142,7 @@
         const printableArea = document.getElementById('printableArea');
         let fullHtml = '';
         productsToShareQueue.forEach(prod => {
+            const imgSrc = getPhotoSrc(prod.photo);
             let html = `
                 <div class="print-product-page">
                     <div class="print-header">
@@ -1936,7 +2153,7 @@
                     </div>
                     <h1 style="text-align:center;margin-top:20px;">${escapeHTML(prod.name)}</h1>
             `;
-            if(chkPhoto.checked && prod.photo) { html += `<img src="${prod.photo}" class="print-product-img" />`; }
+            if(chkPhoto.checked && imgSrc) { html += `<img src="${imgSrc}" class="print-product-img" />`; }
             html += `<table class="print-details-table"><tbody>`;
             if(chkCategory.checked && prod.category) { html += `<tr><td class="print-label">Category</td><td>${escapeHTML(prod.category)}</td></tr>`; }
             if(chkQty.checked) { html += `<tr><td class="print-label">In Stock</td><td>${prod.qty}</td></tr>`; }
