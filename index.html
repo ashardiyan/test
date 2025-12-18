@@ -142,6 +142,7 @@
       -webkit-tap-highlight-color: transparent; 
       -webkit-user-select: none;
       user-select: none;
+      flex-shrink: 0;
     }
     .rounded-sky-btn:hover,
     .rounded-sky-btn:active {
@@ -263,7 +264,7 @@
       display: block;
     }
 
-    /* -----------  PRODUCT CARD LIST-VIEW SIZING (RESTORED TO ORIGINAL)  ----------- */
+    /* -----------  PRODUCT CARD LIST-VIEW SIZING  ----------- */
     .prod-card { 
       background:var(--bg3); 
       border-radius:13px; 
@@ -308,10 +309,75 @@
     .prod-card.selected { border-color: var(--danger); background: #1b1d2d; box-shadow: 0 4px 16px #ef44441a;}
     .prod-card .prod-select-checkbox:focus { outline: 2px solid var(--accent2); outline-offset:1px;}
 
+    /* Category Header Style */
+    .category-header {
+        font-size: 0.95em;
+        font-weight: 800;
+        color: var(--accent2);
+        background: rgba(33, 41, 54, 0.5);
+        padding: 8px 12px;
+        margin-top: 15px;
+        margin-bottom: 12px;
+        border-radius: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        border-left: 4px solid var(--accent);
+    }
+    .category-header:first-child { margin-top: 0; }
+    
+    /* Category Filter Label */
+    #activeCategoryDisplay {
+        display: none;
+        width: 100%;
+        margin-bottom: 12px;
+        padding: 8px 12px;
+        background: rgba(6, 182, 212, 0.15);
+        color: var(--accent2);
+        border: 1px dashed var(--accent2);
+        border-radius: 10px;
+        font-weight: 700;
+        text-align: center;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        cursor: pointer;
+    }
+    #activeCategoryDisplay:hover { background: rgba(6, 182, 212, 0.25); }
+    #activeCategoryDisplay.show { display: flex; }
+    #activeCategoryDisplay.show { box-sizing: border-box; }
+    /* Category Modal Grid */
+    .category-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 10px;
+        max-height: 50vh;
+        overflow-y: auto;
+    }
+    .category-item-btn {
+        background: #253048;
+        color: var(--text);
+        border: 1px solid #364052;
+        padding: 12px;
+        border-radius: 10px;
+        font-weight: 600;
+        text-align: center;
+        cursor: pointer;
+        transition: background 0.15s, transform 0.1s;
+    }
+    .category-item-btn:hover { background: #303d58; transform: translateY(-2px); border-color: var(--accent2); }
+    .category-item-btn.active { background: var(--button-gradient); color: #fff; border-color: transparent; }
+
     .no-products { text-align:center; color:var(--text-muted); font-size:1.12em; margin:34px 0 14px 0; letter-spacing:.01em; }
     .modal-backdrop { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(18,23,32,0.92); z-index:4999; display:flex; align-items:center; justify-content:center; opacity:1; visibility:visible; transition:opacity .21s; }
     .modal-backdrop.hide { opacity:0; visibility:hidden; pointer-events:none; }
     .modal { min-width:320px; max-width:98vw; background:var(--bg2); border-radius:var(--radius-card); box-shadow:var(--shadow); z-index:6000; padding:36px 22px 23px 22px; animation:fadeUp .3s; display:flex; flex-direction:column; align-items:stretch; position:relative; }
+    
+    /* SPECIAL WIDER MODAL FOR CATEGORIES */
+    #categoryModal {
+        max-width: 650px; /* Much wider than standard modal */
+        width: 92%;
+    }
+    
     .modal h3 { margin:0 0 18px 0; color:var(--accent2); text-align:center; font-weight:800; font-size:1.26em; letter-spacing:-.2px; }
     .modal-close { position:absolute; top:13px; right:14px; background:none; border:none; color:var(--accent2); font-size:1.24em; cursor:pointer; font-weight:bold; outline:none; }
     .modal label { font-weight:600; font-size:.96em; color:var(--text-muted); margin-bottom:4px; }
@@ -323,16 +389,16 @@
     
    /* ---- PRODUCT DETAIL MODAL ---- */
 #detailModal {
-  max-width: 260px;   /* Reduced from 300px */
-  width: 85%;         /* Slightly narrower on small screens */
-  padding-top: 30px;  /* Reduced top padding */
+  max-width: 260px;
+  width: 85%;
+  padding-top: 30px;
 }
 
 #detailModal .prod-detail-photo { 
   display: block; 
   width: 85%; 
-  max-width: 170px;   /* Reduced image size */
-  height: 170px;      /* Keep square ratio */
+  max-width: 170px;
+  height: 170px;
   object-fit: cover; 
   border-radius: 20px; 
   margin: 8px auto 16px auto; 
@@ -340,14 +406,8 @@
   background: #21293f; 
 }
 
-#detailModalBody ul {
-  font-size: 0.78em;  /* Slightly smaller text */
-}
-
-#detailModalBody ul li {
-  margin-bottom: 6px;
-}
-
+#detailModalBody ul { font-size: 0.78em; }
+#detailModalBody ul li { margin-bottom: 6px; }
 
     .show-password-wrap {
       display: flex;
@@ -522,42 +582,37 @@
       overflow: hidden !important;
     }
 
-    /* --------- MOBILE OPTIMIZATIONS (RESTORED TO ORIGINAL SIZE) ---------- */
+    /* --------- MOBILE OPTIMIZATIONS  ---------- */
     @media (max-width:650px){
-      html, body { font-size: 15.5px; /* Increased from 14px */ }
+      html, body { font-size: 15.5px; }
       .container{padding:10px 2vw 17px 2vw;}
       .card{padding:.54rem .26rem 0.7rem .47rem;}
       .app-title{font-size:1.02rem;}
       
-      /* Product Card */
       .prod-card{
-        padding: 12px 10px;   /* Original padding */
-        gap: 14px;            /* Original gap */
+        padding: 12px 10px;
+        gap: 14px;
         border-radius: 9px;
         margin-bottom: 10px;
-        min-height: 64px;     /* Original height */
+        min-height: 64px;
       }
       
-      /* Image */
       .prod-img{ 
-          min-width: 48px; width: 48px; height: 48px; /* Original thumbnail */
+          min-width: 48px; width: 48px; height: 48px; 
           font-size: 1.5em; border-radius: 9px;
       }
       .prod-photo-thumb { max-width:100%; max-height:48px; border-radius:8px; }
       
-      /* Text */
       .prod-name{ font-size: 1.1em; margin-bottom: 1px;}
       .prod-details{ font-size: 0.92em; margin-top: 2px; margin-bottom: 2px;}
       
       .prod-actions{ gap: 8px; }
       .prod-actions button{font-size: 1.15em; padding: 4px;}
       
-      /* Fixed: Select Button Checkbox spacing and hit area */
       .prod-select-checkbox { margin-right: 12px; transform: scale(1.35); padding: 5px; }
       
       .modal{padding:12vw 2vw 3vw 2vw; min-width:unset;}
       
-      /* On mobile, even though detail modal is big, fit it */
       #detailModal .prod-detail-photo{ width: 100%; max-width: 190px; height: 190px;}
       
       #mobileInstallInstructions{max-width:98vw;font-size:0.92em;}
@@ -662,10 +717,14 @@
               <span class="search-icon">&#128269;</span>
             </div>
             <button type="button" id="addProductBtn" class="rounded-sky-btn">+ Add</button>
+            <button type="button" id="categoryFilterBtn" class="rounded-sky-btn">Category</button>
             <button type="button" id="exportBtn" class="rounded-sky-btn">Export</button>
             <button type="button" id="importBtn" class="rounded-sky-btn">Import</button>
             <input type="file" id="importFile" accept="application/json" style="display:none"/>
           </div>
+          
+          <div id="activeCategoryDisplay"></div>
+          
           <div id="multiSelectControls">
             <label style="display:flex;align-items:center;gap:4px;margin-right:10px;">
               <input type="checkbox" id="selectAllCheckbox" title="Select all" />
@@ -717,6 +776,15 @@
       </div>
       <div id="imageCompressMsg" style="font-size:.99em;color:var(--text-muted);margin-top:10px;user-select:none;display:none"></div>
     </form>
+  </div>
+  
+  <div class="modal-backdrop hide" id="categoryModalBackdrop">
+    <div class="modal" id="categoryModal">
+        <button class="modal-close" type="button" id="closeCategoryBtn" title="Close" aria-label="Close dialog">✖</button>
+        <h3>Select Category</h3>
+        <div id="categoryGrid" class="category-grid">
+            </div>
+    </div>
   </div>
   
   <div class="modal-backdrop hide" id="shareModalBackdrop">
@@ -951,11 +1019,9 @@
   <script>
     /****************************************************************
      * Keep-logged-in authentication logic
-     * UPDATED: Uses localStorage for persistence across app restarts
      ****************************************************************/
     const KEEP_LOGGED_TIMEOUT_MS = 30*60*1000;
 
-    // CHANGED: Use localStorage so it survives app closure
     function setKeepSessionActive(expiresAt) { try { localStorage.setItem('dealer-keep-expires', String(expiresAt)); } catch(e) {} }
     function getKeepSessionActive() { try { const val = localStorage.getItem('dealer-keep-expires'); return val && /^\d+$/.test(val) ? parseInt(val, 10) : null; } catch(e) { return null; } }
     function clearKeepSession() { try { localStorage.removeItem('dealer-keep-expires'); } catch(e) {} }
@@ -1104,10 +1170,8 @@
     });
 
     (function handleAndroidBackButton() {
-      // Updated: Now permissive so back button works in Browser too, not just Standalone
       let openedModals = [];
-      // Added imageViewerOverlay to priority list
-      const modalPriority = ['imageViewerOverlay', 'productModalBackdrop', 'deleteModalBackdrop', 'settingsBackdrop', 'detailModalBackdrop', 'shareModalBackdrop'];
+      const modalPriority = ['imageViewerOverlay', 'productModalBackdrop', 'deleteModalBackdrop', 'settingsBackdrop', 'detailModalBackdrop', 'shareModalBackdrop', 'categoryModalBackdrop'];
 
       function pushMainStateToHistory() { try { history.replaceState({dealerAppMain: true}, document.title, window.location.href); } catch (e) {} }
       function pushModalState(modalId) { try { history.pushState({modal: modalId}, document.title, window.location.href); openedModals.push(modalId); } catch (e) {} }
@@ -1116,8 +1180,6 @@
         pushMainStateToHistory();
         window.addEventListener('popstate', function(e) {
             
-          // --- FIXED LOGIC: CHECK FOR MODALS FIRST, THEN SEARCH ---
-          
           // 1. Check if any modal is currently visible
           const topOpenModal = (() => { 
                 for (let i = 0; i < modalPriority.length; ++i) { 
@@ -1133,7 +1195,7 @@
                 return null; 
             })();
             
-            // 2. If a modal is open, close it and RETURN (Do not clear search)
+            // 2. If a modal is open, close it and RETURN
             if (topOpenModal) { 
                 if (topOpenModal === 'imageViewerOverlay') {
                     document.getElementById(topOpenModal).classList.remove('show');
@@ -1145,13 +1207,18 @@
                 return; 
             }
 
-            // 3. If NO modal is open, check if we have a search value to clear
+            // 3. Check for active category filter
+            if (activeCategoryFilter) {
+                activeCategoryFilter = null;
+                refreshProductList();
+                return;
+            }
+
+            // 4. If NO modal/category is open, check if we have a search value to clear
             const searchInput = document.getElementById('productSearch');
             if (document.getElementById('dealerApp').style.display !== 'none' && searchInput && searchInput.value) {
-                 // We consumed the popstate, now clear the UI
                  searchInput.value = '';
                  refreshProductList();
-                 // We want to stop here.
                  return; 
             }
 
@@ -1307,8 +1374,9 @@
     let products = [];
     let selectedProductIds = new Set();
     
-    // --- FIX: TRACK FILTERED PRODUCTS FOR SELECT ALL ---
+    // --- CATEGORY & FILTER VARIABLES ---
     let currentFilteredProducts = []; 
+    let activeCategoryFilter = null; 
 
     function saveProducts() { try { window.localStorage.setItem('dealer-products', JSON.stringify(products)); } catch(e){} refreshProductList(); }
     function loadProducts() { products = []; try { const str = window.localStorage.getItem('dealer-products'); if (str) products = JSON.parse(str) || []; } catch (e) { products = []; } }
@@ -1316,7 +1384,6 @@
 
     function handleCheckboxChange(productId, checked) { if (checked) selectedProductIds.add(productId); else selectedProductIds.delete(productId); updateMultiSelectControls(); }
     
-    // UPDATED: Now handles Export Selected Button
     function updateMultiSelectControls() {
       const multiSelectControls = document.getElementById('multiSelectControls');
       const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
@@ -1339,9 +1406,6 @@
           selectedCountText.textContent = ""; 
       }
       
-      // Fix Select All Checkbox Status (Based on Visible items)
-      // If currently filtered list is empty, uncheck.
-      // If all items in filtered list are selected, check.
       if (currentFilteredProducts.length > 0) {
           const allVisibleSelected = currentFilteredProducts.every(p => selectedProductIds.has(p.id));
           const someVisibleSelected = currentFilteredProducts.some(p => selectedProductIds.has(p.id));
@@ -1382,7 +1446,6 @@
       const li = document.createElement('li');
       li.className = 'prod-card';
       li.setAttribute('tabindex','0');
-      // OPTIMIZATION: Removed artificial delay, used CSS class immediately
       li.classList.add('show');
 
       let imgHTML = product.photo ? `<img src="${escapeHTML(product.photo)}" class="prod-photo-thumb" alt="Product Photo" loading="lazy">` : `<span>📦</span>`;
@@ -1418,7 +1481,6 @@
       const shareBtn = li.querySelector('.share');
       if (shareBtn) shareBtn.onclick = (e)=>{ e.stopPropagation(); openShareModal(product); };
       
-      // -- NEW: Click thumbnail to open full screen --
       const thumb = li.querySelector('.prod-img');
       if (thumb && product.photo) {
           thumb.onclick = (e) => {
@@ -1432,13 +1494,10 @@
       return li;
     }
 
-    // --- FIX: SELECT ALL VISIBLE ONLY ---
     document.getElementById("selectAllCheckbox").addEventListener("change", function() { 
         if (this.checked) { 
-            // Only select filtered visible items
             currentFilteredProducts.forEach(prod => selectedProductIds.add(prod.id)); 
         } else { 
-            // Only Deselect filtered visible items
             currentFilteredProducts.forEach(prod => selectedProductIds.delete(prod.id)); 
         } 
         refreshProductList(); 
@@ -1447,7 +1506,6 @@
     
     document.getElementById("deleteSelectedBtn").onclick = function() { if (selectedProductIds.size === 0) return; if (!confirm(`Are you sure you want to delete ${selectedProductIds.size} selected item(s)?`)) return; products = products.filter(p => !selectedProductIds.has(p.id)); selectedProductIds.clear(); saveProducts(); updateMultiSelectControls(); };
 
-    // BULK SHARE BUTTON HANDLER
     document.getElementById("shareSelectedBtn").onclick = function() {
         if (selectedProductIds.size === 0) return;
         const itemsToShare = products.filter(p => selectedProductIds.has(p.id));
@@ -1456,31 +1514,18 @@
         }
     };
 
-    // NEW: Export ONLY Selected Items
     const exportSelectedBtn = document.getElementById('exportSelectedBtn');
     if (exportSelectedBtn) {
         exportSelectedBtn.onclick = function() {
             if (selectedProductIds.size === 0) return;
-            
-            // Filter only the selected products
             const itemsToExport = products.filter(p => selectedProductIds.has(p.id));
-            
             const now = new Date();
             const dateStr = now.toISOString().slice(0,10);
             const filename = `dealer-shared-${itemsToExport.length}-items-${dateStr}.json`;
-
             const dataStr = JSON.stringify(itemsToExport, null, 2);
             const blob = new Blob([dataStr], {type:"application/json"});
             const url = URL.createObjectURL(blob);
-            
-            const a = document.createElement('a'); 
-            a.style.display='none'; 
-            a.href = url; 
-            a.download = filename; 
-            document.body.appendChild(a); 
-            a.click(); 
-            URL.revokeObjectURL(url); 
-            setTimeout(()=>{ document.body.removeChild(a); }, 200);
+            const a = document.createElement('a'); a.style.display='none'; a.href = url; a.download = filename; document.body.appendChild(a); a.click(); URL.revokeObjectURL(url); setTimeout(()=>{ document.body.removeChild(a); }, 200);
         };
     }
 
@@ -1504,7 +1549,6 @@
         </ul>
         ${product.notes?`<div style="margin-top:.8em;color:var(--text-muted);background:#213047;border-radius:8px;padding:.7em .9em">${escapeHTML(String(product.notes))}</div>`:""}
       `;
-      // Allow clicking the detail image to also open full screen
       setTimeout(()=>{
           const detailImg = detailModalBody.querySelector('.prod-detail-photo');
           if(detailImg && product.photo) {
@@ -1517,7 +1561,6 @@
     }
     document.getElementById('closeDetailModalBtn').onclick = function(){ detailModalBackdrop.classList.add('hide'); detailModalBody.innerHTML = ''; enableDetailBackgroundScroll(); };
     
-    // Keydown handlers for closing modals
     document.addEventListener('keydown', function(e){
       if (e.key === "Escape") {
         let closedAModal = false;
@@ -1527,6 +1570,7 @@
         else if (!deleteModalBackdrop.classList.contains('hide')) { deleteModalBackdrop.classList.add('hide'); closedAModal = true; }
         else if (!settingsBackdrop.classList.contains('hide')) { settingsBackdrop.classList.add('hide'); closedAModal = true; }
         else if (!shareModalBackdrop.classList.contains('hide')) { shareModalBackdrop.classList.add('hide'); closedAModal = true; }
+        else if (!categoryModalBackdrop.classList.contains('hide')) { categoryModalBackdrop.classList.add('hide'); closedAModal = true; }
         if (closedAModal) enableDetailBackgroundScroll();
       }
     });
@@ -1537,7 +1581,8 @@
         (!productModalBackdrop || productModalBackdrop.classList.contains('hide')) &&
         (!settingsBackdrop || settingsBackdrop.classList.contains('hide')) &&
         (!deleteModalBackdrop || deleteModalBackdrop.classList.contains('hide')) &&
-        (!shareModalBackdrop || shareModalBackdrop.classList.contains('hide'))
+        (!shareModalBackdrop || shareModalBackdrop.classList.contains('hide')) &&
+        (!categoryModalBackdrop || categoryModalBackdrop.classList.contains('hide'))
       ) {
         enableDetailBackgroundScroll();
       }
@@ -1547,57 +1592,111 @@
     window.addEventListener('popstate', maybeResetBodyScroll);
 
     const searchInput = document.getElementById('productSearch');
-    
-    // --- FIX: SEARCH STATE LOGIC ---
     let isSearchState = false;
     searchInput.addEventListener('input', function(){ 
         const hasText = (this.value || '').trim().length > 0;
-        
-        // If typing starts, push a state so back button clears it
         if(hasText && !isSearchState) {
-             try {
-                history.pushState({search: true}, document.title, window.location.href);
-                isSearchState = true;
-             } catch(e) {}
+             try { history.pushState({search: true}, document.title, window.location.href); isSearchState = true; } catch(e) {}
         }
         refreshProductList(); 
     });
-    
     searchInput.addEventListener('keydown', function(e){ if(e.key==='Escape'){ searchInput.value=''; refreshProductList(); } });
 
-    // OPTIMIZED: Updated Search Logic (Multi-term) and Rendering (DocumentFragment)
+    // --- NEW: CATEGORY BUTTON & MODAL LOGIC ---
+    const categoryBtn = document.getElementById('categoryFilterBtn');
+    const categoryModalBackdrop = document.getElementById('categoryModalBackdrop');
+    const categoryGrid = document.getElementById('categoryGrid');
+    const closeCategoryBtn = document.getElementById('closeCategoryBtn');
+    const activeCategoryDisplay = document.getElementById('activeCategoryDisplay');
+
+    categoryBtn.onclick = function() {
+        const uniqueCategories = [...new Set(products.map(p => p.category ? p.category.trim() : "").filter(c => c))];
+        uniqueCategories.sort();
+        
+        let html = `<div class="category-item-btn ${activeCategoryFilter === null ? 'active' : ''}" onclick="selectCategory(null)">All Categories</div>`;
+        uniqueCategories.forEach(cat => {
+            const isActive = activeCategoryFilter === cat ? 'active' : '';
+            html += `<div class="category-item-btn ${isActive}" onclick="selectCategory('${escapeHTML(cat)}')">${escapeHTML(cat)}</div>`;
+        });
+        
+        categoryGrid.innerHTML = html;
+        categoryModalBackdrop.classList.remove('hide');
+    };
+
+    closeCategoryBtn.onclick = function() { categoryModalBackdrop.classList.add('hide'); };
+
+    window.selectCategory = function(cat) {
+        activeCategoryFilter = cat; // null means 'All'
+        categoryModalBackdrop.classList.add('hide');
+        refreshProductList();
+        
+        // Push state so back button works to clear filter
+        if(activeCategoryFilter) {
+            try { history.pushState({category: true}, document.title, window.location.href); } catch(e){}
+        }
+    };
+
+    activeCategoryDisplay.onclick = function() {
+        activeCategoryFilter = null;
+        refreshProductList();
+    };
+
+    // --- REFRESH LIST: SORTING & GROUPING ---
     function refreshProductList() {
       loadProducts();
       productListElem.innerHTML = '';
       let q = (searchInput.value || '').trim().toLowerCase();
-      
-      // Smart Search: Split query into terms (e.g. "sam 128" -> ["sam", "128"])
       const terms = q.split(/\s+/).filter(t => t.length > 0);
       
       let filtered = products;
+
+      // 1. Apply Search
       if (terms.length > 0) {
           filtered = products.filter(prod => {
-             const searchString = (
-                 (prod.name || "") + " " + 
-                 (prod.category || "") + " " + 
-                 (prod.notes || "")
-             ).toLowerCase();
-             
-             // Check if ALL terms are present
+             const searchString = ((prod.name || "") + " " + (prod.category || "") + " " + (prod.notes || "")).toLowerCase();
              return terms.every(term => searchString.includes(term));
           });
       }
+
+      // 2. Apply Category Filter
+      if (activeCategoryFilter) {
+          filtered = filtered.filter(p => (p.category || '').trim() === activeCategoryFilter);
+          activeCategoryDisplay.textContent = `Filtered by: ${activeCategoryFilter} ✖`;
+          activeCategoryDisplay.classList.add('show');
+      } else {
+          activeCategoryDisplay.classList.remove('show');
+      }
       
-      // Store current filter for "Select All" Logic
       currentFilteredProducts = filtered;
 
       if (!filtered.length) { noProductsElem.style.display = ""; document.getElementById('multiSelectControls').classList.remove('active'); return; }
       noProductsElem.style.display = "none";
-      filtered.sort((a,b) => (Number(b.qty)-Number(a.qty)) || (String(a.name||'').localeCompare(String(b.name||''))));
       
-      // Performance: Use DocumentFragment
+      // 3. Sort: Category (A-Z) -> Name (A-Z)
+      filtered.sort((a,b) => {
+          const catA = (a.category || '').trim().toLowerCase();
+          const catB = (b.category || '').trim().toLowerCase();
+          if (catA < catB) return -1;
+          if (catA > catB) return 1;
+          return (a.name || '').localeCompare(b.name || '');
+      });
+      
       const fragment = document.createDocumentFragment();
+      let lastCategory = "@@INIT@@";
+
       filtered.forEach((prod,i) => {
+          // 4. Inject Category Header
+          const currentCat = (prod.category || '').trim();
+          const displayCat = currentCat || "Uncategorized";
+          
+          if (displayCat.toLowerCase() !== lastCategory.toLowerCase()) {
+              const header = document.createElement('div');
+              header.className = 'category-header';
+              header.textContent = `--- ${displayCat} ---`;
+              fragment.appendChild(header);
+              lastCategory = displayCat;
+          }
+
           fragment.appendChild(createProductCard(prod,i));
       });
       productListElem.appendChild(fragment);
@@ -1669,7 +1768,7 @@
       productModal.reset(); modalError.textContent = ''; prodPhotoFileName.textContent = ''; uploadBtnInnerText.textContent = 'Choose Image'; currentProductPhotoDataUrl = null; imageCompressMsg.style.display = 'none'; updatePhotoPreviewUI();
       if (mode === 'add') {
         modalTitle.textContent = "Add Product"; productEditing = null;
-        prodName.value = ""; prodMrp.value = ""; prodCost.value = ""; prodQty.value = ""; prodCategory.value = ""; prodNotes.value = ""; prodPhoto.value = "";
+        prodName.value = ""; prodMrp.value = ""; prodCost.value = ""; prodQty.value = ""; prodCategory.value = activeCategoryFilter || ""; prodNotes.value = ""; prodPhoto.value = "";
       } else {
         modalTitle.textContent = "Edit Product"; productEditing = product;
         prodName.value = product.name || ""; prodMrp.value = product.mrp !== undefined ? product.mrp : ""; prodCost.value = product.cost !== undefined ? product.cost : ""; prodQty.value = product.qty !== undefined ? product.qty : ""; prodCategory.value = product.category || ""; prodNotes.value = product.notes || ""; prodPhoto.value = "";
@@ -1687,7 +1786,6 @@
     prodPhoto.addEventListener('change', function () {
       if (prodPhoto.files && prodPhoto.files.length) {
         const file = prodPhoto.files[0]; prodPhotoFileName.textContent = file.name; uploadBtnInnerText.textContent = "Image Selected"; imageCompressMsg.textContent = "Compressing image..."; imageCompressMsg.style.display = 'block';
-        // UPDATED: Increased max dimension to 800 and quality to 0.82
         const filePromise = compressImageFile(file, 800, 0.82).then(dataUrl => {
           const kb = Math.round((dataUrl.length * 3 / 4) / 1024); currentProductPhotoDataUrl = dataUrl; updatePhotoPreviewUI();
           imageCompressMsg.textContent = `Photo compressed: ~${kb} KB (max 800px, JPEG)`; imageCompressMsg.style.display = 'block';
@@ -1739,26 +1837,15 @@
      ****************************************************************/
     document.getElementById('exportBtn').onclick = function() {
       const now = new Date();
-      // Format filename: dealer-backup-YYYY-MM-DD_HH-MM.json
       const dateStr = now.toISOString().slice(0,10);
       const timeStr = now.toTimeString().slice(0,5).replace(':','-');
       const filename = `dealer-backup-${dateStr}_${timeStr}.json`;
-
       const dataStr = JSON.stringify(products || [], null, 2);
       const blob = new Blob([dataStr], {type:"application/json"});
       const url = URL.createObjectURL(blob);
-      
-      const a = document.createElement('a'); 
-      a.style.display='none'; 
-      a.href = url; 
-      a.download = filename; 
-      document.body.appendChild(a); 
-      a.click(); 
-      URL.revokeObjectURL(url); 
-      setTimeout(()=>{ document.body.removeChild(a); }, 200);
+      const a = document.createElement('a'); a.style.display='none'; a.href = url; a.download = filename; document.body.appendChild(a); a.click(); URL.revokeObjectURL(url); setTimeout(()=>{ document.body.removeChild(a); }, 200);
     };
 
-    // Trigger Hidden Input
     document.getElementById('importBtn').onclick = function () { 
         let fileInput = document.getElementById('hiddenImport'); 
         if (fileInput) fileInput.value = ''; 
@@ -1770,89 +1857,39 @@
       if (!fileInput.files || !fileInput.files.length) return;
       const file = fileInput.files[0];
 
-      if (!(file && (file.type === 'application/json' || /\.json$/i.test(file.name)))) { 
-          alert('Please select a valid .json backup file.'); 
-          return; 
-      }
+      if (!(file && (file.type === 'application/json' || /\.json$/i.test(file.name)))) { alert('Please select a valid .json backup file.'); return; }
 
       try {
         let text = await file.text();
         let importedArr = JSON.parse(text); 
-        
         if (!Array.isArray(importedArr)) throw new Error('Invalid file format. Data must be an array.');
-        
-        // Filter out garbage data
         importedArr = importedArr.filter(p => p && typeof p === 'object' && p.name);
-        
         if (!importedArr.length) throw new Error('No valid products found in this file.');
 
-        // --- ASK THE USER WHAT TO DO ---
-        const userWantsToMerge = confirm(
-            `Found ${importedArr.length} products in file.\n\n` +
-            `• Click [OK] to MERGE.\n(Adds new items and updates existing ones. Safe.)\n\n` +
-            `• Click [Cancel] to REPLACE.\n(Deletes everything currently in app and restores backup.)`
-        );
+        const userWantsToMerge = confirm(`Found ${importedArr.length} products in file.\n\n• Click [OK] to MERGE.\n(Adds new items and updates existing ones. Safe.)\n\n• Click [Cancel] to REPLACE.\n(Deletes everything currently in app and restores backup.)`);
 
         if (userWantsToMerge) {
-            // === MERGE LOGIC ===
             const productMap = new Map();
-            
-            // 1. Put current products into a Map (ID -> Product)
             products.forEach(p => productMap.set(p.id, p));
-            
             let addedCount = 0;
             let updatedCount = 0;
-            
-            // 2. Loop through imported items
             importedArr.forEach(p => {
-                // If product has no ID, generate one
                 if (!p.id) p.id = genID();
-
-                if (productMap.has(p.id)) {
-                    // Item exists: Update it with new data
-                    productMap.set(p.id, p); 
-                    updatedCount++;
-                } else {
-                    // Item is new: Add it
-                    productMap.set(p.id, p);
-                    addedCount++;
-                }
+                if (productMap.has(p.id)) { productMap.set(p.id, p); updatedCount++; } else { productMap.set(p.id, p); addedCount++; }
             });
-            
-            // 3. Convert Map back to Array
             products = Array.from(productMap.values());
             alert(`Import Successful!\n\n🆕 Added: ${addedCount}\n🔄 Updated: ${updatedCount}`);
-
         } else {
-            // === REPLACE LOGIC ===
-            // Double check before deleting data
-            if(!confirm("⚠️ WARNING: This will DELETE all current products and replace them with the backup.\n\nAre you sure?")) {
-                return; // User cancelled
-            }
-            
-            // Replace array entirely
+            if(!confirm("⚠️ WARNING: This will DELETE all current products and replace them with the backup.\n\nAre you sure?")) { return; }
             products = importedArr;
-            
-            // Ensure all imported items have IDs
-            products.forEach(p => {
-                 if(!p.id) p.id = genID();
-            });
+            products.forEach(p => { if(!p.id) p.id = genID(); });
             alert(`Restore Successful! App now has ${products.length} products.`);
         }
-
-        // Save and Refresh UI
-        saveProducts(); 
-        refreshProductList(); 
-        selectedProductIds.clear(); 
-        updateMultiSelectControls(); 
-
-      } catch (ex) { 
-          alert("Failed to import: " + (ex.message || ex)); 
-      }
+        saveProducts(); selectedProductIds.clear(); updateMultiSelectControls(); 
+      } catch (ex) { alert("Failed to import: " + (ex.message || ex)); }
     };
 
     window.addEventListener('load', function() { loadProducts(); });
-    
     
     /****************************************************************
      * SHARE / PDF LOGIC
@@ -1862,7 +1899,6 @@
     const generatePdfBtn = document.getElementById('generatePdfBtn');
     const shareSubtitle = document.getElementById('shareSubtitle');
     
-    // Checkboxes
     const chkPhoto = document.getElementById('sharePhoto');
     const chkMrp = document.getElementById('shareMrp');
     const chkCost = document.getElementById('shareCost');
@@ -1870,7 +1906,6 @@
     const chkCategory = document.getElementById('shareCategory');
     const chkNotes = document.getElementById('shareNotes');
     
-    // Updated: Now accepts array of products
     let productsToShareQueue = [];
     
     function openShareModal(product, list = null) {
@@ -1881,27 +1916,15 @@
             productsToShareQueue = [product];
             shareSubtitle.textContent = "Select fields to include in the generated PDF/Print.";
         }
-
-        // Set defaults
-        chkPhoto.checked = true;
-        chkMrp.checked = true;
-        chkCost.checked = false; // Hide cost by default
-        chkQty.checked = true;
-        chkCategory.checked = true;
-        chkNotes.checked = true;
-        
+        chkPhoto.checked = true; chkMrp.checked = true; chkCost.checked = false; chkQty.checked = true; chkCategory.checked = true; chkNotes.checked = true;
         shareModalBackdrop.classList.remove('hide');
     }
-    
     closeShareBtn.onclick = () => { shareModalBackdrop.classList.add('hide'); productsToShareQueue = []; };
     
     generatePdfBtn.onclick = function() {
         if(productsToShareQueue.length === 0) return;
-        
         const printableArea = document.getElementById('printableArea');
         let fullHtml = '';
-
-        // Generate HTML for ALL selected products
         productsToShareQueue.forEach(prod => {
             let html = `
                 <div class="print-product-page">
@@ -1911,60 +1934,22 @@
                         <div style="font-size:14px;color:#555">Product Specification Sheet</div>
                         <div style="font-size:12px;color:#777">Generated: ${new Date().toLocaleDateString()}</div>
                     </div>
-                    
                     <h1 style="text-align:center;margin-top:20px;">${escapeHTML(prod.name)}</h1>
             `;
-            
-            if(chkPhoto.checked && prod.photo) {
-                html += `<img src="${prod.photo}" class="print-product-img" />`;
-            }
-            
+            if(chkPhoto.checked && prod.photo) { html += `<img src="${prod.photo}" class="print-product-img" />`; }
             html += `<table class="print-details-table"><tbody>`;
-            
-            if(chkCategory.checked && prod.category) {
-                html += `<tr><td class="print-label">Category</td><td>${escapeHTML(prod.category)}</td></tr>`;
-            }
-            
-            if(chkQty.checked) {
-                html += `<tr><td class="print-label">In Stock</td><td>${prod.qty}</td></tr>`;
-            }
-            
-            if(chkMrp.checked) {
-                html += `<tr><td class="print-label">Price (MRP)</td><td>₨ ${Number(prod.mrp).toLocaleString()}</td></tr>`;
-            }
-            
-            if(chkCost.checked && prod.cost !== null && prod.cost !== undefined) {
-                 html += `<tr><td class="print-label">Cost Price</td><td>₨ ${Number(prod.cost).toLocaleString()}</td></tr>`;
-            }
-            
+            if(chkCategory.checked && prod.category) { html += `<tr><td class="print-label">Category</td><td>${escapeHTML(prod.category)}</td></tr>`; }
+            if(chkQty.checked) { html += `<tr><td class="print-label">In Stock</td><td>${prod.qty}</td></tr>`; }
+            if(chkMrp.checked) { html += `<tr><td class="print-label">Price (MRP)</td><td>₨ ${Number(prod.mrp).toLocaleString()}</td></tr>`; }
+            if(chkCost.checked && prod.cost !== null && prod.cost !== undefined) { html += `<tr><td class="print-label">Cost Price</td><td>₨ ${Number(prod.cost).toLocaleString()}</td></tr>`; }
             html += `</tbody></table>`;
-            
-            if(chkNotes.checked && prod.notes) {
-                html += `
-                    <div class="print-notes-box">
-                        <strong>Notes:</strong><br/>
-                        ${escapeHTML(prod.notes)}
-                    </div>
-                `;
-            }
-            
-            html += `
-                    <div style="text-align:center; margin-top:50px; font-size:12px; color:#888;">
-                        Thank you for your interest.For any detail contact on this Phone number:0300-3685270
-                    </div>
-                </div> `;
+            if(chkNotes.checked && prod.notes) { html += `<div class="print-notes-box"><strong>Notes:</strong><br/>${escapeHTML(prod.notes)}</div>`; }
+            html += `<div style="text-align:center; margin-top:50px; font-size:12px; color:#888;">Thank you for your interest.For any detail contact on this Phone number:0300-3685270</div></div>`;
             fullHtml += html;
         });
-
         printableArea.innerHTML = fullHtml;
-        
-        // Close modal and Print
         shareModalBackdrop.classList.add('hide');
-        setTimeout(() => {
-            window.print();
-            // Clear queue after printing
-            productsToShareQueue = [];
-        }, 300);
+        setTimeout(() => { window.print(); productsToShareQueue = []; }, 300);
     };
 
   </script>
