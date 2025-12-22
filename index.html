@@ -1174,6 +1174,7 @@
     });
 
     (function handleAndroidBackButton() {
+      let isHandlerAttached = false; // FIX: Prevents duplicate listener attachment
       let openedModals = [];
       const modalPriority = ['imageViewerOverlay', 'productModalBackdrop', 'deleteModalBackdrop', 'settingsBackdrop', 'detailModalBackdrop', 'shareModalBackdrop', 'categoryModalBackdrop'];
 
@@ -1239,7 +1240,14 @@
           observer.observe(el, { attributes: true, attributeFilter: ['class'] });
         });
       }
-      window.__enablePwaBackHandler = function() { enablePwaBackHandler(); setupModalHistoryTracking(); };
+      
+      // FIX: Check if already attached before running
+      window.__enablePwaBackHandler = function() { 
+          if(isHandlerAttached) return;
+          isHandlerAttached = true;
+          enablePwaBackHandler(); 
+          setupModalHistoryTracking(); 
+      };
     })();
 
     async function hashPIN(pin) {
