@@ -542,7 +542,7 @@
     #imageViewerClose:hover { background: rgba(255,255,255,0.25); }
     @keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
 
-    /* --- SCANNER OVERLAY --- */
+    /* --- SCANNER OVERLAY (REBUILT FOR HD & ZOOM) --- */
     #scannerOverlay {
         position: fixed;
         inset: 0;
@@ -554,22 +554,34 @@
         align-items: center;
     }
     #scannerOverlay.show { display: flex; }
+    
     #scannerVideo {
         width: 100%;
         height: 100%;
         object-fit: cover;
     }
-    #scannerUI {
+    
+    /* Overlay UI for Zoom/Controls */
+    .scanner-controls {
         position: absolute;
         bottom: 40px;
-        left: 0;
-        right: 0;
+        left: 20px;
+        right: 20px;
         display: flex;
-        justify-content: center;
-        gap: 20px;
-        z-index: 9001;
+        flex-direction: column;
+        gap: 15px;
+        z-index: 9002;
+        align-items: center;
     }
-    #closeScannerBtn {
+    
+    .scanner-btn-row {
+        display: flex;
+        gap: 15px;
+        width: 100%;
+        justify-content: center;
+    }
+    
+    #closeScannerBtn, #toggleTorchBtn {
         background: rgba(255, 255, 255, 0.2);
         color: white;
         border: 1px solid rgba(255,255,255,0.4);
@@ -577,19 +589,52 @@
         border-radius: 30px;
         font-weight: bold;
         backdrop-filter: blur(5px);
+        font-size: 1em;
+        min-width: 120px;
     }
+    
+    /* Zoom Slider */
+    .zoom-control {
+        width: 100%;
+        max-width: 300px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: rgba(0,0,0,0.5);
+        padding: 8px 15px;
+        border-radius: 20px;
+        display: none; /* Hidden by default until we check capability */
+    }
+    .zoom-control span { color: white; font-weight: bold; font-size: 0.9em; }
+    input[type=range] { flex: 1; accent-color: var(--accent2); cursor: pointer; }
+
     .scanner-guide {
         position: absolute;
-        top: 50%;
+        top: 45%;
         left: 50%;
         transform: translate(-50%, -50%);
-        width: 70%;
-        height: 30%;
-        border: 2px solid rgba(6, 182, 212, 0.6);
+        width: 75%;
+        height: 25%;
+        border: 2px solid rgba(6, 182, 212, 0.8);
         border-radius: 12px;
-        box-shadow: 0 0 0 4000px rgba(0,0,0,0.5);
+        box-shadow: 0 0 0 4000px rgba(0,0,0,0.6);
         pointer-events: none;
+        z-index: 9001;
     }
+    
+    .scan-feedback {
+        position: absolute;
+        top: 38%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: var(--accent2);
+        font-weight: 800;
+        font-size: 1.1em;
+        text-shadow: 0 2px 4px black;
+        z-index: 9005;
+        animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse { 0%{opacity:0.6;} 50%{opacity:1;} 100%{opacity:0.6;} }
 
     /* --- PRINTING STYLES (PDF Generation) --- */
     #printableArea {
@@ -747,9 +792,18 @@
 
   <div id="scannerOverlay">
       <video id="scannerVideo" autoplay playsinline muted></video>
+      <div class="scan-feedback">Scanning...</div>
       <div class="scanner-guide"></div>
-      <div id="scannerUI">
-          <button id="closeScannerBtn">Cancel Scan</button>
+      
+      <div class="scanner-controls">
+          <div class="zoom-control" id="zoomControl">
+              <span>Zoom:</span>
+              <input type="range" id="zoomSlider" min="1" max="5" step="0.1" value="1">
+          </div>
+          <div class="scanner-btn-row">
+              <button id="toggleTorchBtn" style="display:none;">🔦 Torch</button>
+              <button id="closeScannerBtn">Cancel</button>
+          </div>
       </div>
   </div>
 
@@ -2313,33 +2367,39 @@
     };
 
     /****************************************************************
-     * FIX NO 3: BARCODE SCANNER LOGIC (Native API) - REVISED
+     * FIX NO 3: SUPER SCANNER LOGIC (Native API + Zoom + Torch)
      ****************************************************************/
     const scanSearchBtn = document.getElementById('scanSearchBtn');
     const scanModalBtn = document.getElementById('scanModalBtn');
     const scannerOverlay = document.getElementById('scannerOverlay');
     const scannerVideo = document.getElementById('scannerVideo');
     const closeScannerBtn = document.getElementById('closeScannerBtn');
+    const zoomControl = document.getElementById('zoomControl');
+    const zoomSlider = document.getElementById('zoomSlider');
+    const toggleTorchBtn = document.getElementById('toggleTorchBtn');
     
     let scannerStream = null;
     let scannerInterval = null;
-    let activeScanTarget = null; // 'search' or 'modal'
+    let activeScanTarget = null;
+    let videoTrack = null;
+    let imageCapture = null;
 
     async function startScanner(target) {
         if (!('BarcodeDetector' in window)) {
-            alert("Barcode scanning is not supported on this device/browser. Please type manually.");
+            alert("Your browser does not support native Barcode Detection. Please type manually.");
             return;
         }
 
-        activeScanTarget = target; // Remember where to put the result
+        activeScanTarget = target;
 
         try {
-            // FIX: Request HD Resolution (1080p) to read thin/long barcodes
+            // 1. Ask for High Resolution (1080p) to see thin lines
             const constraints = {
                 video: { 
                     facingMode: { ideal: "environment" },
-                    width: { ideal: 1920 }, // Try for Full HD
-                    height: { ideal: 1080 } 
+                    width: { ideal: 1920 },
+                    height: { ideal: 1080 },
+                    focusMode: { ideal: "continuous" }
                 },
                 audio: false
             };
@@ -2349,24 +2409,42 @@
             scannerVideo.srcObject = stream;
             scannerOverlay.classList.add('show');
             
-            // FIX: Try to enable continuous autofocus if supported
-            const track = stream.getVideoTracks()[0];
-            const capabilities = track.getCapabilities();
-            if (capabilities.focusMode && capabilities.focusMode.includes('continuous')) {
-                try {
-                    await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
-                } catch(e) { console.log("Autofocus not supported/failed", e); }
+            videoTrack = stream.getVideoTracks()[0];
+            const capabilities = videoTrack.getCapabilities();
+
+            // 2. ENABLE ZOOM (If supported)
+            if (capabilities.zoom) {
+                zoomControl.style.display = 'flex';
+                zoomSlider.min = capabilities.zoom.min;
+                zoomSlider.max = capabilities.zoom.max;
+                zoomSlider.step = capabilities.zoom.step;
+                zoomSlider.value = 1; // Start at 1x
+                
+                zoomSlider.oninput = async () => {
+                    await videoTrack.applyConstraints({ advanced: [{ zoom: zoomSlider.value }] });
+                };
+            } else {
+                zoomControl.style.display = 'none';
             }
 
-            // FIX: Support ALL barcode formats (Code 128, ITF, Codabar, etc.)
-            const barcodeDetector = new BarcodeDetector({ 
-                formats: [
-                    'aztec', 'code_128', 'code_39', 'code_93', 'codabar', 
-                    'data_matrix', 'ean_13', 'ean_8', 'itf', 'pdf417', 
-                    'qr_code', 'upc_a', 'upc_e'
-                ] 
-            });
+            // 3. ENABLE TORCH (If supported)
+            if (capabilities.torch) {
+                toggleTorchBtn.style.display = 'block';
+                let torchState = false;
+                toggleTorchBtn.onclick = async () => {
+                    torchState = !torchState;
+                    await videoTrack.applyConstraints({ advanced: [{ torch: torchState }] });
+                    toggleTorchBtn.style.background = torchState ? 'rgba(6, 182, 212, 0.6)' : 'rgba(255,255,255,0.2)';
+                };
+            } else {
+                toggleTorchBtn.style.display = 'none';
+            }
 
+            // 4. DETECT SUPPORTED FORMATS
+            const supportedFormats = await BarcodeDetector.getSupportedFormats();
+            const barcodeDetector = new BarcodeDetector({ formats: supportedFormats });
+
+            // 5. SCAN LOOP
             scannerInterval = setInterval(async () => {
                 if (!scannerVideo.videoWidth) return;
                 try {
@@ -2375,14 +2453,13 @@
                         const code = barcodes[0].rawValue;
                         stopScanner();
                         
-                        // Handle the scanned code based on target
                         if (activeScanTarget === 'search') {
                              searchInput.value = code;
-                             searchInput.dispatchEvent(new Event('input')); // Trigger search
+                             searchInput.dispatchEvent(new Event('input'));
                         } else if (activeScanTarget === 'modal') {
-                             // CHANGED LOGIC: APPEND instead of REPLACE
+                             const prodBarcode = document.getElementById('prodBarcode');
+                             // Append Logic: "123, 456"
                              if(prodBarcode.value) {
-                                 // Check if already exists to avoid duplicates
                                  if(!prodBarcode.value.includes(code)) {
                                      prodBarcode.value += ", " + code;
                                  }
@@ -2391,24 +2468,25 @@
                              }
                         }
 
-                        // Optional: Vibration feedback
                         if (navigator.vibrate) navigator.vibrate(50);
                     }
                 } catch (err) {
                     // console.error(err);
                 }
-            }, 300); // Check faster (every 300ms)
+            }, 250); // Check every 250ms
 
         } catch (err) {
             console.error(err);
-            alert("Camera access denied or error starting scanner.");
+            alert("Camera error: " + err.message);
             stopScanner();
         }
     }
 
     function stopScanner() {
         if (scannerStream) {
-            scannerStream.getTracks().forEach(track => track.stop());
+            scannerStream.getTracks().forEach(track => {
+                track.stop();
+            });
             scannerStream = null;
         }
         if (scannerInterval) {
@@ -2417,6 +2495,7 @@
         }
         scannerOverlay.classList.remove('show');
         activeScanTarget = null;
+        videoTrack = null;
     }
 
     scanSearchBtn.onclick = () => startScanner('search');
