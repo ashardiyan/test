@@ -2239,7 +2239,7 @@
     let firstSubmitAttempt = true;
     let prodPhotoLastPendingPromise = null;
 
-    // --- SHARED IMAGE HANDLER FOR BOTH BUTTONS ---
+    // --- SHARED IMAGE HANDLER FOR BOTH BUTTON ---
     function handleImageSelection(file) {
         if(!file) return;
         prodPhotoFileName.textContent = file.name; 
@@ -2524,19 +2524,23 @@
     scanConfirmBtn.onclick = () => {
         if(!currentScannedCode) return;
         
+        // --- THE FIX IS HERE: CAPTURE TARGET BEFORE CLOSING ---
+        const target = activeScanTarget; // Save the target because stopScanner() clears it
+        const code = currentScannedCode;
+        
         stopScanner();
         
-        if (activeScanTarget === 'search') {
-             searchInput.value = currentScannedCode;
+        if (target === 'search') {
+             searchInput.value = code;
              searchInput.dispatchEvent(new Event('input'));
-        } else if (activeScanTarget === 'modal') {
+        } else if (target === 'modal') {
              const prodBarcode = document.getElementById('prodBarcode');
              if(prodBarcode.value) {
-                 if(!prodBarcode.value.includes(currentScannedCode)) {
-                     prodBarcode.value += ", " + currentScannedCode;
+                 if(!prodBarcode.value.includes(code)) {
+                     prodBarcode.value += ", " + code;
                  }
              } else {
-                 prodBarcode.value = currentScannedCode;
+                 prodBarcode.value = code;
              }
         }
     };
