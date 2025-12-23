@@ -1272,7 +1272,7 @@
     }
 
     /****************************************************************
-     * Service Worker & PWA
+     * Service Worker & PWA (Offline Logic)
      ****************************************************************/
     (function createManifestAndServiceWorker() {
       const imgIcon = "https://github.com/ashardiyan/test/blob/main/Al%20Rahman%20Electronics-02.png?raw=true";
@@ -1295,26 +1295,42 @@
       })();
 
       const swScript = `
-        const CACHE_NAME = 'local-dealer-cache-v14';
+        const CACHE_NAME = 'local-dealer-cache-v15';
         const OFFLINE_URL = self.registration.scope.endsWith('/') ? self.registration.scope + 'index.html' : self.registration.scope + '/index.html';
         const FILES_TO_CACHE = [ OFFLINE_URL, './index.html' ];
-        self.addEventListener('install', function(event) { event.waitUntil(caches.open(CACHE_NAME).then(function(cache) { return cache.addAll(FILES_TO_CACHE); })); self.skipWaiting(); });
-        self.addEventListener('activate', function(event) { event.waitUntil(self.clients.claim()); });
+        
+        self.addEventListener('install', function(event) { 
+            event.waitUntil(caches.open(CACHE_NAME).then(function(cache) { return cache.addAll(FILES_TO_CACHE); })); 
+            self.skipWaiting(); 
+        });
+        
+        self.addEventListener('activate', function(event) { 
+            event.waitUntil(self.clients.claim()); 
+        });
+        
+        // NETWORK FIRST, FALLBACK TO CACHE
         self.addEventListener('fetch', function(event) {
           if (event.request.method !== 'GET') return;
-          event.respondWith(caches.match(event.request, {ignoreSearch:true}).then(function(response) {
-              if (response) return response;
-              return fetch(event.request).then(function(resp) {
-                if (resp && resp.status === 200 && resp.type === 'basic' && /\.(html|js|css|png|jpg|jpeg|svg|woff2?|json)$/i.test(event.request.url)) {
-                  const respClone = resp.clone();
-                  caches.open(CACHE_NAME).then(function(cache) { cache.put(event.request, respClone); });
+          
+          event.respondWith(
+            fetch(event.request)
+              .then(function(response) {
+                // Online: Return response and update cache
+                if (!response || response.status !== 200 || response.type !== 'basic') {
+                    return response;
                 }
-                return resp;
-              }).catch(function() {
-                if (event.request.mode === 'navigate' || event.request.destination === 'document') return caches.match(OFFLINE_URL);
-                return undefined;
-              });
-            })
+                const resClone = response.clone();
+                caches.open(CACHE_NAME).then(cache => cache.put(event.request, resClone));
+                return response;
+              })
+              .catch(function() {
+                // Offline: Return cached version
+                return caches.match(event.request).then(function(response) {
+                    if (response) return response;
+                    // Fallback for navigation
+                    if (event.request.mode === 'navigate') return caches.match(OFFLINE_URL);
+                });
+              })
           );
         });
       `;
