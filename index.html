@@ -1129,8 +1129,7 @@
         }
       });
     })();
-  </script>
-  <script>
+  
     /****************************************************************
      * Keep-logged-in authentication logic
      ****************************************************************/
@@ -2314,7 +2313,7 @@
     };
 
     /****************************************************************
-     * FIX NO 3: BARCODE SCANNER LOGIC (Native API)
+     * FIX NO 3: BARCODE SCANNER LOGIC (Native API) - REVISED
      ****************************************************************/
     const scanSearchBtn = document.getElementById('scanSearchBtn');
     const scanModalBtn = document.getElementById('scanModalBtn');
@@ -2335,15 +2334,38 @@
         activeScanTarget = target; // Remember where to put the result
 
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: { ideal: "environment" } },
+            // FIX: Request HD Resolution (1080p) to read thin/long barcodes
+            const constraints = {
+                video: { 
+                    facingMode: { ideal: "environment" },
+                    width: { ideal: 1920 }, // Try for Full HD
+                    height: { ideal: 1080 } 
+                },
                 audio: false
-            });
+            };
+
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
             scannerStream = stream;
             scannerVideo.srcObject = stream;
             scannerOverlay.classList.add('show');
             
-            const barcodeDetector = new BarcodeDetector({ formats: ['qr_code', 'ean_13', 'ean_8', 'code_128', 'code_39', 'upc_a', 'upc_e'] });
+            // FIX: Try to enable continuous autofocus if supported
+            const track = stream.getVideoTracks()[0];
+            const capabilities = track.getCapabilities();
+            if (capabilities.focusMode && capabilities.focusMode.includes('continuous')) {
+                try {
+                    await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
+                } catch(e) { console.log("Autofocus not supported/failed", e); }
+            }
+
+            // FIX: Support ALL barcode formats (Code 128, ITF, Codabar, etc.)
+            const barcodeDetector = new BarcodeDetector({ 
+                formats: [
+                    'aztec', 'code_128', 'code_39', 'code_93', 'codabar', 
+                    'data_matrix', 'ean_13', 'ean_8', 'itf', 'pdf417', 
+                    'qr_code', 'upc_a', 'upc_e'
+                ] 
+            });
 
             scannerInterval = setInterval(async () => {
                 if (!scannerVideo.videoWidth) return;
@@ -2375,7 +2397,7 @@
                 } catch (err) {
                     // console.error(err);
                 }
-            }, 500);
+            }, 300); // Check faster (every 300ms)
 
         } catch (err) {
             console.error(err);
