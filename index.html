@@ -633,13 +633,13 @@
         padding: 20px;
     }
     .scan-code-display {
-        font-size: 1.5em;
+        font-size: 1.2em; /* Made smaller as requested */
         font-weight: 800;
         color: var(--accent2);
         background: #1e2530;
-        padding: 20px;
+        padding: 15px 20px;
         border-radius: 12px;
-        margin-bottom: 30px;
+        margin-bottom: 25px;
         text-align: center;
         border: 2px solid var(--accent);
         word-break: break-all;
@@ -650,9 +650,9 @@
         gap: 20px;
     }
     .scan-action-btns button {
-        min-width: 120px;
-        padding: 12px 24px;
-        font-size: 1.1em;
+        min-width: 110px;
+        padding: 12px 20px;
+        font-size: 1em;
     }
 
     /* --- PRINTING STYLES (PDF Generation) --- */
@@ -2239,7 +2239,7 @@
     let firstSubmitAttempt = true;
     let prodPhotoLastPendingPromise = null;
 
-    // --- SHARED IMAGE HANDLER FOR BOTH BUTTON ---
+    // --- SHARED IMAGE HANDLER FOR BOTH BUTTONS ---
     function handleImageSelection(file) {
         if(!file) return;
         prodPhotoFileName.textContent = file.name; 
@@ -2492,12 +2492,22 @@
             try {
                 const barcodes = await detector.detect(scannerVideo);
                 if (barcodes.length > 0) {
+                    const code = barcodes[0].rawValue;
+                    currentScannedCode = code;
+
+                    // DIRECT ACTION FOR SEARCH (No Confirmation)
+                    if (activeScanTarget === 'search') {
+                        stopScanner();
+                        searchInput.value = code;
+                        searchInput.dispatchEvent(new Event('input'));
+                        if (navigator.vibrate) navigator.vibrate(50);
+                        return;
+                    }
+
+                    // CONFIRMATION FOR ADD/EDIT (Modal)
                     // PAUSE Scanning
                     clearInterval(scannerInterval);
                     scannerInterval = null; 
-                    
-                    const code = barcodes[0].rawValue;
-                    currentScannedCode = code;
                     
                     // Show Confirmation UI
                     scannedCodeDisplay.textContent = code;
@@ -2524,7 +2534,7 @@
     scanConfirmBtn.onclick = () => {
         if(!currentScannedCode) return;
         
-        // --- THE FIX IS HERE: CAPTURE TARGET BEFORE CLOSING ---
+        // --- FIXED: CAPTURE TARGET BEFORE CLOSING ---
         const target = activeScanTarget; // Save the target because stopScanner() clears it
         const code = currentScannedCode;
         
