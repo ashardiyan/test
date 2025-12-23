@@ -98,7 +98,7 @@
       position: absolute;
       right: 8px;
       top: 50%;
-      transform: translateY(-60%); /* Slight adjustment for alignment */
+      transform: translateY(-60%);
       background: none;
       border: none;
       color: var(--accent2);
@@ -542,7 +542,7 @@
     #imageViewerClose:hover { background: rgba(255,255,255,0.25); }
     @keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
 
-    /* --- SCANNER OVERLAY (REBUILT FOR HD & ZOOM) --- */
+    /* --- SCANNER OVERLAY & CONFIRMATION UI --- */
     #scannerOverlay {
         position: fixed;
         inset: 0;
@@ -561,7 +561,6 @@
         object-fit: cover;
     }
     
-    /* Overlay UI for Zoom/Controls */
     .scanner-controls {
         position: absolute;
         bottom: 40px;
@@ -590,10 +589,9 @@
         font-weight: bold;
         backdrop-filter: blur(5px);
         font-size: 1em;
-        min-width: 120px;
+        min-width: 100px;
     }
     
-    /* Zoom Slider */
     .zoom-control {
         width: 100%;
         max-width: 300px;
@@ -603,7 +601,7 @@
         background: rgba(0,0,0,0.5);
         padding: 8px 15px;
         border-radius: 20px;
-        display: none; /* Hidden by default until we check capability */
+        display: none; 
     }
     .zoom-control span { color: white; font-weight: bold; font-size: 0.9em; }
     input[type=range] { flex: 1; accent-color: var(--accent2); cursor: pointer; }
@@ -622,19 +620,40 @@
         z-index: 9001;
     }
     
-    .scan-feedback {
+    /* Confirmation Popup inside Scanner */
+    #scanConfirmation {
         position: absolute;
-        top: 38%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        color: var(--accent2);
-        font-weight: 800;
-        font-size: 1.1em;
-        text-shadow: 0 2px 4px black;
-        z-index: 9005;
-        animation: pulse 1.5s infinite;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.85);
+        z-index: 9010;
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
     }
-    @keyframes pulse { 0%{opacity:0.6;} 50%{opacity:1;} 100%{opacity:0.6;} }
+    .scan-code-display {
+        font-size: 1.5em;
+        font-weight: 800;
+        color: var(--accent2);
+        background: #1e2530;
+        padding: 20px;
+        border-radius: 12px;
+        margin-bottom: 30px;
+        text-align: center;
+        border: 2px solid var(--accent);
+        word-break: break-all;
+        max-width: 90%;
+    }
+    .scan-action-btns {
+        display: flex;
+        gap: 20px;
+    }
+    .scan-action-btns button {
+        min-width: 120px;
+        padding: 12px 24px;
+        font-size: 1.1em;
+    }
 
     /* --- PRINTING STYLES (PDF Generation) --- */
     #printableArea {
@@ -792,7 +811,6 @@
 
   <div id="scannerOverlay">
       <video id="scannerVideo" autoplay playsinline muted></video>
-      <div class="scan-feedback">Scanning...</div>
       <div class="scanner-guide"></div>
       
       <div class="scanner-controls">
@@ -803,6 +821,14 @@
           <div class="scanner-btn-row">
               <button id="toggleTorchBtn" style="display:none;">🔦 Torch</button>
               <button id="closeScannerBtn">Cancel</button>
+          </div>
+      </div>
+
+      <div id="scanConfirmation">
+          <div class="scan-code-display" id="scannedCodeDisplay"></div>
+          <div class="scan-action-btns">
+              <button id="scanRetryBtn" class="rounded-sky-btn cancel">🔄 Retry</button>
+              <button id="scanConfirmBtn" class="rounded-sky-btn">✅ Paste</button>
           </div>
       </div>
   </div>
@@ -2367,7 +2393,7 @@
     };
 
     /****************************************************************
-     * FIX NO 3: SUPER SCANNER LOGIC (Native API + Zoom + Torch)
+     * FIX NO 3: SUPER SCANNER LOGIC (Confirm/Retry)
      ****************************************************************/
     const scanSearchBtn = document.getElementById('scanSearchBtn');
     const scanModalBtn = document.getElementById('scanModalBtn');
@@ -2378,11 +2404,17 @@
     const zoomSlider = document.getElementById('zoomSlider');
     const toggleTorchBtn = document.getElementById('toggleTorchBtn');
     
+    // Confirmation UI Elements
+    const scanConfirmation = document.getElementById('scanConfirmation');
+    const scannedCodeDisplay = document.getElementById('scannedCodeDisplay');
+    const scanRetryBtn = document.getElementById('scanRetryBtn');
+    const scanConfirmBtn = document.getElementById('scanConfirmBtn');
+    
     let scannerStream = null;
     let scannerInterval = null;
     let activeScanTarget = null;
     let videoTrack = null;
-    let imageCapture = null;
+    let currentScannedCode = null; // Temp store
 
     async function startScanner(target) {
         if (!('BarcodeDetector' in window)) {
@@ -2391,6 +2423,7 @@
         }
 
         activeScanTarget = target;
+        scanConfirmation.style.display = 'none'; // Hide confirmation initially
 
         try {
             // 1. Ask for High Resolution (1080p) to see thin lines
@@ -2444,36 +2477,7 @@
             const supportedFormats = await BarcodeDetector.getSupportedFormats();
             const barcodeDetector = new BarcodeDetector({ formats: supportedFormats });
 
-            // 5. SCAN LOOP
-            scannerInterval = setInterval(async () => {
-                if (!scannerVideo.videoWidth) return;
-                try {
-                    const barcodes = await barcodeDetector.detect(scannerVideo);
-                    if (barcodes.length > 0) {
-                        const code = barcodes[0].rawValue;
-                        stopScanner();
-                        
-                        if (activeScanTarget === 'search') {
-                             searchInput.value = code;
-                             searchInput.dispatchEvent(new Event('input'));
-                        } else if (activeScanTarget === 'modal') {
-                             const prodBarcode = document.getElementById('prodBarcode');
-                             // Append Logic: "123, 456"
-                             if(prodBarcode.value) {
-                                 if(!prodBarcode.value.includes(code)) {
-                                     prodBarcode.value += ", " + code;
-                                 }
-                             } else {
-                                 prodBarcode.value = code;
-                             }
-                        }
-
-                        if (navigator.vibrate) navigator.vibrate(50);
-                    }
-                } catch (err) {
-                    // console.error(err);
-                }
-            }, 250); // Check every 250ms
+            startDetectionLoop(barcodeDetector);
 
         } catch (err) {
             console.error(err);
@@ -2481,6 +2485,61 @@
             stopScanner();
         }
     }
+
+    function startDetectionLoop(detector) {
+        scannerInterval = setInterval(async () => {
+            if (!scannerVideo.videoWidth) return;
+            try {
+                const barcodes = await detector.detect(scannerVideo);
+                if (barcodes.length > 0) {
+                    // PAUSE Scanning
+                    clearInterval(scannerInterval);
+                    scannerInterval = null; 
+                    
+                    const code = barcodes[0].rawValue;
+                    currentScannedCode = code;
+                    
+                    // Show Confirmation UI
+                    scannedCodeDisplay.textContent = code;
+                    scanConfirmation.style.display = 'flex';
+                    
+                    if (navigator.vibrate) navigator.vibrate(100);
+                }
+            } catch (err) {
+                // console.error(err);
+            }
+        }, 200);
+    }
+
+    // RETRY Button Logic
+    scanRetryBtn.onclick = async () => {
+        scanConfirmation.style.display = 'none';
+        currentScannedCode = null;
+        const supportedFormats = await BarcodeDetector.getSupportedFormats();
+        const barcodeDetector = new BarcodeDetector({ formats: supportedFormats });
+        startDetectionLoop(barcodeDetector);
+    };
+
+    // PASTE/CONFIRM Button Logic
+    scanConfirmBtn.onclick = () => {
+        if(!currentScannedCode) return;
+        
+        stopScanner();
+        
+        if (activeScanTarget === 'search') {
+             searchInput.value = currentScannedCode;
+             searchInput.dispatchEvent(new Event('input'));
+        } else if (activeScanTarget === 'modal') {
+             const prodBarcode = document.getElementById('prodBarcode');
+             if(prodBarcode.value) {
+                 if(!prodBarcode.value.includes(currentScannedCode)) {
+                     prodBarcode.value += ", " + currentScannedCode;
+                 }
+             } else {
+                 prodBarcode.value = currentScannedCode;
+             }
+        }
+    };
 
     function stopScanner() {
         if (scannerStream) {
@@ -2494,6 +2553,7 @@
             scannerInterval = null;
         }
         scannerOverlay.classList.remove('show');
+        scanConfirmation.style.display = 'none'; // Hide confirmation on close
         activeScanTarget = null;
         videoTrack = null;
     }
