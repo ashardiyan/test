@@ -2561,12 +2561,22 @@
              searchInput.dispatchEvent(new Event('input'));
         } else if (target === 'modal') {
              const prodBarcode = document.getElementById('prodBarcode');
-             if(prodBarcode.value) {
-                 if(!prodBarcode.value.includes(code)) {
-                     prodBarcode.value += ", " + code;
+             
+             // 1. Get current values into an array
+             // Split by comma, trim whitespace, filter out empty strings
+             let codes = prodBarcode.value ? prodBarcode.value.split(',').map(s => s.trim()).filter(s => s) : [];
+             
+             // 2. Add new code if unique
+             if (!codes.includes(code)) {
+                 codes.push(code);
+                 
+                 // 3. FIFO Logic: If more than 3, remove the first one
+                 if (codes.length > 3) {
+                     codes.shift(); 
                  }
-             } else {
-                 prodBarcode.value = code;
+                 
+                 // 4. Update Input
+                 prodBarcode.value = codes.join(', ');
              }
         }
     };
