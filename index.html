@@ -33,9 +33,11 @@
       --shadow-soft: 0 2px 8px rgba(40,98,180,.11);
       --danger: #ef4444;
       --success: #10b981;
+      --warning: #f59e0b;
       --rounded-btn: 10px;
       --button-skyblue: #06B6D4;
       --button-gradient: linear-gradient(90deg, #06B6D4 40%, #2563EB 100%);
+      --sell-mode-color: #f59e0b; 
     }
     html, body {
       padding: 0;
@@ -199,6 +201,47 @@
       border-color: #1095b7;
     }
     
+    /* Feature: Quick Sell Mode Active Styling */
+    .quick-sell-btn {
+        background: #333; 
+        color: #fbbf24;
+        border: 1.5px solid #fbbf24;
+    }
+    .quick-sell-btn.active {
+        background: linear-gradient(90deg, #f59e0b, #d97706);
+        color: #fff;
+        border: none;
+        box-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
+    }
+    
+    body.quick-sell-active .prod-card {
+        cursor: copy; /* Visual cue */
+    }
+    body.quick-sell-active .prod-card:hover {
+        border-color: var(--warning);
+    }
+    
+    /* Feature: History Modal List */
+    .history-list {
+        max-height: 50vh;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    .history-item {
+        background: #1b2430;
+        padding: 10px;
+        border-radius: 8px;
+        border-left: 3px solid var(--success);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.9em;
+    }
+    .history-meta { color: var(--text-muted); font-size: 0.85em; margin-top: 2px; }
+    .history-profit { font-size: 0.82em; color: var(--accent2); margin-top: 2px; }
+    
     /* Small Button Variant for Uploads */
     .btn-small {
         padding: 8px 12px !important;
@@ -339,6 +382,10 @@
     
     .prod-name { font-weight:700; font-size:1.15em; color:var(--text); letter-spacing:-0.5px; margin-bottom:1.5px; }
     .prod-details { color:var(--gray); font-size:.97em; margin-top:2px; margin-bottom:2px; }
+    
+    /* Low Stock Style */
+    .prod-details.low-stock { color: var(--danger); font-weight: 700; }
+    
     .prod-actions { margin-left:auto; display:flex; gap:7px; align-items:center; }
     .prod-actions button { background:none; border:none; color:var(--accent2); font-size:1.32em; cursor:pointer; transition:color .13s; border-radius:5px; padding:3px 5px; outline:none; }
     .prod-select-checkbox {
@@ -892,6 +939,9 @@
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"></path><path d="M17 3h2a2 2 0 0 1 2 2v2"></path><path d="M21 17v2a2 2 0 0 1-2 2h-2"></path><path d="M7 21H5a2 2 0 0 1-2-2v-2"></path><rect x="7" y="7" width="10" height="10" rx="1"></rect><line x1="12" y1="7" x2="12" y2="17"></line></svg>
               </button>
             </div>
+            
+            <button type="button" id="quickSellToggleBtn" class="rounded-sky-btn quick-sell-btn" title="Toggle Quick Sell Mode">⚡ Sell Mode</button>
+            <button type="button" id="historyBtn" class="rounded-sky-btn">📜 History</button>
             <button type="button" id="addProductBtn" class="rounded-sky-btn">+ Add</button>
             <button type="button" id="categoryFilterBtn" class="rounded-sky-btn">Category</button>
             <button type="button" id="exportBtn" class="rounded-sky-btn">Export</button>
@@ -1024,6 +1074,34 @@
         <button type="submit" style="background:var(--danger);border-radius:10px;padding:10px 22px;color:#fff;border:none;font-weight:700;box-shadow:0 2px 10px #1b314e28;transition:background .14s;outline:none;">Yes, Delete</button>
       </div>
     </form>
+  </div>
+  
+  <div class="modal-backdrop hide" id="quickSellModalBackdrop">
+    <form class="modal" id="quickSellModal" style="max-width:320px;">
+      <button class="modal-close" type="button" id="closeQuickSellBtn" title="Close">✖</button>
+      <h3 style="color: var(--warning)">⚡ Quick Sell</h3>
+      <div style="text-align:center; margin-bottom:15px; font-weight:600;" id="quickSellName">Product Name</div>
+      
+      <label for="quickSellPrice">Sale Price (₨)</label>
+      <input type="number" id="quickSellPrice" min="0" step="0.01" style="font-size:1.2em; text-align:center; margin-bottom:10px;" required />
+      
+      <label for="quickSellQty">Quantity Sold</label>
+      <input type="number" id="quickSellQty" value="1" min="1" max="1000" style="font-size:1.5em; text-align:center;" required />
+      
+      <div class="modal-btnbar" style="justify-content:center;">
+        <button type="submit" class="rounded-sky-btn" style="background:linear-gradient(90deg, #f59e0b, #d97706);">Confirm Sale</button>
+      </div>
+    </form>
+  </div>
+  
+  <div class="modal-backdrop hide" id="historyModalBackdrop">
+    <div class="modal" id="historyModal">
+      <button class="modal-close" type="button" id="closeHistoryBtn" title="Close">✖</button>
+      <h3>📜 Sales History</h3>
+      <div id="historyList" class="history-list">
+          <div style="text-align:center; color:var(--text-muted); padding:20px;">Loading...</div>
+      </div>
+    </div>
   </div>
 
   <div class="modal-backdrop hide" id="detailModalBackdrop">
@@ -1387,7 +1465,7 @@
     (function handleAndroidBackButton() {
       let isHandlerAttached = false; // FIX: Prevents duplicate listener attachment
       let openedModals = [];
-      const modalPriority = ['scannerOverlay', 'imageViewerOverlay', 'productModalBackdrop', 'deleteModalBackdrop', 'settingsBackdrop', 'detailModalBackdrop', 'shareModalBackdrop', 'categoryModalBackdrop'];
+      const modalPriority = ['scannerOverlay', 'imageViewerOverlay', 'productModalBackdrop', 'deleteModalBackdrop', 'settingsBackdrop', 'detailModalBackdrop', 'shareModalBackdrop', 'categoryModalBackdrop', 'quickSellModalBackdrop', 'historyModalBackdrop'];
 
       function pushMainStateToHistory() { try { history.replaceState({dealerAppMain: true}, document.title, window.location.href); } catch (e) {} }
       function pushModalState(modalId) { try { history.pushState({modal: modalId}, document.title, window.location.href); openedModals.push(modalId); } catch (e) {} }
@@ -1614,16 +1692,18 @@
     
     let currentFilteredProducts = []; 
     let activeCategoryFilter = null; 
+    let isQuickSellMode = false; // State for Quick Sell
 
     // FIX NO 1: Global array to track active URLs for revocation
     let activeObjectUrls = [];
 
     // ***************************************************************
-    // * INDEXED DB STORAGE ENGINE (Replaces LocalStorage)         *
+    // * INDEXED DB STORAGE ENGINE (Updated for History)             *
     // ***************************************************************
     const DB_NAME = 'DealerDB';
     const STORE_NAME = 'products';
-    const DB_VERSION = 1;
+    const STORE_HISTORY = 'sales_history'; // NEW STORE
+    const DB_VERSION = 2; // UPDATED VERSION
 
     function openDB() {
         return new Promise((resolve, reject) => {
@@ -1632,6 +1712,10 @@
                 const db = e.target.result;
                 if (!db.objectStoreNames.contains(STORE_NAME)) {
                     db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+                }
+                if (!db.objectStoreNames.contains(STORE_HISTORY)) {
+                    // Create History Store
+                    db.createObjectStore(STORE_HISTORY, { keyPath: 'id', autoIncrement: true });
                 }
             };
             request.onsuccess = e => resolve(e.target.result);
@@ -1679,6 +1763,29 @@
         const db = await openDB();
         const tx = db.transaction(STORE_NAME, 'readonly');
         const store = tx.objectStore(STORE_NAME);
+        return new Promise((resolve, reject) => {
+            const req = store.getAll();
+            req.onsuccess = () => resolve(req.result || []);
+            req.onerror = () => reject(req.error);
+        });
+    }
+    
+    // NEW: Sales History Functions
+    async function logSaleToDB(entry) {
+        const db = await openDB();
+        const tx = db.transaction(STORE_HISTORY, 'readwrite');
+        const store = tx.objectStore(STORE_HISTORY);
+        store.add(entry);
+        return new Promise((resolve, reject) => {
+            tx.oncomplete = resolve;
+            tx.onerror = reject;
+        });
+    }
+    
+    async function getSalesHistoryFromDB() {
+        const db = await openDB();
+        const tx = db.transaction(STORE_HISTORY, 'readonly');
+        const store = tx.objectStore(STORE_HISTORY);
         return new Promise((resolve, reject) => {
             const req = store.getAll();
             req.onsuccess = () => resolve(req.result || []);
@@ -1782,12 +1889,18 @@
       const mrpNum = Number(product.mrp) || 0;
       let checkboxHTML = `<input type="checkbox" class="prod-select-checkbox" title="Select" data-id="${product.id}" tabindex="0" ${selectedProductIds.has(product.id) ? "checked" : ""}/>`;
 
+      // Feature 1: Low Stock Logic (UPDATED: red if <= 1)
+      const isLowStock = qtyNum <= 1;
+      const stockColor = isLowStock ? 'var(--danger)' : 'var(--success)';
+      const stockIcon = isLowStock ? '⚠️ ' : '';
+      const lowStockClass = isLowStock ? 'low-stock' : '';
+
       li.innerHTML = `
         ${checkboxHTML}
         <div class="prod-img">${imgHTML}</div>
         <div class="prod-main-details">
           <div class="prod-name">${nameSafe}</div>
-          <div class="prod-details">Stock: <b style="color:var(--success);font-weight:600">${qtyNum}</b> • ₨${mrpNum.toLocaleString(undefined,{maximumFractionDigits:2})}</div>
+          <div class="prod-details ${lowStockClass}">Stock: <b style="color:${stockColor};font-weight:600">${stockIcon}${qtyNum}</b> • ₨${mrpNum.toLocaleString(undefined,{maximumFractionDigits:2})}</div>
           ${product.notes?`<div class="prod-details">${escapeHTML(String(product.notes)).slice(0,55)}</div>`:""}
         </div>
         <div class="prod-actions">
@@ -1817,8 +1930,25 @@
           };
       }
 
-      li.addEventListener('click', function(e){ if(e.target.classList.contains('prod-select-checkbox')) return; if(!e.target.closest('.prod-actions')) showDetailModal(product); });
-      li.addEventListener('keydown', function(e){ if((e.key==="Enter"||e.key===" ") && !e.target.closest('.prod-actions')) { e.preventDefault(); showDetailModal(product); } });
+      // Feature 2: Quick Sell Logic integration
+      li.addEventListener('click', function(e){ 
+          if(e.target.classList.contains('prod-select-checkbox')) return; 
+          if(e.target.closest('.prod-actions')) return; 
+          
+          if(isQuickSellMode) {
+              openQuickSellModal(product);
+          } else {
+              showDetailModal(product); 
+          }
+      });
+      
+      li.addEventListener('keydown', function(e){ 
+          if((e.key==="Enter"||e.key===" ") && !e.target.closest('.prod-actions')) { 
+              e.preventDefault(); 
+              if(isQuickSellMode) openQuickSellModal(product);
+              else showDetailModal(product); 
+          } 
+      });
       return li;
     }
 
@@ -2018,6 +2148,10 @@
         else if (!settingsBackdrop.classList.contains('hide')) { settingsBackdrop.classList.add('hide'); closedAModal = true; }
         else if (!shareModalBackdrop.classList.contains('hide')) { shareModalBackdrop.classList.add('hide'); closedAModal = true; }
         else if (!categoryModalBackdrop.classList.contains('hide')) { categoryModalBackdrop.classList.add('hide'); closedAModal = true; }
+        // NEW MODAL ESC HANDLERS
+        else if (!quickSellModalBackdrop.classList.contains('hide')) { quickSellModalBackdrop.classList.add('hide'); closedAModal = true; }
+        else if (!historyModalBackdrop.classList.contains('hide')) { historyModalBackdrop.classList.add('hide'); closedAModal = true; }
+        
         if (closedAModal) enableDetailBackgroundScroll();
       }
     });
@@ -2029,7 +2163,10 @@
         (!settingsBackdrop || settingsBackdrop.classList.contains('hide')) &&
         (!deleteModalBackdrop || deleteModalBackdrop.classList.contains('hide')) &&
         (!shareModalBackdrop || shareModalBackdrop.classList.contains('hide')) &&
-        (!categoryModalBackdrop || categoryModalBackdrop.classList.contains('hide'))
+        (!categoryModalBackdrop || categoryModalBackdrop.classList.contains('hide')) &&
+        // NEW
+        (!quickSellModalBackdrop || quickSellModalBackdrop.classList.contains('hide')) &&
+        (!historyModalBackdrop || historyModalBackdrop.classList.contains('hide'))
       ) {
         enableDetailBackgroundScroll();
       }
@@ -2048,6 +2185,148 @@
         refreshProductList(); 
     });
     searchInput.addEventListener('keydown', function(e){ if(e.key==='Escape'){ searchInput.value=''; refreshProductList(); } });
+    
+    /****************************************************************
+     * NEW FEATURE: QUICK SELL LOGIC
+     ****************************************************************/
+    const quickSellToggleBtn = document.getElementById('quickSellToggleBtn');
+    const quickSellModalBackdrop = document.getElementById('quickSellModalBackdrop');
+    const quickSellModal = document.getElementById('quickSellModal');
+    const quickSellName = document.getElementById('quickSellName');
+    const quickSellQty = document.getElementById('quickSellQty');
+    const quickSellPrice = document.getElementById('quickSellPrice'); // NEW INPUT
+    const closeQuickSellBtn = document.getElementById('closeQuickSellBtn');
+    let quickSellProductTarget = null;
+    
+    quickSellToggleBtn.onclick = function() {
+        isQuickSellMode = !isQuickSellMode;
+        if(isQuickSellMode) {
+            quickSellToggleBtn.classList.add('active');
+            document.body.classList.add('quick-sell-active');
+            if (navigator.vibrate) navigator.vibrate(50);
+        } else {
+            quickSellToggleBtn.classList.remove('active');
+            document.body.classList.remove('quick-sell-active');
+        }
+    };
+    
+    function openQuickSellModal(product) {
+        quickSellProductTarget = product;
+        quickSellName.textContent = `Sell: ${product.name}`;
+        quickSellQty.value = 1;
+        quickSellPrice.value = product.mrp || 0; // Pre-fill with MRP
+        
+        quickSellModalBackdrop.classList.remove('hide');
+        
+        // Focus Price first (as requested to ask for price)
+        setTimeout(() => quickSellPrice.focus(), 100);
+    }
+    
+    closeQuickSellBtn.onclick = () => quickSellModalBackdrop.classList.add('hide');
+    
+    quickSellModal.onsubmit = async function(e) {
+        e.preventDefault();
+        if(!quickSellProductTarget) return;
+        
+        const qtyToSell = parseInt(quickSellQty.value);
+        const actualSellPrice = parseFloat(quickSellPrice.value) || 0;
+        
+        if(qtyToSell <= 0) return;
+        if(actualSellPrice < 0) { alert("Price cannot be negative."); return; }
+        
+        // Update Stock
+        const currentQty = quickSellProductTarget.qty || 0;
+        const newQty = Math.max(0, currentQty - qtyToSell);
+        quickSellProductTarget.qty = newQty;
+        
+        // Calculate Profit
+        const costPrice = quickSellProductTarget.cost || 0;
+        const profit = (actualSellPrice - costPrice) * qtyToSell;
+        
+        // Log to History
+        const logEntry = {
+            productId: quickSellProductTarget.id,
+            productName: quickSellProductTarget.name,
+            qtySold: qtyToSell,
+            salePricePerUnit: actualSellPrice,
+            costPricePerUnit: costPrice,
+            totalValue: qtyToSell * actualSellPrice,
+            totalProfit: profit,
+            timestamp: new Date().toISOString()
+        };
+        
+        try {
+            await logSaleToDB(logEntry);
+            await saveProducts(); // Saves updated qty and refreshes UI
+            
+            if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
+            
+            // Close
+            quickSellModalBackdrop.classList.add('hide');
+            quickSellProductTarget = null;
+        } catch(err) {
+            alert("Error saving sale: " + err.message);
+        }
+    };
+    
+    /****************************************************************
+     * NEW FEATURE: HISTORY LOGIC
+     ****************************************************************/
+    const historyBtn = document.getElementById('historyBtn');
+    const historyModalBackdrop = document.getElementById('historyModalBackdrop');
+    const historyList = document.getElementById('historyList');
+    const closeHistoryBtn = document.getElementById('closeHistoryBtn');
+    
+    historyBtn.onclick = async function() {
+        historyModalBackdrop.classList.remove('hide');
+        historyList.innerHTML = '<div style="text-align:center;padding:20px;">Loading history...</div>';
+        
+        try {
+            const history = await getSalesHistoryFromDB();
+            
+            if(history.length === 0) {
+                historyList.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:20px;">No sales recorded yet.</div>';
+                return;
+            }
+            
+            // Sort newest first
+            history.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+            
+            let html = '';
+            history.forEach(item => {
+                const dateObj = new Date(item.timestamp);
+                const dateStr = dateObj.toLocaleDateString();
+                const timeStr = dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                
+                const salePrice = item.salePricePerUnit || 0;
+                const costPrice = item.costPricePerUnit || 0;
+                const profit = item.totalProfit !== undefined ? item.totalProfit : ((salePrice - costPrice) * item.qtySold);
+                
+                const profitColor = profit >= 0 ? 'var(--success)' : 'var(--danger)';
+                const profitSign = profit >= 0 ? '+' : '';
+
+                html += `
+                    <div class="history-item">
+                        <div>
+                            <div style="font-weight:700; color:var(--text);">${escapeHTML(item.productName)}</div>
+                            <div class="history-meta">${dateStr} at ${timeStr}</div>
+                            <div class="history-meta">Sold @ ₨${salePrice.toLocaleString()} (Cost: ₨${costPrice.toLocaleString()})</div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div style="font-weight:bold; color:var(--text); font-size:1.1em;">-${item.qtySold}</div>
+                            <div style="font-size:0.85em; color:var(--text-muted);">Total: ₨${item.totalValue.toLocaleString()}</div>
+                            <div class="history-profit" style="color:${profitColor}">${profitSign}₨${profit.toLocaleString()}</div>
+                        </div>
+                    </div>
+                `;
+            });
+            historyList.innerHTML = html;
+        } catch(err) {
+            historyList.innerHTML = `<div style="color:var(--danger)">Error loading history.</div>`;
+        }
+    };
+    
+    closeHistoryBtn.onclick = () => historyModalBackdrop.classList.add('hide');
 
     // --- NEW: CATEGORY BUTTON & MODAL LOGIC ---
     const categoryBtn = document.getElementById('categoryFilterBtn');
