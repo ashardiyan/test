@@ -1266,6 +1266,13 @@
     function manualLogoutDueToTimeout() {
       stopSessionTimeoutMonitor();
       clearKeepSession();
+      // FIX: Ensure scanner is closed before showing login, otherwise scanner (z9000) blocks login (z7000)
+      if(typeof stopScanner === 'function') stopScanner();
+      if(document.getElementById('imageViewerOverlay').classList.contains('show')) {
+         document.getElementById('imageViewerOverlay').classList.remove('show');
+         document.getElementById('imageViewerImg').src = '';
+      }
+      
       document.getElementById('dealerApp').style.display = 'none';
       showLoginModal("Session expired for security. Please login again.");
       updatePINUI(getHasPIN());
@@ -1548,7 +1555,22 @@
 
     keepLoggedInToggle.onchange = function() { showTimeoutNotice(""); if (!this.checked) clearKeepSession(); };
     document.getElementById('login-modal').addEventListener('transitionend', function() { loginPIN.value = ''; });
-    function doLogout(showMsg) { stopSessionTimeoutMonitor(); clearKeepSession(); document.getElementById('dealerApp').style.display = 'none'; showLoginModal(showMsg || 'You have been logged out.'); updatePINUI(getHasPIN()); }
+    
+    // FIX NO 2: Ensure scanner/viewer are closed on logout to prevent UI lockup
+    function doLogout(showMsg) { 
+        stopSessionTimeoutMonitor(); 
+        clearKeepSession(); 
+        
+        if(typeof stopScanner === 'function') stopScanner();
+        if(document.getElementById('imageViewerOverlay').classList.contains('show')) {
+           document.getElementById('imageViewerOverlay').classList.remove('show');
+           document.getElementById('imageViewerImg').src = '';
+        }
+
+        document.getElementById('dealerApp').style.display = 'none'; 
+        showLoginModal(showMsg || 'You have been logged out.'); 
+        updatePINUI(getHasPIN()); 
+    }
 
     const settingsBtn = document.getElementById('settingsBtn');
     const settingsBackdrop = document.getElementById('settingsBackdrop');
