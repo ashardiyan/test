@@ -1890,7 +1890,7 @@
       let checkboxHTML = `<input type="checkbox" class="prod-select-checkbox" title="Select" data-id="${product.id}" tabindex="0" ${selectedProductIds.has(product.id) ? "checked" : ""}/>`;
 
       // Feature 1: Low Stock Logic (UPDATED: red if <= 1)
-      const isLowStock = qtyNum <= 1;
+      const isLowStock = qtyNum <= 0;
       const stockColor = isLowStock ? 'var(--danger)' : 'var(--success)';
       const stockIcon = isLowStock ? '⚠️ ' : '';
       const lowStockClass = isLowStock ? 'low-stock' : '';
