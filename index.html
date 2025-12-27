@@ -1820,31 +1820,76 @@
         }
     };
 
-    // --- UPDATED EXPORT LOGIC: CONVERT BLOBS TO BASE64 STRINGS ---
+    // --- REFACTORED EXPORT LOGIC: ROBUST AND SHARED ---
+    async function performExport(itemsToExport, filename) {
+        try {
+            // Convert Blobs to Base64 for JSON storage
+            const dataToExport = await Promise.all(itemsToExport.map(async (p) => {
+                let photoData = p.photo;
+                if (p.photo instanceof Blob) {
+                    photoData = await new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                            // Resolve even if null (failed), to prevent blocking export
+                            resolve(reader.result);
+                        };
+                        reader.onerror = () => {
+                            console.error("Failed to read blob for product", p.id);
+                            resolve(null); 
+                        };
+                        reader.readAsDataURL(p.photo);
+                    });
+                }
+                return { ...p, photo: photoData };
+            }));
+
+            const dataStr = JSON.stringify(dataToExport, null, 2);
+            const blob = new Blob([dataStr], {type:"application/json"});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); 
+            a.style.display='none'; 
+            a.href = url; 
+            a.download = filename; 
+            document.body.appendChild(a); 
+            a.click(); 
+            URL.revokeObjectURL(url); 
+            setTimeout(()=>{ document.body.removeChild(a); }, 200);
+        } catch (err) {
+            console.error("Export failed:", err);
+            alert("Export failed: " + (err.message || "Unknown error"));
+        }
+    }
+
+    // Main Export Button (All Products)
     document.getElementById('exportBtn').onclick = async function() {
+      if(!products || products.length === 0) {
+          alert("No products to export.");
+          return;
+      }
       const now = new Date();
       const dateStr = now.toISOString().slice(0,10);
       const timeStr = now.toTimeString().slice(0,5).replace(':','-');
       const filename = `dealer-backup-${dateStr}_${timeStr}.json`;
       
-      // Convert Blobs to Base64 for JSON storage
-      const dataToExport = await Promise.all(products.map(async (p) => {
-          let photoData = p.photo;
-          if (p.photo instanceof Blob) {
-              photoData = await new Promise((resolve) => {
-                  const reader = new FileReader();
-                  reader.onloadend = () => resolve(reader.result);
-                  reader.readAsDataURL(p.photo);
-              });
-          }
-          return { ...p, photo: photoData };
-      }));
-
-      const dataStr = JSON.stringify(dataToExport, null, 2);
-      const blob = new Blob([dataStr], {type:"application/json"});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a'); a.style.display='none'; a.href = url; a.download = filename; document.body.appendChild(a); a.click(); URL.revokeObjectURL(url); setTimeout(()=>{ document.body.removeChild(a); }, 200);
+      await performExport(products, filename);
     };
+
+    // Selected Export Button (Multi-select)
+    const exportSelectedBtn = document.getElementById('exportSelectedBtn');
+    if (exportSelectedBtn) {
+        exportSelectedBtn.onclick = async function() {
+            if (selectedProductIds.size === 0) return;
+            const itemsToExport = products.filter(p => selectedProductIds.has(p.id));
+            if(itemsToExport.length === 0) return;
+
+            const now = new Date();
+            const dateStr = now.toISOString().slice(0,10);
+            const timeStr = now.toTimeString().slice(0,5).replace(':','-');
+            const filename = `dealer-selected-${dateStr}_${timeStr}.json`;
+
+            await performExport(itemsToExport, filename);
+        };
+    }
 
     document.getElementById('importBtn').onclick = function () { 
         let fileInput = document.getElementById('hiddenImport'); 
