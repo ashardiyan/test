@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
   <title>Al Rehman Electronics</title>
   <meta name="theme-color" content="#161B22" />
   <meta name="mobile-web-app-capable" content="yes">
@@ -47,6 +47,7 @@
       background: linear-gradient(120deg, var(--bg1) 0%, var(--bg2) 60%, var(--bg3) 100%);
       color: var(--text);
       min-height: 100vh;
+      overscroll-behavior-y: none; /* Prevent pull-to-refresh on mobile */
     }
     body { display:flex; flex-direction:column; min-height:100vh; }
     .container { max-width:640px; margin:0 auto; padding:34px 12px 54px; width:100%; box-sizing:border-box; }
@@ -310,7 +311,31 @@
       cursor: pointer;
     }
 
+    /* Multi-image preview styles */
+    .photo-preview-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 8px;
+      min-height: 1em;
+    }
+    .photo-preview-item {
+        position: relative;
+        display: inline-block;
+    }
+    .photo-preview-img-thumb {
+      width: 60px;
+      height: 60px;
+      border-radius: 7px;
+      object-fit: cover;
+      border: 2px solid var(--accent2-hover);
+      background: #273855;
+      display: block;
+    }
     .remove-photo-btn {
+      position: absolute;
+      top: -6px;
+      right: -6px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -318,36 +343,15 @@
       color: #fff;
       border: none;
       border-radius: 50%;
-      width: 26px;
-      height: 26px;
-      font-size: 1.18em;
+      width: 20px;
+      height: 20px;
+      font-size: 14px;
       font-weight: bold;
-      margin-left: 4px;
       cursor: pointer;
-      transition: background 0.14s, color 0.12s;
-      box-shadow: 0 1px 5px #ef444433;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.5);
       z-index: 2;
-      vertical-align: middle;
     }
-    .remove-photo-btn:hover, .remove-photo-btn:focus {
-      background: #ce3737;
-      color: #fff;
-    }
-    .photo-preview-wrap {
-      display: inline-flex;
-      align-items: center;
-      gap: 2px;
-    }
-    .photo-preview-img-thumb {
-      max-width: 42px;
-      max-height: 42px;
-      border-radius: 7px;
-      object-fit: cover;
-      border: 2px solid var(--accent2-hover);
-      margin-right: 2px;
-      background: #273855;
-      display: block;
-    }
+    .remove-photo-btn:hover { background: #ce3737; }
 
     .prod-card { 
       background:var(--bg3); 
@@ -478,16 +482,25 @@
   padding-top: 30px;
 }
 
-#detailModal .prod-detail-photo { 
-  display: block; 
-  width: 85%; 
-  max-width: 170px;
+/* Updated for multi-image gallery scroll */
+.detail-gallery {
+    display: flex;
+    overflow-x: auto;
+    gap: 10px;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+}
+.detail-gallery img {
+  flex-shrink: 0;
+  width: 170px;
   height: 170px;
   object-fit: cover; 
   border-radius: 20px; 
-  margin: 8px auto 16px auto; 
   box-shadow: 0 4px 16px #1b314e33; 
   background: #21293f; 
+  cursor: zoom-in;
 }
 
 #detailModalBody ul { font-size: 0.78em; }
@@ -744,11 +757,17 @@
             object-fit: contain;
         }
         .print-title { font-size: 24px; font-weight: bold; margin: 10px 0; }
+        .print-gallery {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+            margin: 20px 0;
+        }
         .print-product-img {
-            max-width: 300px;
-            max-height: 300px;
-            display: block;
-            margin: 20px auto;
+            max-width: 250px;
+            max-height: 250px;
+            object-fit: contain;
             border: 1px solid #ddd;
         }
         .print-details-table {
@@ -809,12 +828,10 @@
       
       .modal{padding:12vw 2vw 3vw 2vw; min-width:unset;}
       
-      #detailModal .prod-detail-photo{ width: 100%; max-width: 190px; height: 190px;}
+      #detailModal .prod-detail-photo, .detail-gallery img { width: 100%; max-width: 190px; height: 190px;}
       
       #mobileInstallInstructions{max-width:98vw;font-size:0.92em;}
       #multiSelectControls{font-size:0.96em; flex-wrap:wrap;}
-      .photo-preview-img-thumb { max-width:22px; max-height:22px; }
-      .remove-photo-btn { width:18px; height:18px; font-size:.95em;}
     }
     ::selection{background:var(--accent2); color:#fff;}
     a{color:var(--accent);}
@@ -997,12 +1014,12 @@
       <input type="text" id="prodCategory" maxlength="32" placeholder="e.g. Washing Machine" />
       <label for="prodNotes">Notes</label>
       <textarea id="prodNotes" maxlength="120" placeholder=""></textarea>
-      <span class="modal-file-label">Photo <span title="Binary Blob storage used for maximum efficiency." style="font-size:1.1em;color:var(--accent2)">[efficient binary format]</span></span>
+      <span class="modal-file-label">Photos (Add Multiple) <span title="Binary Blob storage used for maximum efficiency." style="font-size:1.1em;color:var(--accent2)">[efficient binary format]</span></span>
       <div class="modal-file-upload-wrap" id="fileUploadWrap">
         <span class="modal-file-upload-btn rounded-sky-btn btn-small" id="uploadBtnText" style="flex:1; text-align:center;">
           <svg width="18" height="18" style="margin-right:6px;vertical-align:-4px" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
           <span id="uploadBtnInnerText">Gallery</span>
-          <input type="file" id="prodPhoto" accept="image/jpeg, image/png" style="opacity:0;position:absolute;left:0;top:0;width:100%;height:100%;cursor:pointer;"/>
+          <input type="file" id="prodPhoto" accept="image/jpeg, image/png" multiple style="opacity:0;position:absolute;left:0;top:0;width:100%;height:100%;cursor:pointer;"/>
         </span>
         
         <span class="modal-file-upload-btn rounded-sky-btn btn-small" id="cameraBtnText" style="flex:1; text-align:center; background: var(--accent2);">
@@ -1011,9 +1028,8 @@
           <input type="file" id="prodCamera" accept="image/jpeg, image/png" capture="environment" style="opacity:0;position:absolute;left:0;top:0;width:100%;height:100%;cursor:pointer;"/>
         </span>
       </div>
-      <div id="prodPhotoFileContainer" class="photo-preview-wrap" style="min-width:1em; margin-bottom: 8px;">
-        <span id="prodPhotoFileName" style="color:var(--text-muted);font-size:.99em;"></span>
-      </div>
+      
+      <div id="prodPhotoList" class="photo-preview-list"></div>
       
       <div class="modal-btnbar">
         <button type="submit" id="saveProductBtn" class="rounded-sky-btn">Save</button>
@@ -1039,7 +1055,7 @@
       
       <div class="share-options">
           <label class="share-option-row">
-              <input type="checkbox" id="sharePhoto" checked> <span>Include Photo</span>
+              <input type="checkbox" id="sharePhoto" checked> <span>Include Photos</span>
           </label>
           <label class="share-option-row">
               <input type="checkbox" id="shareMrp" checked> <span>Include MRP (Price)</span>
@@ -1380,7 +1396,7 @@
       })();
 
       const swScript = `
-        const CACHE_NAME = 'local-dealer-cache-v15';
+        const CACHE_NAME = 'local-dealer-cache-v16';
         const OFFLINE_URL = self.registration.scope.endsWith('/') ? self.registration.scope + 'index.html' : self.registration.scope + '/index.html';
         const FILES_TO_CACHE = [ OFFLINE_URL, './index.html' ];
         
@@ -1703,7 +1719,7 @@
     const DB_NAME = 'DealerDB';
     const STORE_NAME = 'products';
     const STORE_HISTORY = 'sales_history'; // NEW STORE
-    const DB_VERSION = 2; // UPDATED VERSION
+    const DB_VERSION = 3; // UPDATED VERSION TO FORCE UPGRADE
 
     function openDB() {
         return new Promise((resolve, reject) => {
@@ -1765,7 +1781,17 @@
         const store = tx.objectStore(STORE_NAME);
         return new Promise((resolve, reject) => {
             const req = store.getAll();
-            req.onsuccess = () => resolve(req.result || []);
+            req.onsuccess = () => {
+                let results = req.result || [];
+                // Data Migration: Ensure 'photos' array exists for all products
+                results.forEach(p => {
+                    if(!p.photos) {
+                        if(p.photo) p.photos = [p.photo]; // Migrate single photo to array
+                        else p.photos = [];
+                    }
+                });
+                resolve(results);
+            };
             req.onerror = () => reject(req.error);
         });
     }
@@ -1784,6 +1810,7 @@
     
     async function getSalesHistoryFromDB() {
         const db = await openDB();
+        if(!db.objectStoreNames.contains(STORE_HISTORY)) return [];
         const tx = db.transaction(STORE_HISTORY, 'readonly');
         const store = tx.objectStore(STORE_HISTORY);
         return new Promise((resolve, reject) => {
@@ -1881,7 +1908,16 @@
       li.setAttribute('tabindex','0');
       li.classList.add('show');
 
-      const imgSrc = getPhotoSrc(product.photo);
+      // Use the first photo as the main thumbnail
+      let firstPhoto = null;
+      if (product.photos && product.photos.length > 0) {
+          firstPhoto = product.photos[0];
+      } else if (product.photo) {
+          // Fallback legacy
+          firstPhoto = product.photo;
+      }
+
+      const imgSrc = getPhotoSrc(firstPhoto);
       let imgHTML = imgSrc ? `<img src="${imgSrc}" class="prod-photo-thumb" alt="Product Photo" loading="lazy">` : `<span>📦</span>`;
       
       const nameSafe = escapeHTML(product.name || "Unnamed");
@@ -1973,26 +2009,42 @@
     };
 
     // --- REFACTORED EXPORT LOGIC: ROBUST AND SHARED ---
+    // UPDATED FOR MULTI-IMAGE SUPPORT
     async function performExport(itemsToExport, filename) {
         try {
             // Convert Blobs to Base64 for JSON storage
             const dataToExport = await Promise.all(itemsToExport.map(async (p) => {
-                let photoData = p.photo;
-                if (p.photo instanceof Blob) {
-                    photoData = await new Promise((resolve, reject) => {
-                        const reader = new FileReader();
-                        reader.onloadend = () => {
-                            // Resolve even if null (failed), to prevent blocking export
-                            resolve(reader.result);
-                        };
-                        reader.onerror = () => {
-                            console.error("Failed to read blob for product", p.id);
-                            resolve(null); 
-                        };
-                        reader.readAsDataURL(p.photo);
-                    });
+                // Handle photos array
+                let photoDataArray = [];
+                if(p.photos && p.photos.length > 0) {
+                     photoDataArray = await Promise.all(p.photos.map(async (photo) => {
+                         if (photo instanceof Blob) {
+                            return await new Promise((resolve) => {
+                                const reader = new FileReader();
+                                reader.onloadend = () => resolve(reader.result);
+                                reader.onerror = () => resolve(null);
+                                reader.readAsDataURL(photo);
+                            });
+                         }
+                         return photo; // already string or null
+                     }));
+                } 
+                // Legacy fallback
+                else if (p.photo) {
+                     let singlePhoto = p.photo;
+                     if(singlePhoto instanceof Blob) {
+                         singlePhoto = await new Promise((resolve) => {
+                                const reader = new FileReader();
+                                reader.onloadend = () => resolve(reader.result);
+                                reader.readAsDataURL(singlePhoto);
+                         });
+                     }
+                     photoDataArray.push(singlePhoto);
                 }
-                return { ...p, photo: photoData };
+
+                // Remove legacy 'photo' key, only use 'photos'
+                const { photo, ...cleanP } = p;
+                return { ...cleanP, photos: photoDataArray };
             }));
 
             const dataStr = JSON.stringify(dataToExport, null, 2);
@@ -2049,7 +2101,7 @@
         if (fileInput) fileInput.click(); 
     };
 
-    // --- UPDATED IMPORT LOGIC: CONVERT BASE64 STRINGS BACK TO BLOBS ---
+    // --- UPDATED IMPORT LOGIC: CONVERT BASE64 STRINGS BACK TO BLOBS (ARRAY SUPPORT) ---
     document.getElementById('hiddenImport').onchange = async function (e) {
       const fileInput = e.target;
       if (!fileInput.files || !fileInput.files.length) return;
@@ -2064,13 +2116,30 @@
         
         // Convert Base64 strings back to Blobs for efficiency
         importedArr = await Promise.all(importedArr.map(async (p) => {
-            if (p.photo && typeof p.photo === 'string' && p.photo.startsWith('data:')) {
+            // Handle photos array
+            if (p.photos && Array.isArray(p.photos)) {
+                p.photos = await Promise.all(p.photos.map(async (photoStr) => {
+                    if (typeof photoStr === 'string' && photoStr.startsWith('data:')) {
+                        try {
+                            const res = await fetch(photoStr);
+                            return await res.blob();
+                        } catch(err) { return photoStr; }
+                    }
+                    return photoStr;
+                }));
+            } 
+            // Handle legacy photo string
+            else if (p.photo && typeof p.photo === 'string' && p.photo.startsWith('data:')) {
                 try {
                     const res = await fetch(p.photo);
                     const blob = await res.blob();
-                    p.photo = blob;
-                } catch(err) { /* fallback to string */ }
+                    p.photos = [blob];
+                    delete p.photo;
+                } catch(err) { /* fallback */ }
             }
+            // Ensure array exists
+            if(!p.photos) p.photos = [];
+            
             return p;
         }));
 
@@ -2104,17 +2173,31 @@
     const detailModalBody = document.getElementById('detailModalBody');
     function disableDetailBackgroundScroll() { document.body.classList.add('detail-modal-open'); }
     function enableDetailBackgroundScroll() { document.body.classList.remove('detail-modal-open'); }
+    
     function showDetailModal(product) {
       const nameSafe = escapeHTML(product.name || 'Unnamed');
-      const imgSrc = getPhotoSrc(product.photo);
-      const photoBlock = imgSrc ? `<img src="${imgSrc}" class="prod-detail-photo" alt="${nameSafe}"/>` : `<div class="prod-detail-photo" style="font-size:60px;padding:22px 0 12px 0;">📦</div>`;
+      
+      // Build Gallery HTML
+      let galleryHtml = "";
+      if(product.photos && product.photos.length > 0) {
+          galleryHtml = `<div class="detail-gallery">`;
+          product.photos.forEach(photo => {
+              const src = getPhotoSrc(photo);
+              if(src) {
+                  galleryHtml += `<img src="${src}" onclick="openImageViewer('${src}')" alt="${nameSafe}"/>`;
+              }
+          });
+          galleryHtml += `</div>`;
+      } else {
+          galleryHtml = `<div class="prod-detail-photo" style="font-size:60px;padding:22px 0 12px 0;text-align:center;">📦</div>`;
+      }
+      
       const mrpNum = Number(product.mrp) || 0;
       const costNum = (product.cost !== undefined && product.cost !== null) ? Number(product.cost) : null;
-      // Show Barcode in Details if exists
       const barcodeHtml = product.barcode ? `<li><b>Barcode:</b> <span style="font-family:monospace;background:#2b3548;padding:2px 6px;border-radius:4px;">${escapeHTML(product.barcode)}</span></li>` : "";
 
       detailModalBody.innerHTML = `
-        <div style="text-align:center;">${photoBlock}</div>
+        ${galleryHtml}
         <ul style="list-style:none;padding:0;margin:10px 0 0 0;display:flex;flex-direction:column;gap:.57em;">
           <li><b>Name:</b> <span style="color:var(--accent2);font-weight:600">${nameSafe}</span></li>
           ${barcodeHtml}
@@ -2125,13 +2208,6 @@
         </ul>
         ${product.notes?`<div style="margin-top:.8em;color:var(--text-muted);background:#213047;border-radius:8px;padding:.7em .9em">${escapeHTML(String(product.notes))}</div>`:""}
       `;
-      setTimeout(()=>{
-          const detailImg = detailModalBody.querySelector('.prod-detail-photo');
-          if(detailImg && imgSrc) {
-              detailImg.style.cursor = 'zoom-in';
-              detailImg.onclick = () => openImageViewer(imgSrc);
-          }
-      }, 50);
 
       detailModalBackdrop.classList.remove('hide'); disableDetailBackgroundScroll(); setTimeout(()=>document.getElementById('closeDetailModalBtn').focus(),100);
     }
@@ -2194,7 +2270,7 @@
     const quickSellModal = document.getElementById('quickSellModal');
     const quickSellName = document.getElementById('quickSellName');
     const quickSellQty = document.getElementById('quickSellQty');
-    const quickSellPrice = document.getElementById('quickSellPrice'); // NEW INPUT
+    const quickSellPrice = document.getElementById('quickSellPrice'); // NEW FIELD
     const closeQuickSellBtn = document.getElementById('closeQuickSellBtn');
     let quickSellProductTarget = null;
     
@@ -2455,7 +2531,7 @@
 
     let productEditing = null;
     const prodName = document.getElementById('prodName');
-    const prodBarcode = document.getElementById('prodBarcode'); // NEW FIELD
+    const prodBarcode = document.getElementById('prodBarcode'); 
     const prodMrp = document.getElementById('prodMrp');
     const prodCost = document.getElementById('prodCost');
     const prodQty = document.getElementById('prodQty');
@@ -2467,14 +2543,13 @@
     const productModal = document.getElementById('productModal');
     const modalTitle = document.getElementById('modalTitle');
     const modalError = document.getElementById('modalError');
-    const prodPhotoFileName = document.getElementById('prodPhotoFileName');
     const uploadBtnInnerText = document.getElementById('uploadBtnInnerText');
-    const prodPhotoFileContainer = document.getElementById('prodPhotoFileContainer');
+    const prodPhotoList = document.getElementById('prodPhotoList');
     const fileUploadWrap = document.getElementById('fileUploadWrap');
     const imageCompressMsg = document.getElementById('imageCompressMsg');
     
-    // CHANGED: This variable now holds a BLOB, not a DataURL string
-    let currentProductBlob = null;
+    // CHANGED: Array to hold multiple blobs
+    let currentProductBlobs = [];
 
     /****************************************************************
      * BINARY BLOB COMPRESSION (NO BASE64 STRINGS)
@@ -2542,56 +2617,62 @@
       });
     }
 
+    // UPDATE UI TO SHOW LIST OF THUMBNAILS
     function updatePhotoPreviewUI() {
-      prodPhotoFileContainer.innerHTML = '';
-      if (currentProductBlob) {
-        const img = document.createElement('img');
-        
-        // --- FIX: Handle BOTH Blob (New) and String (Old) ---
-        if (currentProductBlob instanceof Blob) {
-             img.src = URL.createObjectURL(currentProductBlob);
-        } else {
-             // It is likely a base64 string from old data
-             img.src = currentProductBlob; 
-        }
-        
-        img.alt = "Product Photo"; 
-        img.className = 'photo-preview-img-thumb';
-        const removeBtn = document.createElement('button');
-        removeBtn.type = 'button'; removeBtn.className = 'remove-photo-btn'; removeBtn.title = 'Remove image'; removeBtn.innerHTML = '✖';
-        removeBtn.onclick = function() { 
-            currentProductBlob = null; 
-            prodPhoto.value = ''; 
-            prodCamera.value = '';
-            prodPhotoFileName.textContent = ''; 
-            imageCompressMsg.style.display = 'none'; 
-            updatePhotoPreviewUI(); 
-        };
-        prodPhotoFileContainer.appendChild(img); prodPhotoFileContainer.appendChild(removeBtn);
+      prodPhotoList.innerHTML = '';
+      currentProductBlobs.forEach((blob, index) => {
+          const itemDiv = document.createElement('div');
+          itemDiv.className = 'photo-preview-item';
+          
+          const img = document.createElement('img');
+          // Handle Blob vs String
+          if (blob instanceof Blob) {
+              img.src = URL.createObjectURL(blob);
+          } else {
+              img.src = blob; 
+          }
+          img.className = 'photo-preview-img-thumb';
+          
+          const removeBtn = document.createElement('button');
+          removeBtn.type = 'button'; 
+          removeBtn.className = 'remove-photo-btn'; 
+          removeBtn.innerHTML = '✖';
+          removeBtn.onclick = () => {
+              currentProductBlobs.splice(index, 1);
+              updatePhotoPreviewUI();
+          };
+          
+          itemDiv.appendChild(img);
+          itemDiv.appendChild(removeBtn);
+          prodPhotoList.appendChild(itemDiv);
+      });
+      
+      if(currentProductBlobs.length === 0) {
+          imageCompressMsg.style.display = 'none';
       }
     }
 
     function showProductModal(mode, product) {
       productModal.reset(); 
       modalError.textContent = ''; 
-      prodPhotoFileName.textContent = ''; 
-      currentProductBlob = null; 
+      currentProductBlobs = []; 
       imageCompressMsg.style.display = 'none'; 
-      updatePhotoPreviewUI();
       
       if (mode === 'add') {
         modalTitle.textContent = "Add Product"; productEditing = null;
-        prodName.value = ""; prodBarcode.value = ""; prodMrp.value = ""; prodCost.value = ""; prodQty.value = ""; prodCategory.value = activeCategoryFilter || ""; prodNotes.value = ""; prodPhoto.value = ""; prodCamera.value = "";
+        prodName.value = ""; prodBarcode.value = ""; prodMrp.value = ""; prodCost.value = ""; prodQty.value = ""; prodCategory.value = activeCategoryFilter || ""; prodNotes.value = "";
       } else {
         modalTitle.textContent = "Edit Product"; productEditing = product;
-        prodName.value = product.name || ""; prodBarcode.value = product.barcode || ""; prodMrp.value = product.mrp !== undefined ? product.mrp : ""; prodCost.value = product.cost !== undefined ? product.cost : ""; prodQty.value = product.qty !== undefined ? product.qty : ""; prodCategory.value = product.category || ""; prodNotes.value = product.notes || ""; prodPhoto.value = ""; prodCamera.value = "";
+        prodName.value = product.name || ""; prodBarcode.value = product.barcode || ""; prodMrp.value = product.mrp !== undefined ? product.mrp : ""; prodCost.value = product.cost !== undefined ? product.cost : ""; prodQty.value = product.qty !== undefined ? product.qty : ""; prodCategory.value = product.category || ""; prodNotes.value = product.notes || "";
         
-        // Handle existing photo (Blob or String)
-        if (product.photo) {
-            currentProductBlob = product.photo; 
-            updatePhotoPreviewUI();
+        // Load existing photos
+        if (product.photos && Array.isArray(product.photos)) {
+            currentProductBlobs = [...product.photos];
+        } else if (product.photo) {
+            currentProductBlobs = [product.photo]; // Backward compatibility
         }
       }
+      updatePhotoPreviewUI();
       productModalBackdrop.classList.remove('hide');
       if (!document.body.classList.contains('modal-open')) { document.body.dataset.scrollY = window.scrollY; document.body.style.top = `-${window.scrollY}px`; document.body.classList.add('modal-open'); }
       setTimeout(()=>prodName.focus(),150);
@@ -2602,43 +2683,37 @@
     let prodPhotoLastPendingPromise = null;
 
     // --- SHARED IMAGE HANDLER FOR BOTH BUTTONS ---
-    function handleImageSelection(file) {
-        if(!file) return;
-        prodPhotoFileName.textContent = file.name; 
-        imageCompressMsg.textContent = "Processing image..."; 
+    function handleImageSelection(files) {
+        if(!files || files.length === 0) return;
+        
+        imageCompressMsg.textContent = `Processing ${files.length} image(s)...`; 
         imageCompressMsg.style.display = 'block';
         
-        const filePromise = compressImageFileToBlob(file, 600, 0.70).then(blob => {
-          const kb = Math.round(blob.size / 1024); 
-          currentProductBlob = blob; // Store Blob, NOT string
-          updatePhotoPreviewUI();
-          imageCompressMsg.textContent = `Photo processed: ~${kb} KB`; 
-          imageCompressMsg.style.display = 'block';
-        }).catch(err => { 
+        const promises = Array.from(files).map(file => compressImageFileToBlob(file, 600, 0.70));
+        
+        const allPromise = Promise.all(promises).then(blobs => {
+             blobs.forEach(blob => {
+                 if(blob) currentProductBlobs.push(blob);
+             });
+             updatePhotoPreviewUI();
+             imageCompressMsg.textContent = `${currentProductBlobs.length} photo(s) attached`;
+        }).catch(err => {
             console.error(err);
-            modalError.textContent = String(err) || "Photo processing failed."; 
-            prodPhoto.value = ''; 
-            prodCamera.value = '';
-            prodPhotoFileName.textContent = ''; 
-            imageCompressMsg.style.display = 'none'; 
-            currentProductBlob = null; 
-            updatePhotoPreviewUI(); 
+            modalError.textContent = "Some photos failed to process.";
         });
-        prodPhotoLastPendingPromise = filePromise;
+        
+        prodPhotoLastPendingPromise = allPromise;
     }
 
     prodPhoto.addEventListener('change', function () {
       if (prodPhoto.files && prodPhoto.files.length) {
-          handleImageSelection(prodPhoto.files[0]);
-      } else {
-          currentProductBlob = null; 
-          updatePhotoPreviewUI();
+          handleImageSelection(prodPhoto.files);
       }
     });
     
     prodCamera.addEventListener('change', function () {
       if (prodCamera.files && prodCamera.files.length) {
-          handleImageSelection(prodCamera.files[0]);
+          handleImageSelection(prodCamera.files);
       }
     });
 
@@ -2651,10 +2726,12 @@
 
     productModal.onsubmit = async function(e) {
       e.preventDefault(); modalError.textContent = "";
-      if (firstSubmitAttempt && (prodPhoto.files.length || prodCamera.files.length) && !currentProductBlob && prodPhotoLastPendingPromise) {
-        try { await prodPhotoLastPendingPromise; } catch (err) { modalError.textContent = "Image failed to load, please select again."; return; }
-        firstSubmitAttempt = false; productModal.onsubmit(e); return;
+      
+      // Wait for images to finish processing
+      if (prodPhotoLastPendingPromise) {
+          try { await prodPhotoLastPendingPromise; } catch(e) {}
       }
+
       firstSubmitAttempt = false;
       const name = (prodName.value || '').trim(); const barcodeVal = (prodBarcode.value || '').trim(); const mrpVal = prodMrp.value; const costVal = prodCost.value; const qtyVal = prodQty.value; const notes = (prodNotes.value || '').trim();
       
@@ -2667,9 +2744,11 @@
       if (mrpVal === "" || isNaN(Number(mrpVal)) || Number(mrpVal) < 0) { modalError.textContent = "Valid MRP required."; return; }
       if (qtyVal === "" || isNaN(Number(qtyVal)) || Number(qtyVal) < 0) { modalError.textContent = "Valid quantity required."; return; }
       
-      // Store the BLOB directly
-      // Added barcode property
-      const productObj = { id: productEditing ? productEditing.id : genID(), name, barcode: barcodeVal, mrp: Number(mrpVal), cost: costVal !== "" ? Number(costVal) : null, qty: Number(qtyVal), category, notes, photo: currentProductBlob };
+      // Store the Array of BLOBS
+      const productObj = { id: productEditing ? productEditing.id : genID(), name, barcode: barcodeVal, mrp: Number(mrpVal), cost: costVal !== "" ? Number(costVal) : null, qty: Number(qtyVal), category, notes, photos: currentProductBlobs };
+      
+      // Remove old photo property if it exists on edit
+      if(productObj.photo) delete productObj.photo;
       
       if (!productEditing) products.push(productObj); else { const idx = products.findIndex(p => p.id === productEditing.id); if (idx >= 0) products[idx] = productObj; else products.push(productObj); }
       
@@ -2725,7 +2804,22 @@
         const printableArea = document.getElementById('printableArea');
         let fullHtml = '';
         productsToShareQueue.forEach(prod => {
-            const imgSrc = getPhotoSrc(prod.photo);
+            
+            // Collect all photos
+            let photoHtml = "";
+            if (chkPhoto.checked && prod.photos && prod.photos.length > 0) {
+                photoHtml = `<div class="print-gallery">`;
+                prod.photos.forEach(p => {
+                    const src = getPhotoSrc(p);
+                    if(src) photoHtml += `<img src="${src}" class="print-product-img" />`;
+                });
+                photoHtml += `</div>`;
+            } else if (chkPhoto.checked && prod.photo) {
+                // legacy
+                 const src = getPhotoSrc(prod.photo);
+                 if(src) photoHtml = `<div class="print-gallery"><img src="${src}" class="print-product-img" /></div>`;
+            }
+
             let html = `
                 <div class="print-product-page">
                     <div class="print-header">
@@ -2735,8 +2829,8 @@
                         <div style="font-size:12px;color:#777">Generated: ${new Date().toLocaleDateString()}</div>
                     </div>
                     <h1 style="text-align:center;margin-top:20px;">${escapeHTML(prod.name)}</h1>
+                    ${photoHtml}
             `;
-            if(chkPhoto.checked && imgSrc) { html += `<img src="${imgSrc}" class="print-product-img" />`; }
             html += `<table class="print-details-table"><tbody>`;
             if(chkCategory.checked && prod.category) { html += `<tr><td class="print-label">Category</td><td>${escapeHTML(prod.category)}</td></tr>`; }
             // Include barcode in print
@@ -2746,7 +2840,7 @@
             if(chkCost.checked && prod.cost !== null && prod.cost !== undefined) { html += `<tr><td class="print-label">Cost Price</td><td>₨ ${Number(prod.cost).toLocaleString()}</td></tr>`; }
             html += `</tbody></table>`;
             if(chkNotes.checked && prod.notes) { html += `<div class="print-notes-box"><strong>Notes:</strong><br/>${escapeHTML(prod.notes)}</div>`; }
-            html += `<div style="text-align:center; margin-top:50px; font-size:12px; color:#888;">Thank you for your interest.For any detail contact on this Phone number:0300-3685270</div></div>`;
+            html += `<div style="text-align:center; margin-top:50px; font-size:12px; color:#888;">Thank you for your interest. For any detail contact on this Phone number:0300-3685270</div></div>`;
             fullHtml += html;
         });
         printableArea.innerHTML = fullHtml;
