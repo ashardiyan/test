@@ -1182,8 +1182,8 @@
 
   <input type="file" id="hiddenImport" accept="application/json" style="display:none">
 
-  <script>
-    /****************************************************************
+<script>
+  /****************************************************************
      * BIOMETRIC (FINGERPRINT/FACE ID) LOGIC
      ****************************************************************/
     const strToBuffer = (str) => Uint8Array.from(str, c => c.charCodeAt(0));
@@ -1229,11 +1229,14 @@
     async function authenticateBiometric() {
         if (!hasBiometricSetup()) return;
         try {
+            // FIX: Correctly converting base64 string back to Uint8Array for allowCredentials
+            const rawId = Uint8Array.from(atob(localStorage.getItem('dealer-bio-cred-id')), c => c.charCodeAt(0));
+            
             const publicKeyCredentialRequestOptions = {
                 challenge: randomBuffer(32),
                 rpId: window.location.hostname,
                 userVerification: "required",
-                allowCredentials: [{ id: Uint8Array.from(atob(localStorage.getItem('dealer-bio-cred-id')), c => c.charCodeAt(0)), type: 'public-key', transports: ['internal'] }]
+                allowCredentials: [{ id: rawId, type: 'public-key', transports: ['internal'] }]
             };
             const assertion = await navigator.credentials.get({ publicKey: publicKeyCredentialRequestOptions });
             if (assertion) {
@@ -1315,8 +1318,10 @@
     
     function showTimeoutNotice(msg) {
       const t = document.getElementById('timeoutNotice');
-      t.textContent = msg || '';
-      t.style.display = msg ? 'block' : 'none';
+      if(t) {
+          t.textContent = msg || '';
+          t.style.display = msg ? 'block' : 'none';
+      }
     }
     
     function isSessionStillActive() { const expiresAt = getKeepSessionActive(); return !!expiresAt && Date.now() < expiresAt; }
@@ -1360,9 +1365,9 @@
     function manualLogoutDueToTimeout() {
       stopSessionTimeoutMonitor();
       clearKeepSession();
-      // FIX: Ensure scanner is closed before showing login, otherwise scanner (z9000) blocks login (z7000)
+      // FIX: Ensure scanner is closed before showing login
       if(typeof stopScanner === 'function') stopScanner();
-      if(document.getElementById('imageViewerOverlay').classList.contains('show')) {
+      if(document.getElementById('imageViewerOverlay') && document.getElementById('imageViewerOverlay').classList.contains('show')) {
          document.getElementById('imageViewerOverlay').classList.remove('show');
          document.getElementById('imageViewerImg').src = '';
       }
@@ -1396,7 +1401,7 @@
       })();
 
       const swScript = `
-        const CACHE_NAME = 'local-dealer-cache-v16';
+        const CACHE_NAME = 'local-dealer-cache-v18';
         const OFFLINE_URL = self.registration.scope.endsWith('/') ? self.registration.scope + 'index.html' : self.registration.scope + '/index.html';
         const FILES_TO_CACHE = [ OFFLINE_URL, './index.html' ];
         
@@ -1453,33 +1458,43 @@
     function isMobileChromeStandaloneCapable() { const ua = navigator.userAgent || ''; return /Android/.test(ua) && /Chrome\/[.0-9]* Mobile/.test(ua) && !window.matchMedia('(display-mode: standalone)').matches; }
 
     window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault(); deferredPrompt = e; installBtn.style.display = 'inline-block'; installAsAppBtn.style.display = 'inline-block'; mobileInstall.style.display = 'none';
+      e.preventDefault(); deferredPrompt = e; 
+      if(installBtn) installBtn.style.display = 'inline-block'; 
+      if(installAsAppBtn) installAsAppBtn.style.display = 'inline-block'; 
+      if(mobileInstall) mobileInstall.style.display = 'none';
     });
 
-    installBtn && (installBtn.onclick = async function() {
-      installBtn.disabled = true;
-      if (deferredPrompt) { deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; installBtn.style.display = 'none'; installAsAppBtn.style.display = 'none'; installBtn.disabled = false; }
-    });
+    if(installBtn) {
+        installBtn.onclick = async function() {
+            installBtn.disabled = true;
+            if (deferredPrompt) { deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; installBtn.style.display = 'none'; installAsAppBtn.style.display = 'none'; installBtn.disabled = false; }
+        };
+    }
 
-    installAsAppBtn && (installAsAppBtn.onclick = async function() {
-      installAsAppBtn.disabled = true;
-      if (deferredPrompt) { deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; installBtn.style.display = 'none'; installAsAppBtn.style.display = 'none'; installAsAppBtn.disabled = false; } else { alert("Install prompt not available right now."); installAsAppBtn.disabled = false; }
-    });
+    if(installAsAppBtn) {
+        installAsAppBtn.onclick = async function() {
+            installAsAppBtn.disabled = true;
+            if (deferredPrompt) { deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; installBtn.style.display = 'none'; installAsAppBtn.style.display = 'none'; installAsAppBtn.disabled = false; } else { alert("Install prompt not available right now."); installAsAppBtn.disabled = false; }
+        };
+    }
 
-    window.addEventListener('appinstalled', ()=>{ installBtn.style.display='none'; installAsAppBtn.style.display='none'; deferredPrompt = null; mobileInstall.style.display='none'; });
+    window.addEventListener('appinstalled', ()=>{ if(installBtn) installBtn.style.display='none'; if(installAsAppBtn) installAsAppBtn.style.display='none'; deferredPrompt = null; if(mobileInstall) mobileInstall.style.display='none'; });
 
     window.addEventListener('DOMContentLoaded', function() {
       setTimeout(() => {
         if (!window.matchMedia('(display-mode: standalone)').matches && !window.matchMedia('(display-mode: fullscreen)').matches && isMobileChromeStandaloneCapable()) {
           if ((installBtn.style.display === "none" || getComputedStyle(installBtn).display === "none") && (installAsAppBtn.style.display === "none" || getComputedStyle(installAsAppBtn).display === "none")) {
-            mobileInstall.innerHTML = "To install this app: tap <b><span style='font-size:1.22em;'>⋮</span></b> at the top right of Chrome, and choose <b>Add to Home screen</b>."; mobileInstall.style.display = "inline-block";
+            if(mobileInstall) {
+                mobileInstall.innerHTML = "To install this app: tap <b><span style='font-size:1.22em;'>⋮</span></b> at the top right of Chrome, and choose <b>Add to Home screen</b>."; 
+                mobileInstall.style.display = "inline-block";
+            }
           }
         }
       }, 1100);
     });
 
     (function handleAndroidBackButton() {
-      let isHandlerAttached = false; // FIX: Prevents duplicate listener attachment
+      let isHandlerAttached = false;
       let openedModals = [];
       const modalPriority = ['scannerOverlay', 'imageViewerOverlay', 'productModalBackdrop', 'deleteModalBackdrop', 'settingsBackdrop', 'detailModalBackdrop', 'shareModalBackdrop', 'categoryModalBackdrop', 'quickSellModalBackdrop', 'historyModalBackdrop'];
 
@@ -1506,7 +1521,7 @@
             
             if (topOpenModal) { 
                 if (topOpenModal === 'imageViewerOverlay' || topOpenModal === 'scannerOverlay') {
-                    // FIX NO 3: Ensure stream stops if scanner closed via back button
+                    // FIX: Ensure stream stops if scanner closed via back button
                     if(topOpenModal === 'scannerOverlay') stopScanner();
                     
                     document.getElementById(topOpenModal).classList.remove('show');
@@ -1550,7 +1565,6 @@
         });
       }
       
-      // FIX: Check if already attached before running
       window.__enablePwaBackHandler = function() { 
           if(isHandlerAttached) return;
           isHandlerAttached = true;
@@ -1607,8 +1621,8 @@
     const setupBiometricBtn = document.getElementById('setupBiometricBtn');
     const biometricUnlockBtn = document.getElementById('biometricUnlockBtn');
 
-    setupBiometricBtn.onclick = (e) => { e.preventDefault(); registerBiometric(); };
-    biometricUnlockBtn.onclick = (e) => { e.preventDefault(); authenticateBiometric(); };
+    if(setupBiometricBtn) setupBiometricBtn.onclick = (e) => { e.preventDefault(); registerBiometric(); };
+    if(biometricUnlockBtn) biometricUnlockBtn.onclick = (e) => { e.preventDefault(); authenticateBiometric(); };
 
     (function() {
       const showBtn = document.getElementById('showLoginPINBtn');
@@ -1650,13 +1664,13 @@
     keepLoggedInToggle.onchange = function() { showTimeoutNotice(""); if (!this.checked) clearKeepSession(); };
     document.getElementById('login-modal').addEventListener('transitionend', function() { loginPIN.value = ''; });
     
-    // FIX NO 2: Ensure scanner/viewer are closed on logout to prevent UI lockup
+    // FIX: Ensure scanner/viewer are closed on logout
     function doLogout(showMsg) { 
         stopSessionTimeoutMonitor(); 
         clearKeepSession(); 
         
         if(typeof stopScanner === 'function') stopScanner();
-        if(document.getElementById('imageViewerOverlay').classList.contains('show')) {
+        if(document.getElementById('imageViewerOverlay') && document.getElementById('imageViewerOverlay').classList.contains('show')) {
            document.getElementById('imageViewerOverlay').classList.remove('show');
            document.getElementById('imageViewerImg').src = '';
         }
@@ -1708,9 +1722,9 @@
     
     let currentFilteredProducts = []; 
     let activeCategoryFilter = null; 
-    let isQuickSellMode = false; // State for Quick Sell
+    let isQuickSellMode = false;
 
-    // FIX NO 1: Global array to track active URLs for revocation
+    // FIX NO 1: Global array to track active URLs for revocation (prevents memory leak)
     let activeObjectUrls = [];
 
     // ***************************************************************
@@ -1745,9 +1759,8 @@
         const tx = db.transaction(STORE_NAME, 'readwrite');
         const store = tx.objectStore(STORE_NAME);
         await new Promise((resolve, reject) => {
-            const req = store.clear();
-            req.onsuccess = resolve;
-            req.onerror = reject;
+             store.clear().onsuccess = resolve;
+             store.clear().onerror = reject;
         });
 
         // Add new
@@ -1892,14 +1905,15 @@
         if(e.target === imageViewerOverlay) { imageViewerOverlay.classList.remove('show'); imageViewerImg.src = ''; }
     };
 
-    // --- HELPER: GET URL FROM BLOB OR STRING ---
-    // If it's a blob (new data), create object URL. If string (old data), use as is.
+    // --- HELPER: GET URL FROM BLOB OR STRING (WITH TRACKING) ---
     function getPhotoSrc(photo) {
         if (!photo) return null;
         if (photo instanceof Blob) {
-            return URL.createObjectURL(photo);
+            const url = URL.createObjectURL(photo);
+            activeObjectUrls.push(url); // Track for cleanup
+            return url;
         }
-        return photo; // Base64 string
+        return photo; // Base64 string fallback
     }
 
     function createProductCard(product, idx) {
@@ -1925,7 +1939,7 @@
       const mrpNum = Number(product.mrp) || 0;
       let checkboxHTML = `<input type="checkbox" class="prod-select-checkbox" title="Select" data-id="${product.id}" tabindex="0" ${selectedProductIds.has(product.id) ? "checked" : ""}/>`;
 
-      // Feature 1: Low Stock Logic (UPDATED: red if <= 1)
+      // Feature 1: Low Stock Logic
       const isLowStock = qtyNum <= 0;
       const stockColor = isLowStock ? 'var(--danger)' : 'var(--success)';
       const stockIcon = isLowStock ? '⚠️ ' : '';
@@ -2216,8 +2230,8 @@
     document.addEventListener('keydown', function(e){
       if (e.key === "Escape") {
         let closedAModal = false;
-        if(imageViewerOverlay.classList.contains('show')) { imageViewerOverlay.classList.remove('show'); imageViewerImg.src = ''; closedAModal=true; }
-        else if(document.getElementById('scannerOverlay').classList.contains('show')) { stopScanner(); document.getElementById('scannerOverlay').classList.remove('show'); closedAModal=true; }
+        if(document.getElementById('imageViewerOverlay') && document.getElementById('imageViewerOverlay').classList.contains('show')) { document.getElementById('imageViewerOverlay').classList.remove('show'); document.getElementById('imageViewerImg').src = ''; closedAModal=true; }
+        else if(document.getElementById('scannerOverlay') && document.getElementById('scannerOverlay').classList.contains('show')) { stopScanner(); document.getElementById('scannerOverlay').classList.remove('show'); closedAModal=true; }
         else if (!detailModalBackdrop.classList.contains('hide')) { detailModalBackdrop.classList.add('hide'); detailModalBody.innerHTML=''; enableDetailBackgroundScroll(); closedAModal = true; }
         else if (!productModalBackdrop.classList.contains('hide')) { productModalBackdrop.classList.add('hide'); closedAModal = true; }
         else if (!deleteModalBackdrop.classList.contains('hide')) { deleteModalBackdrop.classList.add('hide'); closedAModal = true; }
@@ -2360,7 +2374,7 @@
         try {
             const history = await getSalesHistoryFromDB();
             
-            if(history.length === 0) {
+            if(!history || history.length === 0) {
                 historyList.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:20px;">No sales recorded yet.</div>';
                 return;
             }
@@ -2398,6 +2412,7 @@
             });
             historyList.innerHTML = html;
         } catch(err) {
+            console.error(err);
             historyList.innerHTML = `<div style="color:var(--danger)">Error loading history.</div>`;
         }
     };
@@ -2518,10 +2533,6 @@
 
           // FIX NO 1: Register URL after creation
           const card = createProductCard(prod,i);
-          const imgThumb = card.querySelector('.prod-photo-thumb');
-          if (imgThumb && imgThumb.src && imgThumb.src.startsWith('blob:')) {
-             activeObjectUrls.push(imgThumb.src);
-          }
           fragment.appendChild(card);
       });
       productListElem.appendChild(fragment);
@@ -2849,7 +2860,7 @@
     };
 
     /****************************************************************
-     * FIX NO 3: SUPER SCANNER LOGIC (Confirm/Retry)
+     * SUPER SCANNER LOGIC (Confirm/Retry)
      ****************************************************************/
     const scanSearchBtn = document.getElementById('scanSearchBtn');
     const scanModalBtn = document.getElementById('scanModalBtn');
@@ -3041,7 +3052,7 @@
     scanSearchBtn.onclick = () => startScanner('search');
     scanModalBtn.onclick = () => startScanner('modal');
     closeScannerBtn.onclick = stopScanner;
+</script>
 
-  </script>
 </body>
 </html>
