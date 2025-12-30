@@ -2860,7 +2860,7 @@
     };
 
     /****************************************************************
-     * SUPER SCANNER LOGIC (Confirm/Retry)
+     * SUPER SCANNER LOGIC (Confirm/Retry) - FIXED for Performance
      ****************************************************************/
     const scanSearchBtn = document.getElementById('scanSearchBtn');
     const scanModalBtn = document.getElementById('scanModalBtn');
@@ -2878,10 +2878,10 @@
     const scanConfirmBtn = document.getElementById('scanConfirmBtn');
     
     let scannerStream = null;
-    let scannerInterval = null;
+    let scannerTimeout = null; // REPLACED interval with timeout
     let activeScanTarget = null;
     let videoTrack = null;
-    let currentScannedCode = null; // Temp store
+    let currentScannedCode = null; 
 
     async function startScanner(target) {
         if (!('BarcodeDetector' in window)) {
@@ -2954,41 +2954,50 @@
     }
 
     function startDetectionLoop(detector) {
-        scannerInterval = setInterval(async () => {
-            if (!scannerVideo.videoWidth) return;
-            try {
-                const barcodes = await detector.detect(scannerVideo);
-                if (barcodes.length > 0) {
-                    const code = barcodes[0].rawValue;
-                    currentScannedCode = code;
+        // Clear any previous timeout just in case
+        if (scannerTimeout) clearTimeout(scannerTimeout);
 
-                    // DIRECT ACTION FOR SEARCH (No Confirmation)
-                    if (activeScanTarget === 'search') {
-                        stopScanner();
-                        searchInput.value = code;
-                        searchInput.dispatchEvent(new Event('input'));
-                        if (navigator.vibrate) navigator.vibrate(50);
-                        return;
+        const scanLoop = async () => {
+            // Check if overlay is still visible to stop processing if closed
+            if (!scannerOverlay.classList.contains('show')) return;
+            
+            if (scannerVideo.videoWidth) {
+                try {
+                    const barcodes = await detector.detect(scannerVideo);
+                    if (barcodes.length > 0) {
+                        const code = barcodes[0].rawValue;
+                        currentScannedCode = code;
+
+                        // DIRECT ACTION FOR SEARCH (No Confirmation)
+                        if (activeScanTarget === 'search') {
+                            stopScanner();
+                            searchInput.value = code;
+                            searchInput.dispatchEvent(new Event('input'));
+                            if (navigator.vibrate) navigator.vibrate(50);
+                            return; // Stop looping
+                        }
+
+                        // CONFIRMATION FOR ADD/EDIT (Modal)
+                        // Pause the loop by NOT calling setTimeout again
+                        scannedCodeDisplay.textContent = code;
+                        scanConfirmation.style.display = 'flex';
+                        
+                        if (navigator.vibrate) navigator.vibrate(100);
+                        return; // Stop looping to wait for user action
                     }
-
-                    // CONFIRMATION FOR ADD/EDIT (Modal)
-                    // PAUSE Scanning
-                    clearInterval(scannerInterval);
-                    scannerInterval = null; 
-                    
-                    // Show Confirmation UI
-                    scannedCodeDisplay.textContent = code;
-                    scanConfirmation.style.display = 'flex';
-                    
-                    if (navigator.vibrate) navigator.vibrate(100);
+                } catch (err) {
+                    // console.error(err);
                 }
-            } catch (err) {
-                // console.error(err);
             }
-        }, 200);
+
+            // Recursively schedule the next scan only after processing finishes
+            scannerTimeout = setTimeout(scanLoop, 200);
+        };
+
+        scanLoop();
     }
 
-    // RETRY Button Logic
+    // RETRY Button Logic - Restarts the loop
     scanRetryBtn.onclick = async () => {
         scanConfirmation.style.display = 'none';
         currentScannedCode = null;
@@ -3014,7 +3023,6 @@
              const prodBarcode = document.getElementById('prodBarcode');
              
              // 1. Get current values into an array
-             // Split by comma, trim whitespace, filter out empty strings
              let codes = prodBarcode.value ? prodBarcode.value.split(',').map(s => s.trim()).filter(s => s) : [];
              
              // 2. Add new code if unique
@@ -3039,9 +3047,10 @@
             });
             scannerStream = null;
         }
-        if (scannerInterval) {
-            clearInterval(scannerInterval);
-            scannerInterval = null;
+        // Clear timeout instead of interval
+        if (scannerTimeout) {
+            clearTimeout(scannerTimeout);
+            scannerTimeout = null;
         }
         scannerOverlay.classList.remove('show');
         scanConfirmation.style.display = 'none'; // Hide confirmation on close
