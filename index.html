@@ -239,9 +239,27 @@
         justify-content: space-between;
         align-items: center;
         font-size: 0.9em;
+        position: relative; /* Added for delete button */
+        padding-right: 40px; /* Space for delete button */
     }
     .history-meta { color: var(--text-muted); font-size: 0.85em; margin-top: 2px; }
     .history-profit { font-size: 0.82em; color: var(--accent2); margin-top: 2px; }
+    
+    /* NEW: History Delete Button */
+    .history-delete-btn {
+        position: absolute;
+        right: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: var(--danger);
+        font-size: 1.4em;
+        cursor: pointer;
+        padding: 8px;
+        z-index: 2;
+    }
+    .history-delete-btn:hover { color: #ff8888; }
     
     /* Small Button Variant for Uploads */
     .btn-small {
@@ -259,12 +277,12 @@
       gap: 8px;
     }
 
-    button, .rounded-sky-btn, .prod-actions button, .modal-close, input[type="button"], input[type="submit"], .remove-photo-btn, .scan-btn-inline, .scan-btn-modal {
+    button, .rounded-sky-btn, .prod-actions button, .modal-close, input[type="button"], input[type="submit"], .remove-photo-btn, .scan-btn-inline, .scan-btn-modal, .history-delete-btn {
       -webkit-tap-highlight-color: transparent !important;
       tap-highlight-color: transparent !important;
       outline: none !important;
     }
-    button:focus, .rounded-sky-btn:focus, .prod-actions button:focus, .modal-close:focus, .remove-photo-btn:focus, .scan-btn-inline:focus, .scan-btn-modal:focus {
+    button:focus, .rounded-sky-btn:focus, .prod-actions button:focus, .modal-close:focus, .remove-photo-btn:focus, .scan-btn-inline:focus, .scan-btn-modal:focus, .history-delete-btn:focus {
       outline: none !important;
       box-shadow: none !important;
     }
@@ -638,7 +656,15 @@
         scroll-snap-align: center;
         scroll-snap-stop: always;
     }
-    
+        #imageViewerImg {
+
+        max-width: 95vw;
+        max-height: 85vh; 
+        object-fit: contain;
+        border-radius: 4px;
+        box-shadow: 0 0 20px rgba(0,0,0,0.5);
+
+    }
     #imageViewerClose {
         position: absolute;
         top: 20px;
@@ -1259,6 +1285,7 @@
   </div>
 
   <input type="file" id="hiddenImport" accept="application/json" style="display:none">
+
 
 <script>
   /****************************************************************
@@ -1896,6 +1923,18 @@
         });
     }
     
+    // NEW: Delete sale logic
+    async function deleteSaleFromDB(id) {
+        const db = await openDB();
+        const tx = db.transaction(STORE_HISTORY, 'readwrite');
+        const store = tx.objectStore(STORE_HISTORY);
+        store.delete(id);
+        return new Promise((resolve, reject) => {
+            tx.oncomplete = resolve;
+            tx.onerror = reject;
+        });
+    }
+    
     async function getSalesHistoryFromDB() {
         const db = await openDB();
         if(!db.objectStoreNames.contains(STORE_HISTORY)) return [];
@@ -2513,15 +2552,14 @@
     };
     
     /****************************************************************
-     * NEW FEATURE: HISTORY LOGIC
+     * NEW FEATURE: HISTORY LOGIC (Updated with Delete)
      ****************************************************************/
     const historyBtn = document.getElementById('historyBtn');
     const historyModalBackdrop = document.getElementById('historyModalBackdrop');
     const historyList = document.getElementById('historyList');
     const closeHistoryBtn = document.getElementById('closeHistoryBtn');
     
-    historyBtn.onclick = async function() {
-        historyModalBackdrop.classList.remove('hide');
+    async function loadHistoryItems() {
         historyList.innerHTML = '<div style="text-align:center;padding:20px;">Loading history...</div>';
         
         try {
@@ -2555,19 +2593,52 @@
                             <div class="history-meta">${dateStr} at ${timeStr}</div>
                             <div class="history-meta">Sold @ ₨${salePrice.toLocaleString()} (Cost: ₨${costPrice.toLocaleString()})</div>
                         </div>
-                        <div style="text-align:right;">
+                        <div style="text-align:right; margin-right:10px;">
                             <div style="font-weight:bold; color:var(--text); font-size:1.1em;">-${item.qtySold}</div>
                             <div style="font-size:0.85em; color:var(--text-muted);">Total: ₨${item.totalValue.toLocaleString()}</div>
                             <div class="history-profit" style="color:${profitColor}">${profitSign}₨${profit.toLocaleString()}</div>
                         </div>
+                        <button class="history-delete-btn" data-id="${item.id}" data-prod-id="${item.productId}" data-qty="${item.qtySold}" title="Delete & Restore Stock">✖</button>
                     </div>
                 `;
             });
             historyList.innerHTML = html;
+            
+            const deleteBtns = historyList.querySelectorAll('.history-delete-btn');
+            deleteBtns.forEach(btn => {
+                btn.onclick = async function() {
+                    const id = Number(this.getAttribute('data-id'));
+                    const prodId = this.getAttribute('data-prod-id');
+                    const qty = Number(this.getAttribute('data-qty'));
+                    
+                    if(!confirm("Remove this record and restore " + qty + " item(s) to stock?")) return;
+                    
+                    try {
+                        await deleteSaleFromDB(id);
+                        
+                        const product = products.find(p => p.id === prodId);
+                        if(product) {
+                            product.qty = (product.qty || 0) + qty;
+                            await saveProducts(); 
+                        }
+                        
+                        loadHistoryItems();
+                        
+                    } catch(err) {
+                        alert("Error removing item: " + err.message);
+                    }
+                };
+            });
+            
         } catch(err) {
             console.error(err);
             historyList.innerHTML = `<div style="color:var(--danger)">Error loading history.</div>`;
         }
+    }
+    
+    historyBtn.onclick = function() {
+        historyModalBackdrop.classList.remove('hide');
+        loadHistoryItems();
     };
     
     closeHistoryBtn.onclick = () => historyModalBackdrop.classList.add('hide');
