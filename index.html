@@ -601,7 +601,7 @@
         cursor: pointer;
     }
 
-    /* --- FULL SCREEN IMAGE VIEWER --- */
+    /* --- FULL SCREEN IMAGE VIEWER (MODIFIED FOR SLIDER) --- */
     #imageViewerOverlay {
         position: fixed;
         inset: 0;
@@ -614,13 +614,31 @@
         animation: fadeIn 0.2s ease-out;
     }
     #imageViewerOverlay.show { display: flex; }
-    #imageViewerImg {
-        max-width: 95vw;
-        max-height: 85vh;
-        object-fit: contain;
-        border-radius: 4px;
-        box-shadow: 0 0 20px rgba(0,0,0,0.5);
+    
+    /* NEW: Slider Container */
+    #imageViewerSlider {
+        display: flex;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        width: 100%;
+        height: 100%;
+        align-items: center;
+        /* Hide scrollbar */
+        scrollbar-width: none;
+        -ms-overflow-style: none;
     }
+    #imageViewerSlider::-webkit-scrollbar { display: none; }
+
+    /* NEW: Individual Slides */
+    .full-screen-slide {
+        flex: 0 0 100%;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        scroll-snap-align: center;
+        scroll-snap-stop: always;
+    }
+    
     #imageViewerClose {
         position: absolute;
         top: 20px;
@@ -637,6 +655,7 @@
         justify-content: center;
         cursor: pointer;
         transition: background 0.2s;
+        z-index: 8001; /* Ensure above slider */
     }
     #imageViewerClose:hover { background: rgba(255,255,255,0.25); }
     @keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
@@ -928,7 +947,7 @@
 
   <div id="imageViewerOverlay">
       <button id="imageViewerClose">✖</button>
-      <img id="imageViewerImg" src="" alt="Full Screen" />
+      <div id="imageViewerSlider"></div>
   </div>
 
   <div id="scannerOverlay">
@@ -1242,14 +1261,6 @@
   <input type="file" id="hiddenImport" accept="application/json" style="display:none">
 
 <script>
-    /* Javascript code remains unchanged */
-    /* Please ensure your existing script code is pasted here */
-</script>
-
-</body>
-</html>
-
-<script>
   /****************************************************************
      * BIOMETRIC (FINGERPRINT/FACE ID) LOGIC
      ****************************************************************/
@@ -1436,7 +1447,6 @@
       if(typeof stopScanner === 'function') stopScanner();
       if(document.getElementById('imageViewerOverlay') && document.getElementById('imageViewerOverlay').classList.contains('show')) {
          document.getElementById('imageViewerOverlay').classList.remove('show');
-         document.getElementById('imageViewerImg').src = '';
       }
       
       document.getElementById('dealerApp').style.display = 'none';
@@ -1468,7 +1478,7 @@
       })();
 
       const swScript = `
-        const CACHE_NAME = 'local-dealer-cache-v18';
+        const CACHE_NAME = 'local-dealer-cache-v19';
         const OFFLINE_URL = self.registration.scope.endsWith('/') ? self.registration.scope + 'index.html' : self.registration.scope + '/index.html';
         const FILES_TO_CACHE = [ OFFLINE_URL, './index.html' ];
         
@@ -1592,7 +1602,6 @@
                     if(topOpenModal === 'scannerOverlay') stopScanner();
                     
                     document.getElementById(topOpenModal).classList.remove('show');
-                    if(topOpenModal === 'imageViewerOverlay') document.getElementById('imageViewerImg').src = '';
                 } else {
                     document.getElementById(topOpenModal).classList.add('hide'); 
                 }
@@ -1739,7 +1748,6 @@
         if(typeof stopScanner === 'function') stopScanner();
         if(document.getElementById('imageViewerOverlay') && document.getElementById('imageViewerOverlay').classList.contains('show')) {
            document.getElementById('imageViewerOverlay').classList.remove('show');
-           document.getElementById('imageViewerImg').src = '';
         }
 
         document.getElementById('dealerApp').style.display = 'none'; 
@@ -1958,18 +1966,65 @@
     }
     
     const imageViewerOverlay = document.getElementById('imageViewerOverlay');
-    const imageViewerImg = document.getElementById('imageViewerImg');
     const imageViewerClose = document.getElementById('imageViewerClose');
     
-    function openImageViewer(src) {
-        if(!src) return;
-        imageViewerImg.src = src;
+    // --- UPDATED IMAGE VIEWER FOR FULL-SCREEN SWIPING ---
+    function openImageViewer(images, startIdx = 0) {
+        // Handle legacy call with single string
+        if (typeof images === 'string') images = [images];
+        if (!images || !Array.isArray(images) || images.length === 0) return;
+
+        // Try to find slider container first (new HTML), fallback to old img tag
+        let slider = document.getElementById('imageViewerSlider');
+        
+        // If the HTML hasn't been updated to include the slider div, we create/inject it dynamically
+        // or clear the existing image tag and use it as a container if needed.
+        if (!slider) {
+            // Fallback for previous HTML structure: replace img with div
+            const oldImg = document.getElementById('imageViewerImg');
+            if (oldImg) {
+                slider = document.createElement('div');
+                slider.id = 'imageViewerSlider';
+                slider.style.cssText = "display:flex; overflow-x:auto; scroll-snap-type:x mandatory; width:100%; height:100%; align-items:center;";
+                oldImg.parentNode.replaceChild(slider, oldImg);
+            }
+        }
+        
+        if(!slider) return;
+        
+        slider.innerHTML = ''; // Clear previous
+
+        images.forEach(src => {
+            const img = document.createElement('img');
+            img.src = src;
+            // Add inline styles to ensure swipe works even if CSS is missing
+            img.style.cssText = "flex: 0 0 100%; width:100%; height:100%; object-fit:contain; scroll-snap-align:center; display:block;";
+            slider.appendChild(img);
+        });
+
         imageViewerOverlay.classList.add('show');
+        
+        // Snap to index
+        if(startIdx > 0) {
+            // Need small delay for layout to stabilize
+            setTimeout(() => {
+                 slider.scrollTo({ left: slider.clientWidth * startIdx, behavior: 'auto' });
+            }, 10);
+        }
     }
     
-    imageViewerClose.onclick = () => { imageViewerOverlay.classList.remove('show'); imageViewerImg.src = ''; };
+    imageViewerClose.onclick = () => { 
+        imageViewerOverlay.classList.remove('show'); 
+        const slider = document.getElementById('imageViewerSlider');
+        if(slider) slider.innerHTML = ''; // Clear memory
+    };
+    
     imageViewerOverlay.onclick = (e) => {
-        if(e.target === imageViewerOverlay) { imageViewerOverlay.classList.remove('show'); imageViewerImg.src = ''; }
+        if(e.target === imageViewerOverlay) { 
+            imageViewerOverlay.classList.remove('show'); 
+            const slider = document.getElementById('imageViewerSlider');
+            if(slider) slider.innerHTML = '';
+        }
     };
 
     // --- HELPER: GET URL FROM BLOB OR STRING (WITH TRACKING) ---
@@ -2043,7 +2098,16 @@
       if (thumb && imgSrc) {
           thumb.onclick = (e) => {
               e.stopPropagation();
-              openImageViewer(imgSrc);
+              // Pass ALL photos to viewer for swiping
+              let allSrcs = [];
+              if (product.photos && product.photos.length) {
+                  allSrcs = product.photos.map(p => getPhotoSrc(p)).filter(s => s);
+              } else if (product.photo) {
+                  const s = getPhotoSrc(product.photo);
+                  if(s) allSrcs.push(s);
+              }
+              
+              if(allSrcs.length > 0) openImageViewer(allSrcs, 0);
           };
       }
 
@@ -2255,18 +2319,35 @@
     function disableDetailBackgroundScroll() { document.body.classList.add('detail-modal-open'); }
     function enableDetailBackgroundScroll() { document.body.classList.remove('detail-modal-open'); }
     
+    // -- Global variable to hold current detail images for the viewer to access --
+    let currentDetailImages = [];
+    
+    // Wrapper function to be called from inline HTML
+    window.openImageViewerGlobal = function(index) {
+        if(currentDetailImages && currentDetailImages.length > 0) {
+            openImageViewer(currentDetailImages, index);
+        }
+    };
+
     function showDetailModal(product) {
       const nameSafe = escapeHTML(product.name || 'Unnamed');
       
+      // Prepare photos for viewer
+      currentDetailImages = [];
+      if (product.photos && product.photos.length > 0) {
+          currentDetailImages = product.photos.map(p => getPhotoSrc(p)).filter(s => s);
+      } else if (product.photo) {
+          const s = getPhotoSrc(product.photo);
+          if(s) currentDetailImages.push(s);
+      }
+      
       // Build Gallery HTML
       let galleryHtml = "";
-      if(product.photos && product.photos.length > 0) {
+      if(currentDetailImages.length > 0) {
           galleryHtml = `<div class="detail-gallery">`;
-          product.photos.forEach(photo => {
-              const src = getPhotoSrc(photo);
-              if(src) {
-                  galleryHtml += `<img src="${src}" onclick="openImageViewer('${src}')" alt="${nameSafe}"/>`;
-              }
+          currentDetailImages.forEach((src, idx) => {
+              // Pass index to global wrapper
+              galleryHtml += `<img src="${src}" onclick="openImageViewerGlobal(${idx})" alt="${nameSafe}"/>`;
           });
           galleryHtml += `</div>`;
       } else {
@@ -2297,7 +2378,12 @@
     document.addEventListener('keydown', function(e){
       if (e.key === "Escape") {
         let closedAModal = false;
-        if(document.getElementById('imageViewerOverlay') && document.getElementById('imageViewerOverlay').classList.contains('show')) { document.getElementById('imageViewerOverlay').classList.remove('show'); document.getElementById('imageViewerImg').src = ''; closedAModal=true; }
+        if(document.getElementById('imageViewerOverlay') && document.getElementById('imageViewerOverlay').classList.contains('show')) { 
+            document.getElementById('imageViewerOverlay').classList.remove('show'); 
+            const slider = document.getElementById('imageViewerSlider');
+            if(slider) slider.innerHTML = '';
+            closedAModal=true; 
+        }
         else if(document.getElementById('scannerOverlay') && document.getElementById('scannerOverlay').classList.contains('show')) { stopScanner(); document.getElementById('scannerOverlay').classList.remove('show'); closedAModal=true; }
         else if (!detailModalBackdrop.classList.contains('hide')) { detailModalBackdrop.classList.add('hide'); detailModalBody.innerHTML=''; enableDetailBackgroundScroll(); closedAModal = true; }
         else if (!productModalBackdrop.classList.contains('hide')) { productModalBackdrop.classList.add('hide'); closedAModal = true; }
