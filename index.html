@@ -508,7 +508,7 @@
   padding-top: 30px;
 }
 
-/* Updated for multi-image gallery scroll */
+/* Updated for multi-image gallery SWIPE */
 .detail-gallery {
     display: flex;
     overflow-x: auto;
@@ -517,6 +517,10 @@
     margin-bottom: 10px;
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
+    
+    /* ENABLE SWIPING */
+    scroll-snap-type: x mandatory;
+    overscroll-behavior-x: contain;
 }
 .detail-gallery img {
   flex-shrink: 0;
@@ -527,6 +531,10 @@
   box-shadow: 0 4px 16px #1b314e33; 
   background: #21293f; 
   cursor: zoom-in;
+  
+  /* ALIGN ITEMS */
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
 }
 
 /* FIX: CENTER SINGLE IMAGE */
@@ -1232,6 +1240,14 @@
   </div>
 
   <input type="file" id="hiddenImport" accept="application/json" style="display:none">
+
+<script>
+    /* Javascript code remains unchanged */
+    /* Please ensure your existing script code is pasted here */
+</script>
+
+</body>
+</html>
 
 <script>
   /****************************************************************
