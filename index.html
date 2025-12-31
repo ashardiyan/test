@@ -2361,17 +2361,50 @@ async function saveProductsToDB(productsArray) {
         const userWantsToMerge = confirm(`Found ${importedArr.length} products in file.\n\n• Click [OK] to MERGE.\n(Adds new items and updates existing ones. Safe.)\n\n• Click [Cancel] to REPLACE.\n(Deletes everything currently in app and restores backup.)`);
 
         if (userWantsToMerge) {
-            const productMap = new Map();
-            products.forEach(p => productMap.set(p.id, p));
-            let addedCount = 0;
-            let updatedCount = 0;
-            importedArr.forEach(p => {
-                if (!p.id) p.id = genID();
-                if (productMap.has(p.id)) { productMap.set(p.id, p); updatedCount++; } else { productMap.set(p.id, p); addedCount++; }
-            });
-            products = Array.from(productMap.values());
-            alert(`Import Successful!\n\n🆕 Added: ${addedCount}\n🔄 Updated: ${updatedCount}`);
+    const productMap = new Map();
+    products.forEach(p => productMap.set(p.id, p));
+    let addedCount = 0;
+    let updatedCount = 0;
+    let unchangedCount = 0;
+    
+    importedArr.forEach(p => {
+        if (!p.id) p.id = genID();
+        
+        if (productMap.has(p.id)) {
+            const existing = productMap.get(p.id);
+            
+            // Check if data actually changed
+            const hasChanged = (
+                existing.name !== p.name ||
+                existing.barcode !== p.barcode ||
+                existing.mrp !== p.mrp ||
+                existing.cost !== p.cost ||
+                existing.qty !== p.qty ||
+                existing.category !== p.category ||
+                existing.notes !== p.notes ||
+                (existing.photos?.length || 0) !== (p.photos?.length || 0)
+            );
+            
+            if (hasChanged) {
+                productMap.set(p.id, p);
+                updatedCount++;
+            } else {
+                unchangedCount++;
+            }
         } else {
+            productMap.set(p.id, p);
+            addedCount++;
+        }
+    });
+    
+    products = Array.from(productMap.values());
+    
+    let message = `Import Successful!\n\n🆕 Added: ${addedCount}\n🔄 Updated: ${updatedCount}`;
+    if (unchangedCount > 0) {
+        message += `\n⏭️ Unchanged: ${unchangedCount}`;
+    }
+    alert(message);
+    } else {
             if(!confirm("⚠️ WARNING: This will DELETE all current products and replace them with the backup.\n\nAre you sure?")) { return; }
             products = importedArr;
             products.forEach(p => { if(!p.id) p.id = genID(); });
