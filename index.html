@@ -1515,7 +1515,17 @@
         });
         
         self.addEventListener('activate', function(event) { 
-            event.waitUntil(self.clients.claim()); 
+            event.waitUntil(
+                caches.keys().then(function(cacheNames) {
+                    return Promise.all(
+                        cacheNames.map(function(cacheName) {
+                            if (cacheName !== CACHE_NAME) {
+                                return caches.delete(cacheName);
+                            }
+                        })
+                    );
+                }).then(() => self.clients.claim())
+            );
         });
         
         // NETWORK FIRST, FALLBACK TO CACHE
@@ -1855,25 +1865,28 @@
         });
     }
 
-    async function saveProductsToDB(productsArray) {
-        const db = await openDB();
-        // Clear old
-        const tx = db.transaction(STORE_NAME, 'readwrite');
-        const store = tx.objectStore(STORE_NAME);
-        await new Promise((resolve, reject) => {
-             store.clear().onsuccess = resolve;
-             store.clear().onerror = reject;
-        });
 
-        // Add new
-        const tx2 = db.transaction(STORE_NAME, 'readwrite');
-        const store2 = tx2.objectStore(STORE_NAME);
-        productsArray.forEach(p => store2.put(p));
-        return new Promise((resolve, reject) => {
-            tx2.oncomplete = resolve;
-            tx2.onerror = reject;
-        });
-    }
+async function saveProductsToDB(productsArray) {
+    const db = await openDB();
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+
+    // Clear first and wait
+    await new Promise((resolve, reject) => {
+        const clearReq = store.clear();
+        clearReq.onsuccess = resolve;
+        clearReq.onerror = reject;
+    });
+
+    // Then add all products
+    productsArray.forEach(p => store.put(p));
+
+    // Wait for transaction to complete
+    return new Promise((resolve, reject) => {
+        tx.oncomplete = resolve;
+        tx.onerror = reject;
+    });
+}
 
     async function loadProductsFromDB() {
         // MIGRATION STEP: Check if LocalStorage has old data
@@ -1884,7 +1897,7 @@
                 if (Array.isArray(parsed) && parsed.length > 0) {
                     console.log("Migrating data from LocalStorage to IndexedDB...");
                     await saveProductsToDB(parsed);
-                    localStorage.removeItem('dealer-products'); // Clear LocalStorage
+                    localStorage.removeItem('dealer-products');
                     console.log("Migration Complete. LocalStorage cleared.");
                     return parsed;
                 }
@@ -1896,15 +1909,25 @@
         const store = tx.objectStore(STORE_NAME);
         return new Promise((resolve, reject) => {
             const req = store.getAll();
-            req.onsuccess = () => {
+            req.onsuccess = async () => {
                 let results = req.result || [];
+                let needsMigration = false;
+                
                 // Data Migration: Ensure 'photos' array exists for all products
                 results.forEach(p => {
                     if(!p.photos) {
-                        if(p.photo) p.photos = [p.photo]; // Migrate single photo to array
+                        needsMigration = true;
+                        if(p.photo) p.photos = [p.photo];
                         else p.photos = [];
                     }
                 });
+                
+                // Save migration back to DB
+                if(needsMigration) {
+                    console.log("Migrating photo data structure...");
+                    await saveProductsToDB(results);
+                }
+                
                 resolve(results);
             };
             req.onerror = () => reject(req.error);
@@ -2055,14 +2078,19 @@
     imageViewerClose.onclick = () => { 
         imageViewerOverlay.classList.remove('show'); 
         const slider = document.getElementById('imageViewerSlider');
-        if(slider) slider.innerHTML = ''; // Clear memory
+        if(slider) {
+            slider.innerHTML = '';
+        }
     };
     
     imageViewerOverlay.onclick = (e) => {
         if(e.target === imageViewerOverlay) { 
             imageViewerOverlay.classList.remove('show'); 
             const slider = document.getElementById('imageViewerSlider');
-            if(slider) slider.innerHTML = '';
+            if(slider) {
+                
+                slider.innerHTML = '';
+            }
         }
     };
 
@@ -2256,7 +2284,7 @@
       }
       const now = new Date();
       const dateStr = now.toISOString().slice(0,10);
-      const timeStr = now.toTimeString().slice(0,5).replace(':','-');
+      const timeStr = now.toTimeString().slice(0,5).replace(/:/g, '-');
       const filename = `dealer-backup-${dateStr}_${timeStr}.json`;
       
       await performExport(products, filename);
@@ -2272,7 +2300,7 @@
 
             const now = new Date();
             const dateStr = now.toISOString().slice(0,10);
-            const timeStr = now.toTimeString().slice(0,5).replace(':','-');
+            const timeStr = now.toTimeString().slice(0,5).replace(/:/g, '-');
             const filename = `dealer-selected-${dateStr}_${timeStr}.json`;
 
             await performExport(itemsToExport, filename);
@@ -3109,7 +3137,11 @@
 
     async function startScanner(target) {
         if (!('BarcodeDetector' in window)) {
-            alert("Your browser does not support native Barcode Detection. Please type manually.");
+            alert("⚠️ Camera scanning not supported in this browser.\n\n" +
+                  "Supported browsers:\n" +
+                  "• Chrome/Edge on Android\n" +
+                  "• Chrome on Desktop\n\n" +
+                  "Please type the barcode manually or switch browsers.");
             return;
         }
 
@@ -3264,20 +3296,30 @@
         }
     };
 
-    function stopScanner() {
+function stopScanner() {
+        // FIX: Pause the video element to release DOM memory immediately
+        if (scannerVideo) {
+            scannerVideo.pause();
+            scannerVideo.srcObject = null;
+        }
+
+        // Stop the camera hardware
         if (scannerStream) {
             scannerStream.getTracks().forEach(track => {
                 track.stop();
             });
             scannerStream = null;
         }
-        // Clear timeout instead of interval
+
+        // Clear timeout logic
         if (scannerTimeout) {
             clearTimeout(scannerTimeout);
             scannerTimeout = null;
         }
+
+        // Hide UI
         scannerOverlay.classList.remove('show');
-        scanConfirmation.style.display = 'none'; // Hide confirmation on close
+        scanConfirmation.style.display = 'none'; 
         activeScanTarget = null;
         videoTrack = null;
     }
