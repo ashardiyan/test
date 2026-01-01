@@ -2985,7 +2985,7 @@ async function saveProductsToDB(productsArray) {
         imageCompressMsg.textContent = `Processing ${files.length} image(s)...`; 
         imageCompressMsg.style.display = 'block';
         
-        const promises = Array.from(files).map(file => compressImageFileToBlob(file, 600, 0.70));
+        const promises = Array.from(files).map(file => compressImageFileToBlob(file, 1200, 0.90));
         
         const allPromise = Promise.all(promises).then(blobs => {
              blobs.forEach(blob => {
