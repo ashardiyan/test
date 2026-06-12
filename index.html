@@ -516,7 +516,11 @@
     .modal h3 { margin:0 0 18px 0; color:var(--accent2); text-align:center; font-weight:800; font-size:1.26em; letter-spacing:-.2px; }
     .modal-close { position:absolute; top:13px; right:14px; background:none; border:none; color:var(--accent2); font-size:1.24em; cursor:pointer; font-weight:bold; outline:none; }
     .modal label { font-weight:600; font-size:.96em; color:var(--text-muted); margin-bottom:4px; }
-    .modal input[type=text], .modal input[type=number], .modal input[type=file], .modal input[type=password], .modal textarea { border-radius:7px; border:1.5px solid #253048; background:var(--bg3); color:var(--text); font-size:1em; padding:8px 11px; margin-bottom:13px; margin-top:2px; outline:none; width:100%; box-sizing:border-box; transition:border .13s; }
+    .modal input[type=text], .modal input[type=number], .modal input[type=file], .modal input[type=password], .modal input[type=tel], .modal input[type=email], .modal textarea { border-radius:7px; border:1.5px solid #253048; background:var(--bg3); color:var(--text); font-size:1em; padding:8px 11px; margin-bottom:13px; margin-top:2px; outline:none; width:100%; box-sizing:border-box; transition:border .13s; }
+    /* Khata rows lay out inputs side-by-side — kill the stacked-form margins there */
+    #khataModal input, #khataDetailModal input { margin-bottom:0; margin-top:0; }
+    #khataModal .rounded-sky-btn, #khataDetailModal .rounded-sky-btn { white-space:nowrap; }
+    #statsModal input[type=number] { margin-bottom:0; margin-top:0; }
     .modal textarea { min-height:54px; resize:vertical; }
     
     /* FIX: Added flex-shrink:0 */
@@ -1358,7 +1362,7 @@
   <div class="modal-backdrop hide" id="settingsBackdrop">
     <div class="modal" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
       <button class="modal-close" type="button" id="closeSettingsBtn" title="Close" aria-label="Close dialog" role="button">✖</button>
-      <h3 id="settingsTitle">Settings <span style="font-size:.6em;color:var(--text-muted);font-weight:400;">v2.4</span></h3>
+      <h3 id="settingsTitle">Settings <span style="font-size:.6em;color:var(--text-muted);font-weight:400;">v2.6</span></h3>
 
       <div style="display:flex;flex-direction:column;gap:10px;">
         <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -1450,6 +1454,7 @@
 
         <div id="cloudConnectedBlock" style="display:none;flex-direction:column;gap:8px;">
           <div style="font-size:.92em;color:var(--text-muted);">Connected to <b id="cloudUserEmail" style="color:var(--text);"></b></div>
+          <div style="font-size:.86em;color:var(--text-muted);" id="cloudLastSync">Last sync: never</div>
           <button id="cloudPushBtn" class="rounded-sky-btn" style="background:#2b2f3a;border:1px solid #364052;">🔄 Sync now</button>
           <button id="cloudSignOutBtn" class="rounded-sky-btn cancel">Disconnect this device</button>
         </div>
@@ -1679,7 +1684,7 @@
       })();
 
       const swScript = `
-        const CACHE_NAME = 'local-dealer-cache-v20';
+        const CACHE_NAME = 'local-dealer-cache-v22';
         const OFFLINE_URL = self.registration.scope.endsWith('/') ? self.registration.scope + 'index.html' : self.registration.scope + '/index.html';
         const FILES_TO_CACHE = [ OFFLINE_URL, './index.html' ];
         
@@ -1981,6 +1986,7 @@
         routeStartupScreen();
         if (typeof cloudInitIfConfigured === 'function') { setTimeout(cloudInitIfConfigured, 250); }
       }
+      try { await hydratePhotoCache(); } catch(e) {}
       try { await loadProducts(); } catch(e) {}
       refreshProductList();
       try { await ensureHistoryMigrated(); } catch(e) {}
@@ -2190,7 +2196,8 @@
     const STORE_NAME = 'products';
     const STORE_HISTORY = 'sales_history'; // NEW STORE
     const STORE_KHATA = 'khata';
-    const DB_VERSION = 4; // v4: adds khata store
+    const STORE_PHOTOCACHE = 'photo_cache';
+    const DB_VERSION = 5; // v5: adds photo cache for two-stage cloud sync
 
     function openDB() {
         return new Promise((resolve, reject) => {
@@ -2206,6 +2213,9 @@
                 }
                 if (!db.objectStoreNames.contains(STORE_KHATA)) {
                     db.createObjectStore(STORE_KHATA, { keyPath: 'id' });
+                }
+                if (!db.objectStoreNames.contains(STORE_PHOTOCACHE)) {
+                    db.createObjectStore(STORE_PHOTOCACHE, { keyPath: 'ref' });
                 }
             };
             request.onsuccess = e => resolve(e.target.result);
@@ -2608,12 +2618,44 @@ async function saveProductsToDB(productsArray) {
     }
 
     // --- HELPER: GET URL FROM BLOB OR STRING (WITH TRACKING) ---
+    /**** PHOTO CACHE: cloud photos are separate files ("ghp:photos/x.jpg" refs).
+         Blobs live in IndexedDB; this in-memory map holds ready object-URLs. ****/
+    const photoMemCache = new Map(); // ref -> objectURL
+    async function photoCachePut(ref, blob) {
+        try {
+            const db = await openDB();
+            const tx = db.transaction(STORE_PHOTOCACHE, 'readwrite');
+            tx.objectStore(STORE_PHOTOCACHE).put({ ref, blob });
+            await new Promise((res, rej) => { tx.oncomplete = res; tx.onerror = rej; });
+        } catch(e) { console.error('photo cache put', e); }
+        if (!photoMemCache.has(ref)) photoMemCache.set(ref, URL.createObjectURL(blob));
+    }
+    async function hydratePhotoCache() {
+        try {
+            const db = await openDB();
+            if (!db.objectStoreNames.contains(STORE_PHOTOCACHE)) return;
+            const tx = db.transaction(STORE_PHOTOCACHE, 'readonly');
+            const all = await new Promise((res, rej) => {
+                const r = tx.objectStore(STORE_PHOTOCACHE).getAll();
+                r.onsuccess = () => res(r.result || []); r.onerror = () => rej(r.error);
+            });
+            all.forEach(e => { if (e && e.ref && e.blob && !photoMemCache.has(e.ref)) photoMemCache.set(e.ref, URL.createObjectURL(e.blob)); });
+        } catch(e) { console.error('photo cache hydrate', e); }
+    }
+
     function getPhotoSrc(photo) {
         if (!photo) return null;
         if (photo instanceof Blob) {
             const url = URL.createObjectURL(photo);
             activeObjectUrls.push(url); // Track for cleanup
             return url;
+        }
+        if (typeof photo === 'string' && photo.startsWith('ghp:')) {
+            const cached = photoMemCache.get(photo);
+            if (cached) return cached;
+            // not downloaded yet — queue it and show placeholder for now
+            if (typeof cloudQueuePhotoDownload === 'function') cloudQueuePhotoDownload(photo);
+            return null;
         }
         return photo; // Base64 string fallback
     }
@@ -2743,6 +2785,15 @@ async function saveProductsToDB(productsArray) {
                 let photoDataArray = [];
                 if(p.photos && p.photos.length > 0) {
                      photoDataArray = await Promise.all(p.photos.map(async (photo) => {
+                         // Cloud photo reference → pull the actual image from the local cache
+                         if (typeof photo === 'string' && photo.startsWith('ghp:')) {
+                             try {
+                                 const db = await openDB();
+                                 const tx = db.transaction(STORE_PHOTOCACHE, 'readonly');
+                                 const rec = await new Promise((res) => { const r = tx.objectStore(STORE_PHOTOCACHE).get(photo); r.onsuccess = () => res(r.result); r.onerror = () => res(null); });
+                                 photo = (rec && rec.blob) ? rec.blob : null;
+                             } catch(e) { photo = null; }
+                         }
                          if (photo instanceof Blob) {
                             return await new Promise((resolve) => {
                                 const reader = new FileReader();
@@ -4208,6 +4259,8 @@ const EMBEDDED_CLOUD = { owner: "", repo: "", branch: "main", path: "products.js
     if (changeBtn) changeBtn.style.display = isEmbeddedCfg() ? 'none' : '';
     if (cfg && tok) {
       document.getElementById('cloudUserEmail').textContent = cfg.owner + '/' + cfg.repo;
+      const ls = document.getElementById('cloudLastSync');
+      if (ls) ls.textContent = lastSyncOK ? ('Last sync: ' + new Date(lastSyncOK).toLocaleTimeString()) : 'Last sync: not yet in this session';
       setStatus(cloudActive ? 'live' : 'connecting…', cloudActive);
     } else {
       setStatus(cfg ? 'key needed' : 'off', false);
@@ -4258,35 +4311,168 @@ const EMBEDDED_CLOUD = { owner: "", repo: "", branch: "main", path: "products.js
     const body = { message: 'sync ' + new Date().toISOString(), branch: cfg.branch, content: b64encodeUtf8(JSON.stringify(data)) };
     if (sha) body.sha = sha;
     const res = await fetch(apiUrl(cfg), { method: 'PUT', headers: headers(), body: JSON.stringify(body) });
-    if (res.status === 409 || res.status === 422) return { conflict: true };
+    if (res.status === 409) return { conflict: true };
+    if (res.status === 413) return { tooLarge: true };
+    if (res.status === 422) {
+      // 422 is either a sha mismatch (conflict) or a real validation error — read which
+      let msg = '';
+      try { const j = await res.json(); msg = (j && j.message) || ''; } catch(e){}
+      if (/sha|does not match/i.test(msg)) return { conflict: true };
+      if (/too large|size|exceed/i.test(msg)) return { tooLarge: true };
+      throw new Error("GitHub rejected the upload: " + (msg || '422'));
+    }
     if (!res.ok) throw new Error(friendlyHttpError(res.status) || ('HTTP ' + res.status));
     const out = await res.json();
     return { sha: out.content && out.content.sha };
   }
 
-  /* ---------- photo shrinking (JSON can't hold Blobs) ---------- */
-  function photoToDataURL(photo) {
-    if (!photo) return Promise.resolve(null);
-    if (typeof photo === 'string') return Promise.resolve(photo.length < 220000 ? photo : null);
-    if (!(photo instanceof Blob)) return Promise.resolve(null);
+  /* ----------------------------------------------------------------
+     TWO-STAGE PHOTO SYNC
+     Stage 1 (instant): products.json carries only tiny photo REFERENCES
+     like "ghp:photos/ab12cd.jpg" — so product data always syncs fast.
+     Stage 2 (background): the actual image files are uploaded /
+     downloaded one at a time to/from the repo's photos/ folder.
+  ----------------------------------------------------------------- */
+  const PUP_KEY = 'dealer-gh-pup'; // refs whose image file still needs uploading
+  function getPendingUploads() { try { return JSON.parse(localStorage.getItem(PUP_KEY) || '[]'); } catch(e){ return []; } }
+  function setPendingUploads(arr) { try { localStorage.setItem(PUP_KEY, JSON.stringify(arr)); } catch(e){} }
+  function addPendingUpload(ref) { const a = getPendingUploads(); if (!a.includes(ref)) { a.push(ref); setPendingUploads(a); } }
+  function removePendingUpload(ref) { setPendingUploads(getPendingUploads().filter(r => r !== ref)); }
+
+  function repoFileUrl(path) {
+    const cfg = getRepoCfg();
+    return 'https://api.github.com/repos/' + encodeURIComponent(cfg.owner) + '/' + encodeURIComponent(cfg.repo) + '/contents/' + path;
+  }
+  function blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onloadend = () => resolve(String(r.result).split(',')[1] || '');
+      r.onerror = reject;
+      r.readAsDataURL(blob);
+    });
+  }
+  // Compress any image blob to a good-quality upload (900px, JPEG)
+  function blobToUploadJpeg(blob) {
     return new Promise(resolve => {
-      const url = URL.createObjectURL(photo);
-      const img = new Image();
-      img.onload = () => {
-        try {
-          let w = img.naturalWidth, h = img.naturalHeight;
-          const MAX = 420;
-          if (w > MAX || h > MAX) { const s = MAX / Math.max(w, h); w = Math.round(w*s); h = Math.round(h*s); }
-          const c = document.createElement('canvas'); c.width = w; c.height = h;
-          c.getContext('2d').drawImage(img, 0, 0, w, h);
-          URL.revokeObjectURL(url);
-          const d = c.toDataURL('image/jpeg', 0.55);
-          c.width = 0; c.height = 0;
-          resolve(d.length < 220000 ? d : null);
-        } catch(e) { URL.revokeObjectURL(url); resolve(null); }
-      };
-      img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
-      img.src = url;
+      const bail = setTimeout(() => resolve(null), 5000);
+      const done = v => { clearTimeout(bail); resolve(v); };
+      try {
+        const url = URL.createObjectURL(blob);
+        const img = new Image();
+        img.onload = () => {
+          try {
+            let w = img.naturalWidth, h = img.naturalHeight;
+            const MAX = 900;
+            if (w > MAX || h > MAX) { const s = MAX / Math.max(w, h); w = Math.round(w*s); h = Math.round(h*s); }
+            const c = document.createElement('canvas'); c.width = w; c.height = h;
+            c.getContext('2d').drawImage(img, 0, 0, w, h);
+            URL.revokeObjectURL(url);
+            c.toBlob(b => { c.width = 0; c.height = 0; done(b); }, 'image/jpeg', 0.75);
+          } catch(e) { URL.revokeObjectURL(url); done(null); }
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); done(null); };
+        img.src = url;
+      } catch(e) { done(null); }
+    });
+  }
+  async function dataURLToBlob(d) { try { return await (await fetch(d)).blob(); } catch(e) { return null; } }
+
+  // Turn every local photo into a ref; queue brand-new images for upload.
+  // Mutates the product's own photos array (so refs are stable between syncs).
+  async function refifyPhotos(p) {
+    if (!Array.isArray(p.photos) || p.photos.length === 0) return false;
+    let changed = false;
+    const out = [];
+    for (let j = 0; j < Math.min(p.photos.length, 4); j++) {
+      let ph = p.photos[j];
+      if (typeof ph === 'string' && ph.startsWith('ghp:')) { out.push(ph); continue; }
+      let blob = null;
+      if (ph instanceof Blob) blob = ph;
+      else if (typeof ph === 'string' && ph.startsWith('data:')) blob = await dataURLToBlob(ph);
+      if (!blob) continue;
+      const jpeg = await blobToUploadJpeg(blob);
+      if (!jpeg) continue;
+      const ref = 'ghp:photos/' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8) + '.jpg';
+      await photoCachePut(ref, jpeg);   // instantly available locally
+      addPendingUpload(ref);            // file goes to the repo in stage 2
+      out.push(ref);
+      changed = true;
+    }
+    if (changed || out.length !== p.photos.length) { p.photos = out; changed = true; }
+    return changed;
+  }
+
+  /* ---- Stage 2a: background UPLOAD worker ---- */
+  let uploadBusy = false;
+  async function runPhotoUploads() {
+    if (uploadBusy || !getToken() || !getRepoCfg()) return;
+    const pending = getPendingUploads();
+    if (!pending.length) return;
+    uploadBusy = true;
+    setStatus('photos ↑ ' + pending.length, true);
+    for (const ref of pending) {
+      try {
+        const db = await openDB();
+        const tx = db.transaction(STORE_PHOTOCACHE, 'readonly');
+        const rec = await new Promise(res => { const r = tx.objectStore(STORE_PHOTOCACHE).get(ref); r.onsuccess = () => res(r.result); r.onerror = () => res(null); });
+        if (!rec || !rec.blob) { removePendingUpload(ref); continue; } // nothing to upload
+        const b64 = await blobToBase64(rec.blob);
+        const res = await fetch(repoFileUrl(ref.slice(4)), {
+          method: 'PUT', headers: headers(),
+          body: JSON.stringify({ message: 'photo', content: b64, branch: getRepoCfg().branch })
+        });
+        if (res.ok || res.status === 422) removePendingUpload(ref); // 422 = already exists
+        else if (res.status === 401 || res.status === 403) break;   // auth problem: stop, retry next sync
+        await new Promise(r => setTimeout(r, 350));
+      } catch(e) { break; } // offline etc. — retry on next sync
+    }
+    uploadBusy = false;
+    setStatus(cloudActive ? 'live' : 'off', cloudActive);
+  }
+
+  /* ---- Stage 2b: background DOWNLOAD worker ---- */
+  const dlQueue = new Set();
+  const dlAttempts = {};
+  let dlBusy = false;
+  let lastListRefresh = 0;
+  window.cloudQueuePhotoDownload = function(ref) {
+    if (photoMemCache.has(ref) || (dlAttempts[ref] || 0) >= 5) return;
+    dlQueue.add(ref);
+    setTimeout(runPhotoDownloads, 50);
+  };
+  async function runPhotoDownloads() {
+    if (dlBusy || !getToken() || !getRepoCfg() || dlQueue.size === 0) return;
+    dlBusy = true;
+    let got = 0;
+    for (const ref of [...dlQueue]) {
+      if (photoMemCache.has(ref)) { dlQueue.delete(ref); continue; }
+      try {
+        const res = await fetch(repoFileUrl(ref.slice(4)) + '?ref=' + encodeURIComponent(getRepoCfg().branch), { headers: headers('application/vnd.github.raw+json') });
+        if (res.ok) {
+          const blob = await res.blob();
+          await photoCachePut(ref, blob);
+          dlQueue.delete(ref); got++;
+        } else {
+          // 404: the other phone hasn't finished uploading it yet — retry later
+          dlAttempts[ref] = (dlAttempts[ref] || 0) + 1;
+          dlQueue.delete(ref);
+          if (dlAttempts[ref] < 5) setTimeout(() => { dlQueue.add(ref); runPhotoDownloads(); }, 20000);
+        }
+        await new Promise(r => setTimeout(r, 250));
+      } catch(e) { break; } // offline — leave queue for next round
+    }
+    dlBusy = false;
+    // Photos arrived: redraw the list so they appear (throttled)
+    if (got > 0 && Date.now() - lastListRefresh > 4000) {
+      lastListRefresh = Date.now();
+      if (typeof refreshProductList === 'function') refreshProductList();
+    }
+  }
+  function queueMissingPhotoDownloads() {
+    (Array.isArray(products) ? products : []).forEach(p => {
+      (Array.isArray(p.photos) ? p.photos : []).forEach(ph => {
+        if (typeof ph === 'string' && ph.startsWith('ghp:') && !photoMemCache.has(ph)) window.cloudQueuePhotoDownload(ph);
+      });
     });
   }
 
@@ -4295,31 +4481,39 @@ const EMBEDDED_CLOUD = { owner: "", repo: "", branch: "main", path: "products.js
       id: p.id, name: p.name || '', barcode: p.barcode || '',
       mrp: p.mrp ?? 0, cost: p.cost ?? null, qty: p.qty ?? 0,
       category: p.category || '', notes: p.notes || '',
-      _idx: idx, photos: []
+      _idx: idx, photos: (Array.isArray(p.photos) ? p.photos.filter(ph => typeof ph === 'string' && ph.startsWith('ghp:')) : [])
     };
-    const photos = Array.isArray(p.photos) ? p.photos.slice(0, 3) : [];
-    let budget = 450000;
-    for (const ph of photos) {
-      const d = await photoToDataURL(ph);
-      if (d && d.length < budget) { out.photos.push(d); budget -= d.length; }
-    }
     return out;
   }
   // Hash ignores display order so re-sorting alone doesn't count as an "edit"
   function productHash(s) { const { _idx, updatedAt, ...rest } = s; return hashStr(JSON.stringify(rest)); }
 
   /* ---------- the sync core (pull → 3-way merge → push if needed) ---------- */
-  async function syncNow() {
-    if (!getRepoCfg() || !getToken()) return;
-    if (busy) { queued = true; return; }
-    busy = true;
+  function remoteCountCheck(remoteMap, deleted, base) {
+    return Object.keys(remoteMap).length === 0 && Object.keys(deleted).length === 0 && Object.keys(base).length > 0;
+  }
+  let busySince = 0;
+  let lastSyncOK = 0;
+  async function syncNow(attempt) {
+    attempt = attempt || 0;
+    if (!getRepoCfg() || !getToken()) { setCloudError("Not connected — enter the access key in Settings → Cloud Sync."); return false; }
+    if (busy) {
+      // Watchdog: a sync stuck >90s is considered dead — don't block forever
+      if (Date.now() - busySince < 90000) { queued = true; return false; }
+      busy = false;
+    }
+    busy = true; busySince = Date.now();
     setStatus('syncing…', true);
     try {
-      // 1. Serialize local state and stamp updatedAt using last-synced hashes
+      // 1. Stage-1 prep: photos become tiny refs; new images join the upload queue
       const base = getBaseHashes();
       const now = Date.now();
-      const localMap = {};
       const local = Array.isArray(products) ? products : [];
+      let photosChanged = false;
+      for (const p of local) { if (await refifyPhotos(p)) photosChanged = true; }
+      if (photosChanged) { try { await saveProductsToDB(products); } catch(e){ console.error(e); } }
+
+      const localMap = {};
       for (let i = 0; i < local.length; i++) {
         const s = await serializeProduct(local[i], i);
         const h = productHash(s);
@@ -4345,8 +4539,10 @@ const EMBEDDED_CLOUD = { owner: "", repo: "", branch: "main", path: "products.js
       const remoteKhata = remote.missing ? {} : (remote.data.khata || {});
       const khataDeleted = remote.missing ? {} : (remote.data.khataDeleted || {});
 
+      // WIPE GUARD for products too: a mysteriously empty cloud file must not delete local stock
+      const productsWiped = remoteCountCheck(remoteMap, deleted, base);
       // 3. Local deletions → tombstones (item was synced before but is gone locally now)
-      const pendingDeletes = Object.keys(base).filter(id => !localMap[id] && !deleted[id]);
+      const pendingDeletes = productsWiped ? [] : Object.keys(base).filter(id => !localMap[id] && !deleted[id]);
       const remoteCount = Object.keys(remoteMap).length;
       // SAFETY GUARD: deleting many products at once (multi-delete, an old
       // "Replace" import, or cleared data) must be confirmed by a human before
@@ -4374,7 +4570,7 @@ const EMBEDDED_CLOUD = { owner: "", repo: "", branch: "main", path: "products.js
         if (L && R) winner = (L.updatedAt >= (R.updatedAt || 0)) ? L : R;
         else if (L) {
           // exists locally only: keep it unless a NEWER tombstone says it was deleted elsewhere
-          winner = (deleted[id] && deleted[id] >= L.updatedAt) ? null : L;
+          winner = (!productsWiped && deleted[id] && deleted[id] >= L.updatedAt) ? null : L;
         } else if (R) {
           // exists remotely only: new from another device, unless we just deleted it
           winner = (deleted[id] && deleted[id] >= (R.updatedAt || 0)) ? null : R;
@@ -4384,27 +4580,33 @@ const EMBEDDED_CLOUD = { owner: "", repo: "", branch: "main", path: "products.js
       /* ---- HISTORY merge (entries are immutable: union + tombstones) ---- */
       const histBase = (() => { try { return JSON.parse(localStorage.getItem('dealer-gh-hbase') || '[]'); } catch(e){ return []; } })();
       const histBaseSet = new Set(histBase);
+      // WIPE GUARD: if the cloud history section vanished entirely with no
+      // tombstones (an old app version rewrote the file), treat local data as
+      // the survivor and re-upload it instead of deleting it.
+      const histWiped = Object.keys(remoteHist).length === 0 && Object.keys(histDeleted).length === 0 && histBaseSet.size > 0;
       // deleted locally since last sync → tombstone
-      histBaseSet.forEach(id => { if (!localHistMap[id]) histDeleted[id] = Math.max(histDeleted[id] || 0, now); });
+      if (!histWiped) histBaseSet.forEach(id => { if (!localHistMap[id]) histDeleted[id] = Math.max(histDeleted[id] || 0, now); });
       const mergedHist = {};
       new Set([...Object.keys(localHistMap), ...Object.keys(remoteHist)]).forEach(id => {
         if (histDeleted[id]) return;                       // tombstone always wins
         if (remoteHist[id]) { mergedHist[id] = remoteHist[id]; return; }
         if (localHistMap[id]) {
-          if (histBaseSet.has(id)) return;                 // was synced before, now gone remotely → deleted elsewhere
-          mergedHist[id] = localHistMap[id];               // new local sale
+          if (!histWiped && histBaseSet.has(id)) return;   // was synced before, now gone remotely → deleted elsewhere
+          mergedHist[id] = localHistMap[id];               // new local sale (or survivor of a wipe)
         }
       });
 
       /* ---- KHATA merge (mutable customers: newest updatedAt wins + tombstones) ---- */
       const khataBase = (() => { try { return JSON.parse(localStorage.getItem('dealer-gh-kbase') || '{}'); } catch(e){ return {}; } })();
-      Object.keys(khataBase).forEach(id => { if (!localKhataMap[id]) khataDeleted[id] = Math.max(khataDeleted[id] || 0, now); });
+      // Same wipe guard for khata
+      const khataWiped = Object.keys(remoteKhata).length === 0 && Object.keys(khataDeleted).length === 0 && Object.keys(khataBase).length > 0;
+      if (!khataWiped) Object.keys(khataBase).forEach(id => { if (!localKhataMap[id]) khataDeleted[id] = Math.max(khataDeleted[id] || 0, now); });
       const mergedKhata = {};
       new Set([...Object.keys(localKhataMap), ...Object.keys(remoteKhata)]).forEach(id => {
         const L = localKhataMap[id], R = remoteKhata[id];
         let winner = null;
         if (L && R) winner = ((L.updatedAt||0) >= (R.updatedAt||0)) ? L : R;
-        else if (L) winner = (khataBase[id] !== undefined) ? null : L;          // synced before & gone remotely → deleted elsewhere
+        else if (L) winner = (!khataWiped && khataBase[id] !== undefined) ? null : L; // synced before & gone remotely → deleted elsewhere
         else if (R) winner = R;
         if (winner && khataDeleted[id] && khataDeleted[id] >= (winner.updatedAt||0)) winner = null;
         if (winner) { mergedKhata[id] = winner; if (khataDeleted[id] && khataDeleted[id] < (winner.updatedAt||0)) delete khataDeleted[id]; }
@@ -4420,8 +4622,20 @@ const EMBEDDED_CLOUD = { owner: "", repo: "", branch: "main", path: "products.js
       const mergedJson = JSON.stringify({ products: merged, deleted, history: mergedHist, historyDeleted: histDeleted, khata: mergedKhata, khataDeleted });
       const remoteJson = remote.missing ? '' : JSON.stringify({ products: remoteMap, deleted: remote.data.deleted || {}, history: remoteHist, historyDeleted: remote.data.historyDeleted || {}, khata: remoteKhata, khataDeleted: remote.data.khataDeleted || {} });
       if (mergedJson !== remoteJson) {
-        const put = await putRemote({ updatedAt: now, products: merged, deleted, history: mergedHist, historyDeleted: histDeleted, khata: mergedKhata, khataDeleted }, remote.missing ? null : remote.sha);
-        if (put.conflict) { busy = false; queued = false; setTimeout(syncNow, 900 + Math.random()*900); return; }
+        let put = await putRemote({ updatedAt: now, products: merged, deleted, history: mergedHist, historyDeleted: histDeleted, khata: mergedKhata, khataDeleted }, remote.missing ? null : remote.sha);
+        if (put.tooLarge) {
+          // Emergency fallback: sync everything WITHOUT photos rather than failing
+          const noPhotos = {};
+          Object.keys(merged).forEach(id => { noPhotos[id] = { ...merged[id], photos: [] }; });
+          put = await putRemote({ updatedAt: now, products: noPhotos, deleted, history: mergedHist, historyDeleted: histDeleted, khata: mergedKhata, khataDeleted }, remote.missing ? null : remote.sha);
+          if (!put.conflict && !put.tooLarge) setCloudError("File was too big — synced all data but without photos.");
+        }
+        if (put.conflict) {
+          busy = false; queued = false;
+          if (attempt < 3) { setTimeout(() => syncNow(attempt + 1), 900 + Math.random()*900); return false; }
+          throw new Error("Another phone kept changing the data — try Sync now again in a moment.");
+        }
+        if (put.tooLarge) throw new Error("Upload is too large even without photos. Tell the developer.");
         lastSha = put.sha || null;
       } else {
         lastSha = remote.missing ? null : remote.sha;
@@ -4463,21 +4677,31 @@ const EMBEDDED_CLOUD = { owner: "", repo: "", branch: "main", path: "products.js
       }
       try { localStorage.setItem('dealer-gh-kbase', JSON.stringify(newKBase)); } catch(e){}
 
+      // Stage 2: move the actual image files in the background
+      queueMissingPhotoDownloads();
+      setTimeout(runPhotoDownloads, 100);
+      setTimeout(runPhotoUploads, 300);
+
       cloudActive = true;
+      lastSyncOK = Date.now();
       try { localStorage.setItem(AUTHED_KEY, '1'); } catch(e){}
-      setCloudError('');
+      if (!/too big/.test(document.getElementById('cloudError').textContent || '')) setCloudError('');
       setStatus('live', true);
       window.renderCloudSettings();
       cloudGateResolve(true);
+      busy = false;
+      if (queued) { queued = false; setTimeout(() => syncNow(0), 300); }
+      return true;
     } catch(e) {
       console.error('Sync failed:', e);
       cloudActive = false;
       setCloudError(String(e.message || e));
       setStatus(navigator.onLine === false ? 'offline' : 'error', false);
       window.renderCloudSettings();
+      busy = false;
+      if (queued) { queued = false; setTimeout(() => syncNow(0), 300); }
+      return false;
     }
-    busy = false;
-    if (queued) { queued = false; setTimeout(syncNow, 300); }
   }
 
   /* ---------- polling: pick up other devices' edits ---------- */
@@ -4604,7 +4828,19 @@ const EMBEDDED_CLOUD = { owner: "", repo: "", branch: "main", path: "products.js
     window.renderCloudSettings();
   };
 
-  document.getElementById('cloudPushBtn').onclick = function() { syncNow(); };
+  document.getElementById('cloudPushBtn').onclick = async function() {
+    const btn = this;
+    btn.disabled = true; btn.textContent = '⏳ Syncing…';
+    const ok = await syncNow(0);
+    btn.disabled = false;
+    btn.textContent = ok ? '✅ Synced!' : '❌ Failed — see error above';
+    if (!ok) {
+      const err = document.getElementById('cloudError').textContent;
+      if (err) alert("Sync failed:\n\n" + err);
+    }
+    setTimeout(() => { btn.textContent = '🔄 Sync now'; }, 2500);
+    window.renderCloudSettings();
+  };
 
   document.getElementById('cloudChangeConfigBtn').onclick = function() {
     if (isEmbeddedCfg()) { setCloudError("The repository is set by the owner inside the app file."); return; }
