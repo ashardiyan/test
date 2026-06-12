@@ -58,8 +58,18 @@
     .top-controls { display:flex; align-items:center; gap:10px; }
     button.icon-btn { background:none; border:none; color:var(--accent2); font-size:1.23rem; padding:8px 10px; border-radius:9px; cursor:pointer; outline:none; }
     button#settingsBtn { font-size:1.33rem; color:var(--text); background:#1b2430; padding:8px 11px; border-radius:9px; box-shadow:0 1px 6px #0008; }
-    #installPromptBtn, #installAsAppBtn { display:none; margin-left:12px; font-size:.99em; padding:8px 14px; border-radius:8px; background:linear-gradient(91deg,var(--accent2),var(--accent)); color:#fff; font-weight:700; border:none; cursor:pointer; box-shadow:0 1px 11px #2e5fad23; }
-    #mobileInstallInstructions { display:none; margin-left:10px; padding:8px 10px; border-radius:8px; background:#1a2233; color:var(--accent2); font-size:.93em; font-style:italic; box-shadow:0 2px 8px #222c3d22; max-width:310px; line-height:1.45; }
+    #installPromptBtn { display:none; align-items:center; gap:6px; font-size:.95em; padding:8px 14px; border-radius:999px; background:linear-gradient(91deg,var(--accent2),var(--accent)); color:#fff; font-weight:700; border:none; cursor:pointer; box-shadow:0 1px 11px #2e5fad33; white-space:nowrap; line-height:1; transition:transform .12s, box-shadow .15s; }
+    #installPromptBtn:active { transform:scale(.96); }
+    #installPromptBtn:disabled { opacity:.6; cursor:wait; }
+    #installBanner { display:none; align-items:flex-start; gap:10px; margin:0 0 18px; padding:12px 14px; border-radius:12px; background:#16243a; border:1px solid #24406b; color:var(--text); font-size:.95em; line-height:1.5; box-shadow:var(--shadow-soft); animation:fadeUp .4s ease-out forwards; }
+    #installBanner.show { display:flex; }
+    #installBanner .banner-icon { font-size:1.3em; flex:0 0 auto; margin-top:1px; }
+    #installBanner .banner-text { flex:1 1 auto; color:var(--text-muted); }
+    #installBanner .banner-text b { color:var(--text); }
+    #installBanner .banner-close { flex:0 0 auto; background:none; border:none; color:var(--text-muted); font-size:1.1em; cursor:pointer; padding:2px 6px; border-radius:6px; }
+    #installBanner .banner-close:hover { color:var(--text); background:rgba(255,255,255,.06); }
+    #cloudDot { display:none; width:9px; height:9px; border-radius:50%; background:#10b981; box-shadow:0 0 7px #10b981aa; position:absolute; top:6px; right:6px; }
+    #settingsBtnWrap { position:relative; display:inline-block; }
 
     .main-content { display:flex; flex-direction:column; gap:0; align-items:stretch; width:100%; }
     
@@ -932,7 +942,7 @@
       
       #detailModal .prod-detail-photo, .detail-gallery img { width: 100%; max-width: 190px; height: 190px;}
       
-      #mobileInstallInstructions{max-width:98vw;font-size:0.92em;}
+      #installPromptBtn{font-size:.88em;padding:7px 11px;}
       #multiSelectControls{font-size:0.96em; flex-wrap:wrap;}
     }
     ::selection{background:var(--accent2); color:#fff;}
@@ -1014,7 +1024,7 @@
         </button>
       </div>
 
-      <label class="keep-logged-toggle" title="If checked, you stay logged in for 5 minutes unless the app is closed or device is locked.">
+      <label class="keep-logged-toggle" title="If checked, you stay logged in for 30 minutes unless the app is closed or device is locked.">
         <input type="checkbox" id="keepLoggedInToggle" />
         <span>Keep me logged in for 30 Minutes</span>
       </label>
@@ -1025,11 +1035,36 @@
         <button type="button" id="biometricUnlockBtn" class="rounded-sky-btn" title="Unlock with Fingerprint">
            👆 Unlock with Fingerprint
         </button>
+        <button type="button" id="skipSecurityBtn" style="display:none; width:100%; background:transparent; border:1px solid #2b3a55; color:var(--text-muted); padding:10px 12px; border-radius:8px; cursor:pointer; font-size:.97em;">
+           🔓 Skip — use app without a lock
+        </button>
         <button type="button" id="forgotBtn" style="display:none; background:transparent; border:1px solid #253048; color:var(--text); padding:9px 12px; border-radius:8px; cursor:pointer;">Forgot</button>
       </div>
 
-      <small style="display:block;margin-top:12px;color:var(--text-muted);">All data is stored locally in your browser. PIN is hashed before saving.</small>
+      <small style="display:block;margin-top:12px;color:var(--text-muted);" id="loginFootNote">Security is optional — you can skip it and enable a PIN or fingerprint later from Settings. PIN is hashed before saving.</small>
     </form>
+  </div>
+
+  <div id="cloud-gate-modal" style="display:none; position:fixed; inset:0; z-index:7100; background:rgba(12,18,32,0.96); justify-content:center; align-items:center;">
+    <div class="login-dialog modal" style="max-width:380px;">
+      <h3 style="text-align:center;color:var(--accent2);margin-bottom:6px">☁️ Al Rehman Electronics</h3>
+      <div style="text-align:center;color:var(--text-muted);font-size:.92em;margin-bottom:14px;" id="cloudGateSub">Sign in to access the shared product database.</div>
+      <div class="error" id="cloudGateError" style="min-height:18px;margin-bottom:8px;"></div>
+
+      <div id="cloudGateLoading" style="display:none;text-align:center;color:var(--text-muted);padding:14px 0;">Connecting…</div>
+
+      <div id="cloudGateForm">
+        <label for="cloudGateToken">Shop Access Key</label>
+        <input type="password" id="cloudGateToken" placeholder="Paste the access key here" autocomplete="off" style="width:100%;box-sizing:border-box;" />
+        <div style="color:var(--text-muted);font-size:.85em;margin-top:6px;">Ask the shop owner for the access key. You only enter it once on this device.</div>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-top:14px;">
+          <button type="button" id="cloudGateSignInBtn" style="width:100%;">🔑 Connect</button>
+          <button type="button" id="cloudGateOfflineBtn" style="width:100%;background:transparent;border:1px solid #2b3a55;color:var(--text-muted);padding:10px 12px;border-radius:8px;cursor:pointer;font-size:.95em;">Continue offline (this device only)</button>
+        </div>
+      </div>
+
+      <small style="display:block;margin-top:14px;color:var(--text-muted);">This key connects you to the shared product database. It is separate from any local PIN / fingerprint lock.</small>
+    </div>
   </div>
 
   <div id="dealerApp" class="" style="display:none;">
@@ -1043,11 +1078,15 @@
         </div>
         <div class="top-controls">
           <button id="installPromptBtn" title="Install as App">📲 Install</button>
-          <button id="installAsAppBtn" title="Install as App (force)">🛠️</button>
-          <button id="settingsBtn" title="Settings (⋮)">⋮</button>
-          <span id="mobileInstallInstructions"></span>
+          <span id="settingsBtnWrap"><button id="settingsBtn" title="Settings (⋮)">⋮</button><span id="cloudDot" title="Cloud sync active"></span></span>
         </div>
       </header>
+
+      <div id="installBanner">
+        <span class="banner-icon">📲</span>
+        <span class="banner-text" id="installBannerText"></span>
+        <button class="banner-close" id="installBannerClose" title="Dismiss" aria-label="Dismiss">✖</button>
+      </div>
 
       <div class="main-content">
         <section class="card" style="animation-delay:.06s">
@@ -1245,27 +1284,30 @@
           </div>
         </div>
 
-        <button id="logoutBtn" style="padding:10px;border-radius:8px;border:none;background:#2b2f3a;color:var(--text);cursor:pointer;">🔒 Logout</button>
+        <button id="logoutBtn" style="padding:10px;border-radius:8px;border:none;background:#2b2f3a;color:var(--text);cursor:pointer;">🔒 Lock app now</button>
+        <div id="noSecurityNote" style="display:none;color:var(--text-muted);font-size:.88em;">No lock is set — the app opens directly. You can set a PIN below if you want security (optional).</div>
 
         <hr style="border:none;height:1px;background:#22272f;margin:6px 0;border-radius:2px;" />
 
         <div style="font-weight:700; display:flex; align-items:center; gap:6px;">
-          Fingerprint / Face ID
+          Fingerprint / Face ID <span style="font-weight:400;color:var(--text-muted);font-size:.85em;">(optional)</span>
         </div>
         <button id="setupBiometricBtn" class="rounded-sky-btn" style="background:#2b2f3a; border:1px solid #364052;">
            👆 Setup Fingerprint
         </button>
-        <div style="color:var(--text-muted);font-size:.85em;margin-bottom:6px;">
-           Enable easy unlock using your device's sensor.
+        <div style="color:var(--text-muted);font-size:.85em;margin-bottom:6px;" id="biometricHint">
+           Enable easy unlock using your device's sensor. This is your choice — the app works fine without it.
         </div>
 
         <hr style="border:none;height:1px;background:#22272f;margin:6px 0;border-radius:2px;" />
 
-        <div style="font-weight:700">Reset PIN</div>
-        <div style="color:var(--text-muted);font-size:.93em;margin-bottom:6px;">Enter your current PIN, then choose a new one.</div>
+        <div style="font-weight:700" id="pinSectionTitle">Reset PIN</div>
+        <div style="color:var(--text-muted);font-size:.93em;margin-bottom:6px;" id="pinSectionHint">Enter your current PIN, then choose a new one.</div>
 
-        <label for="oldPin">Current PIN</label>
-        <input type="password" id="oldPin" placeholder="Current PIN" maxlength="32" />
+        <div id="oldPinRow">
+          <label for="oldPin">Current PIN</label>
+          <input type="password" id="oldPin" placeholder="Current PIN" maxlength="32" />
+        </div>
 
         <label for="newPin">New PIN</label>
         <input type="password" id="newPin" placeholder="New PIN (min 4 chars)" maxlength="32" />
@@ -1275,9 +1317,54 @@
 
         <div class="error" id="resetPinError" style="min-height:18px;"></div>
 
-        <div style="display:flex;justify-content:flex-end;gap:8px;">
+        <div style="display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;">
+          <button id="removeSecurityBtn" class="rounded-sky-btn cancel" style="display:none;background:#3a2326;border:1px solid #6b2f35;color:#ffb1b8;">🔓 Remove Security</button>
           <button id="resetPinCancel" class="rounded-sky-btn cancel">Cancel</button>
           <button id="resetPinSubmit" class="rounded-sky-btn">Reset PIN</button>
+        </div>
+
+        <hr style="border:none;height:1px;background:#22272f;margin:10px 0 6px;border-radius:2px;" />
+
+        <div style="font-weight:700; display:flex; align-items:center; gap:7px;">
+          ☁️ Cloud Sync <span id="cloudStatusChip" style="font-weight:400;font-size:.8em;color:var(--text-muted);border:1px solid #2b3a55;border-radius:999px;padding:2px 9px;">off</span>
+        </div>
+        <div style="color:var(--text-muted);font-size:.88em;">
+          Share one product database between all phones — edits update everywhere.
+          The database lives in a private GitHub repository; the access key below is <b>separate</b> from your local PIN / fingerprint.
+        </div>
+        <div class="error" id="cloudError" style="min-height:16px;font-size:.9em;"></div>
+
+        <div id="cloudConfigBlock" style="display:none;flex-direction:column;gap:8px;">
+          <label for="cloudOwnerInput" style="font-size:.92em;">GitHub username (owner)</label>
+          <input type="text" id="cloudOwnerInput" placeholder="e.g. ashardian" autocomplete="off" />
+          <label for="cloudRepoInput" style="font-size:.92em;">Data repository name</label>
+          <input type="text" id="cloudRepoInput" placeholder="e.g. shop-data" autocomplete="off" />
+          <button id="cloudSaveConfigBtn" class="rounded-sky-btn">Save</button>
+        </div>
+
+        <div id="cloudLoginBlock" style="display:none;flex-direction:column;gap:8px;">
+          <label for="cloudTokenInput" style="font-size:.92em;">Shop access key</label>
+          <input type="password" id="cloudTokenInput" placeholder="Paste access key (github_pat_…)" autocomplete="off" />
+          <button id="cloudSignInBtn" class="rounded-sky-btn">🔑 Connect</button>
+          <button id="cloudChangeConfigBtn" style="background:transparent;border:1px solid #253048;color:var(--text-muted);padding:8px 12px;border-radius:8px;cursor:pointer;font-size:.88em;">Change repository</button>
+          <details style="font-size:.86em;color:var(--text-muted);line-height:1.55;">
+            <summary style="cursor:pointer;color:var(--accent2);">📖 Owner setup (free, ~3 minutes, one time)</summary>
+            <ol style="padding-left:18px;margin:8px 0;">
+              <li>On github.com: <b>＋ → New repository</b> → name it <code>shop-data</code> → select <b>Private</b> → Create. (Nothing else to do in it.)</li>
+              <li>GitHub <b>Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token</b>:<br>
+                  • Repository access: <b>Only select repositories</b> → <code>shop-data</code><br>
+                  • Permissions → <b>Contents: Read and write</b><br>
+                  • Expiration: 1 year (or custom) → Generate → <b>copy the key</b>.</li>
+              <li>Open <code>index.html</code>, find the marked <code>EMBEDDED_CLOUD</code> block near the bottom, fill in your username and <code>shop-data</code>, upload to GitHub Pages.</li>
+              <li>Share the copied key with your staff — pasting it once is their entire login. To kick everyone out instantly, delete the token on GitHub and make a new one.</li>
+            </ol>
+          </details>
+        </div>
+
+        <div id="cloudConnectedBlock" style="display:none;flex-direction:column;gap:8px;">
+          <div style="font-size:.92em;color:var(--text-muted);">Connected to <b id="cloudUserEmail" style="color:var(--text);"></b></div>
+          <button id="cloudPushBtn" class="rounded-sky-btn" style="background:#2b2f3a;border:1px solid #364052;">🔄 Sync now</button>
+          <button id="cloudSignOutBtn" class="rounded-sky-btn cancel">Disconnect this device</button>
         </div>
       </div>
 
@@ -1567,44 +1654,61 @@
 
     let deferredPrompt;
     const installBtn = document.getElementById('installPromptBtn');
-    const installAsAppBtn = document.getElementById('installAsAppBtn');
-    const mobileInstall = document.getElementById('mobileInstallInstructions');
-    function isMobileChromeStandaloneCapable() { const ua = navigator.userAgent || ''; return /Android/.test(ua) && /Chrome\/[.0-9]* Mobile/.test(ua) && !window.matchMedia('(display-mode: standalone)').matches; }
+    const installBanner = document.getElementById('installBanner');
+    const installBannerText = document.getElementById('installBannerText');
+    const installBannerClose = document.getElementById('installBannerClose');
+
+    function isStandalone() {
+      return window.matchMedia('(display-mode: standalone)').matches ||
+             window.matchMedia('(display-mode: fullscreen)').matches ||
+             window.navigator.standalone === true;
+    }
+    function isIOS() { return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream; }
+    function bannerDismissed() { try { return sessionStorage.getItem('install-banner-dismissed') === '1'; } catch(e){ return false; } }
+    function showInstallBanner(html) {
+      if (isStandalone() || bannerDismissed()) return;
+      installBannerText.innerHTML = html;
+      installBanner.classList.add('show');
+    }
+    function hideInstallBanner() { installBanner.classList.remove('show'); }
+    installBannerClose.onclick = () => { hideInstallBanner(); try { sessionStorage.setItem('install-banner-dismissed','1'); } catch(e){} };
 
     window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault(); deferredPrompt = e; 
-      if(installBtn) installBtn.style.display = 'inline-block'; 
-      if(installAsAppBtn) installAsAppBtn.style.display = 'inline-block'; 
-      if(mobileInstall) mobileInstall.style.display = 'none';
+      e.preventDefault();
+      deferredPrompt = e;
+      if (!isStandalone()) installBtn.style.display = 'inline-flex';
+      hideInstallBanner();
     });
 
-    if(installBtn) {
-        installBtn.onclick = async function() {
-            installBtn.disabled = true;
-            if (deferredPrompt) { deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; installBtn.style.display = 'none'; installAsAppBtn.style.display = 'none'; installBtn.disabled = false; }
-        };
-    }
+    installBtn.onclick = async function() {
+      if (!deferredPrompt) { installBtn.style.display = 'none'; return; }
+      installBtn.disabled = true;
+      try {
+        deferredPrompt.prompt();
+        const choice = await deferredPrompt.userChoice;
+        deferredPrompt = null;
+        if (choice && choice.outcome === 'accepted') installBtn.style.display = 'none';
+      } catch(e) {}
+      installBtn.disabled = false;
+    };
 
-    if(installAsAppBtn) {
-        installAsAppBtn.onclick = async function() {
-            installAsAppBtn.disabled = true;
-            if (deferredPrompt) { deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; installBtn.style.display = 'none'; installAsAppBtn.style.display = 'none'; installAsAppBtn.disabled = false; } else { alert("Install prompt not available right now."); installAsAppBtn.disabled = false; }
-        };
-    }
+    window.addEventListener('appinstalled', () => {
+      installBtn.style.display = 'none';
+      hideInstallBanner();
+      deferredPrompt = null;
+    });
 
-    window.addEventListener('appinstalled', ()=>{ if(installBtn) installBtn.style.display='none'; if(installAsAppBtn) installAsAppBtn.style.display='none'; deferredPrompt = null; if(mobileInstall) mobileInstall.style.display='none'; });
-
+    // Fallback instructions if the native prompt never fires (iOS, or already-seen prompt on Android)
     window.addEventListener('DOMContentLoaded', function() {
+      if (isStandalone()) { installBtn.style.display = 'none'; return; }
       setTimeout(() => {
-        if (!window.matchMedia('(display-mode: standalone)').matches && !window.matchMedia('(display-mode: fullscreen)').matches && isMobileChromeStandaloneCapable()) {
-          if ((installBtn.style.display === "none" || getComputedStyle(installBtn).display === "none") && (installAsAppBtn.style.display === "none" || getComputedStyle(installAsAppBtn).display === "none")) {
-            if(mobileInstall) {
-                mobileInstall.innerHTML = "To install this app: tap <b><span style='font-size:1.22em;'>⋮</span></b> at the top right of Chrome, and choose <b>Add to Home screen</b>."; 
-                mobileInstall.style.display = "inline-block";
-            }
-          }
+        if (deferredPrompt || isStandalone()) return;
+        if (isIOS()) {
+          showInstallBanner("To install this app: tap <b>Share</b> <span style='font-size:1.1em;'>⎙</span> in Safari, then choose <b>Add to Home Screen</b>.");
+        } else if (/Android/.test(navigator.userAgent)) {
+          showInstallBanner("To install this app: tap <b><span style='font-size:1.15em;'>⋮</span></b> at the top right of Chrome, then choose <b>Add to Home screen</b> / <b>Install app</b>.");
         }
-      }, 1100);
+      }, 1600);
     });
 
     (function handleAndroidBackButton() {
@@ -1718,12 +1822,43 @@
     
     let justSetPIN = false;
 
-    window.addEventListener('load', async ()=> {
-      await loadProducts(); 
+    function getSecurityMode() { try { return localStorage.getItem('dealer-security-mode') || ''; } catch(e) { return ''; } }
+    function setSecurityMode(mode) { try { localStorage.setItem('dealer-security-mode', mode); } catch(e) {} }
+
+    // Decide the start screen INSTANTLY (no waiting on data) so the app opens fast.
+    function routeStartupScreen() {
+      if (getHasPIN()) {
+        if (!checkQuickAutoUnlock()) {
+          showLoginModal();
+          if (hasBiometricSetup()) { setTimeout(authenticateBiometric, 350); }
+        }
+      } else if (getSecurityMode() === 'none') {
+        // User chose no security: open straight into the app — no lock screen at all.
+        showDealerApp();
+      } else {
+        // First launch: offer PIN setup, but it is the user's CHOICE (skip is allowed).
+        showLoginModal();
+      }
+    }
+
+    // Runs on DOMContentLoaded — much faster than the old window 'load'
+    // (which waited for every image and font before showing anything).
+    async function appStartup() {
       updatePINUI(getHasPIN());
-      if (!checkQuickAutoUnlock()) { showLoginModal(); if (hasBiometricSetup()) { setTimeout(authenticateBiometric, 400); } }
+      // If a shared cloud database is configured and this device hasn't signed in yet,
+      // show the cloud login gate first (one time per device). Otherwise open instantly.
+      if (typeof cloudGateNeeded === 'function' && cloudGateNeeded()) {
+        showCloudGate();
+      } else {
+        routeStartupScreen();
+        if (typeof cloudInitIfConfigured === 'function') { setTimeout(cloudInitIfConfigured, 250); }
+      }
+      try { await loadProducts(); } catch(e) {}
+      refreshProductList();
       setTimeout(function() { if ("serviceWorker" in navigator && window.matchMedia('(display-mode: standalone)').matches) { try { history.replaceState({start:true}, document.title, window.location.href); } catch (e) {} } }, 180);
-    });
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', appStartup);
+    else appStartup();
 
     const loginBtn = document.getElementById('loginBtn');
     const loginForm = document.getElementById('loginForm');
@@ -1749,9 +1884,25 @@
     })();
 
     function updatePINUI(hasPIN) {
-      if (hasPIN) { loginBtn.textContent = "Unlock"; pinLabel.textContent = "Enter your PIN / Password:"; loginPIN.placeholder = "Enter PIN or password"; loginPIN.autocomplete = "current-password"; } else { loginBtn.textContent = "Set PIN"; pinLabel.textContent = "Create a secure PIN / Password:"; loginPIN.placeholder = "Set PIN or password"; loginPIN.autocomplete = "new-password"; }
+      const skipBtn = document.getElementById('skipSecurityBtn');
+      const footNote = document.getElementById('loginFootNote');
+      if (hasPIN) {
+        loginBtn.textContent = "Unlock"; pinLabel.textContent = "Enter your PIN / Password:"; loginPIN.placeholder = "Enter PIN or password"; loginPIN.autocomplete = "current-password";
+        if (skipBtn) skipBtn.style.display = 'none';
+        if (footNote) footNote.textContent = "All data is stored locally in your browser. PIN is hashed before saving.";
+      } else {
+        loginBtn.textContent = "Set PIN (optional)"; pinLabel.textContent = "Create a PIN / Password (optional):"; loginPIN.placeholder = "Set PIN or password"; loginPIN.autocomplete = "new-password"; loginPIN.required = false;
+        if (skipBtn) skipBtn.style.display = 'block';
+        if (footNote) footNote.textContent = "Security is optional — you can skip it and enable a PIN or fingerprint later from Settings. PIN is hashed before saving.";
+      }
       loginError.textContent = ''; loginError.style.color = ''; checkBiometricButtonVisibility();
     }
+
+    const skipSecurityBtn = document.getElementById('skipSecurityBtn');
+    if (skipSecurityBtn) skipSecurityBtn.onclick = function() {
+      setSecurityMode('none');
+      showDealerApp();
+    };
 
     loginForm.onsubmit = async function(e) {
       e.preventDefault(); loginError.textContent = ''; loginError.style.color = '';
@@ -1763,6 +1914,7 @@
         const hash = await hashPIN(pinVal);
         if (!hasPIN) {
           window.localStorage.setItem('dealer-hash', hash);
+          setSecurityMode('pin');
           justSetPIN = true; updatePINUI(true); loginError.style.color = 'var(--success)'; loginError.textContent = "PIN set. Now use it to unlock."; loginBtn.disabled = false; loginPIN.value = '';
           setTimeout(()=>{ loginError.textContent = ''; loginError.style.color=''; }, 1500); keepLoggedInToggle.checked = false; return;
         }
@@ -1800,31 +1952,92 @@
     const resetPinCancel = document.getElementById('resetPinCancel');
     const resetPinError = document.getElementById('resetPinError');
 
-    settingsBtn.onclick = () => { settingsBackdrop.classList.remove('hide'); document.getElementById('oldPin').value = ''; document.getElementById('newPin').value = ''; document.getElementById('confirmPin').value = ''; resetPinError.textContent = ''; resetPinError.style.color = ''; };
+    function renderSecuritySettings() {
+      const hasPIN = getHasPIN();
+      const oldPinRow = document.getElementById('oldPinRow');
+      const title = document.getElementById('pinSectionTitle');
+      const hint = document.getElementById('pinSectionHint');
+      const removeBtn = document.getElementById('removeSecurityBtn');
+      const bioBtn = document.getElementById('setupBiometricBtn');
+      const bioHint = document.getElementById('biometricHint');
+      const noSecNote = document.getElementById('noSecurityNote');
+      if (hasPIN) {
+        oldPinRow.style.display = '';
+        title.textContent = 'Reset PIN';
+        hint.textContent = 'Enter your current PIN, then choose a new one.';
+        resetPinSubmit.textContent = 'Reset PIN';
+        removeBtn.style.display = '';
+        bioBtn.disabled = false; bioBtn.style.opacity = '';
+        bioHint.textContent = hasBiometricSetup()
+          ? "Fingerprint is set up. You can re-register it any time."
+          : "Enable easy unlock using your device's sensor. This is your choice — the app works fine without it.";
+        logoutBtn.style.display = '';
+        noSecNote.style.display = 'none';
+      } else {
+        oldPinRow.style.display = 'none';
+        title.textContent = 'Enable Security (optional)';
+        hint.textContent = 'Set a PIN if you want the app to lock. Totally optional.';
+        resetPinSubmit.textContent = 'Set PIN';
+        removeBtn.style.display = 'none';
+        bioBtn.disabled = true; bioBtn.style.opacity = '0.55';
+        bioHint.textContent = 'Set a PIN first — it acts as the backup if the fingerprint fails.';
+        logoutBtn.style.display = 'none';
+        noSecNote.style.display = '';
+      }
+    }
+
+    settingsBtn.onclick = () => { settingsBackdrop.classList.remove('hide'); document.getElementById('oldPin').value = ''; document.getElementById('newPin').value = ''; document.getElementById('confirmPin').value = ''; resetPinError.textContent = ''; resetPinError.style.color = ''; renderSecuritySettings(); if (typeof renderCloudSettings === 'function') renderCloudSettings(); };
     closeSettingsBtn.onclick = () => settingsBackdrop.classList.add('hide');
     logoutBtn.onclick = () => { settingsBackdrop.classList.add('hide'); doLogout(); };
     resetPinCancel.onclick = () => { resetPinError.textContent = ''; resetPinError.style.color = ''; settingsBackdrop.classList.add('hide'); };
 
     resetPinSubmit.onclick = async function() {
       resetPinError.textContent = ''; resetPinError.style.color = '';
+      const hadPIN = getHasPIN();
       const oldPin = (document.getElementById('oldPin').value || '').trim();
       const newPin = (document.getElementById('newPin').value || '').trim();
       const confirmPin = (document.getElementById('confirmPin').value || '').trim();
-      if (!oldPin || oldPin.length < 4) { resetPinError.textContent = "Enter current PIN (min 4 chars)."; resetPinError.style.color='var(--danger)'; return; }
+      if (hadPIN && (!oldPin || oldPin.length < 4)) { resetPinError.textContent = "Enter current PIN (min 4 chars)."; resetPinError.style.color='var(--danger)'; return; }
       if (!newPin || newPin.length < 4) { resetPinError.textContent = "New PIN must be at least 4 characters."; resetPinError.style.color='var(--danger)'; return; }
       if (newPin !== confirmPin) { resetPinError.textContent = "New PIN and confirmation do not match."; resetPinError.style.color='var(--danger)'; return; }
-      if (oldPin === newPin) { resetPinError.textContent = "New PIN cannot be same as old PIN."; resetPinError.style.color='var(--danger)'; return;}
+      if (hadPIN && oldPin === newPin) { resetPinError.textContent = "New PIN cannot be same as old PIN."; resetPinError.style.color='var(--danger)'; return;}
       resetPinSubmit.disabled = true;
       try {
-        const oldHash = await hashPIN(oldPin);
-        const stored = window.localStorage.getItem('dealer-hash');
-        if (stored !== oldHash) { resetPinError.textContent = "Current PIN is incorrect."; resetPinError.style.color='var(--danger)'; resetPinSubmit.disabled = false; return; }
+        if (hadPIN) {
+          const oldHash = await hashPIN(oldPin);
+          const stored = window.localStorage.getItem('dealer-hash');
+          if (stored !== oldHash) { resetPinError.textContent = "Current PIN is incorrect."; resetPinError.style.color='var(--danger)'; resetPinSubmit.disabled = false; return; }
+        }
         const newHash = await hashPIN(newPin);
         window.localStorage.setItem('dealer-hash', newHash);
-        resetPinError.style.color = 'var(--success)'; resetPinError.textContent = "PIN updated successfully.";
-        setTimeout(()=>{ resetPinError.textContent = ''; resetPinError.style.color = ''; settingsBackdrop.classList.add('hide'); }, 1000);
+        setSecurityMode('pin');
+        updatePINUI(true);
+        renderSecuritySettings();
+        resetPinError.style.color = 'var(--success)'; resetPinError.textContent = hadPIN ? "PIN updated successfully." : "Security enabled — PIN set.";
+        setTimeout(()=>{ resetPinError.textContent = ''; resetPinError.style.color = ''; settingsBackdrop.classList.add('hide'); }, 1100);
       } catch (err) { resetPinError.textContent = "Failed to update PIN."; resetPinError.style.color='var(--danger)'; }
       resetPinSubmit.disabled = false;
+    };
+
+    // Remove security entirely (user's choice) — requires the current PIN to confirm.
+    document.getElementById('removeSecurityBtn').onclick = async function() {
+      resetPinError.textContent = ''; resetPinError.style.color = '';
+      const oldPin = (document.getElementById('oldPin').value || '').trim();
+      if (!oldPin) { resetPinError.textContent = "Enter your current PIN above to remove security."; resetPinError.style.color='var(--danger)'; return; }
+      const oldHash = await hashPIN(oldPin);
+      if (window.localStorage.getItem('dealer-hash') !== oldHash) { resetPinError.textContent = "Current PIN is incorrect."; resetPinError.style.color='var(--danger)'; return; }
+      if (!confirm("Remove the PIN and fingerprint lock? The app will open directly without asking for security.")) return;
+      try {
+        localStorage.removeItem('dealer-hash');
+        localStorage.removeItem('dealer-bio-cred-id');
+        clearKeepSession();
+        stopSessionTimeoutMonitor();
+        setSecurityMode('none');
+        updatePINUI(false);
+        renderSecuritySettings();
+        resetPinError.style.color = 'var(--success)'; resetPinError.textContent = "Security removed. The app now opens without a lock.";
+        setTimeout(()=>{ resetPinError.textContent=''; resetPinError.style.color=''; }, 1800);
+      } catch(e) { resetPinError.textContent = "Failed to remove security."; resetPinError.style.color='var(--danger)'; }
     };
 
     const productListElem = document.getElementById('productList');
@@ -1974,6 +2187,8 @@ async function saveProductsToDB(productsArray) {
         // We update memory immediately, but save async
         try { await saveProductsToDB(products); } catch(e){ console.error("Save failed", e); }
         refreshProductList(); 
+        // Mirror the change to the shared cloud database (if connected)
+        if (typeof cloudPushDebounced === 'function') cloudPushDebounced();
     }
     
     async function loadProducts() { 
@@ -3062,7 +3277,7 @@ async function saveProductsToDB(productsArray) {
 
     function showDeleteModal(product) { deleteModalBackdrop.classList.remove('hide'); deleteName.textContent = product.name || ''; productToDelete = product; setTimeout(()=>document.getElementById('cancelDeleteBtn').focus(),60); }
     document.getElementById('closeDeleteBtn').onclick = document.getElementById('cancelDeleteBtn').onclick = () => { deleteModalBackdrop.classList.add('hide'); productToDelete = null; };
-    deleteModal.onsubmit = function(e){ e.preventDefault(); if (!productToDelete) return; products = products.filter(p => p.id !== productToDelete.id); saveProducts(); deleteModalBackdrop.classList.add('hide'); productToDelete = null; selectedProductIds.delete(productToDelete.id); updateMultiSelectControls(); };
+    deleteModal.onsubmit = function(e){ e.preventDefault(); if (!productToDelete) return; const deletedId = productToDelete.id; products = products.filter(p => p.id !== deletedId); saveProducts(); deleteModalBackdrop.classList.add('hide'); productToDelete = null; selectedProductIds.delete(deletedId); updateMultiSelectControls(); };
     function genID() { return 'p' + (Date.now() + ('' + Math.random()).slice(2,7)); }
 
     /****************************************************************
@@ -3362,5 +3577,418 @@ function stopScanner() {
     closeScannerBtn.onclick = stopScanner;
 </script>
 
+
+<script>
+/****************************************************************
+ * CLOUD SYNC ENGINE (GitHub-backed — 100% free, no new accounts)
+ * - The shared database is a products.json file in a PRIVATE
+ *   GitHub repository owned by the shop owner.
+ * - Staff access it by pasting ONE access key (a GitHub token);
+ *   that key is completely separate from the local PIN/fingerprint.
+ * - Edits sync on save and every ~25s; safe 3-way merge with
+ *   per-product timestamps and delete tombstones.
+ * - No SDK, no config objects — plain fetch() to api.github.com.
+ ****************************************************************/
+/****************************************************************
+ * ⬇⬇⬇  ONE-TIME SETUP — PERSON 1 (OWNER) ONLY  ⬇⬇⬇
+ *
+ * The shared database is just a file (products.json) inside a
+ * PRIVATE GitHub repository. Fill in your GitHub username and the
+ * repo name below, upload this file to GitHub Pages, and you're
+ * done. Staff only ever paste ONE access key (a GitHub token).
+ *
+ * Example:
+ * const EMBEDDED_CLOUD = { owner: "ashardian", repo: "shop-data", branch: "main", path: "products.json" };
+ ****************************************************************/
+const EMBEDDED_CLOUD = { owner: "ashardian", repo: "shop-data", branch: "main", path: "products.json" };
+
+(function(){
+  const REPO_KEY = 'dealer-gh-repo';
+  const TOKEN_KEY = 'dealer-gh-token';
+  const AUTHED_KEY = 'dealer-cloud-authed';
+  const BASE_KEY = 'dealer-gh-base'; // hashes of last-synced products (for 3-way merge)
+
+  let cloudActive = false;
+  let pollTimer = null;
+  let pushTimer = null;
+  let busy = false;        // a pull or push is in flight
+  let queued = false;      // another sync requested while busy
+  let lastSha = null;      // sha of products.json at last sync
+  let gateOpen = false;
+
+  /* ---------- config & token ---------- */
+  function isEmbeddedCfg() { return !!(EMBEDDED_CLOUD && EMBEDDED_CLOUD.owner && EMBEDDED_CLOUD.repo); }
+  function getRepoCfg() {
+    if (isEmbeddedCfg()) return { branch:'main', path:'products.json', ...EMBEDDED_CLOUD };
+    try { const raw = localStorage.getItem(REPO_KEY); if (!raw) return null; const c = JSON.parse(raw); return (c.owner && c.repo) ? { branch:'main', path:'products.json', ...c } : null; } catch(e){ return null; }
+  }
+  function getToken() { try { return localStorage.getItem(TOKEN_KEY) || ''; } catch(e){ return ''; } }
+  function connected() { return !!(getRepoCfg() && getToken() && cloudActive); }
+
+  /* ---------- tiny utils ---------- */
+  function b64encodeUtf8(str) {
+    const bytes = new TextEncoder().encode(str);
+    let bin = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    return btoa(bin);
+  }
+  function b64decodeUtf8(b64) {
+    const bin = atob(b64.replace(/\n/g, ''));
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new TextDecoder().decode(bytes);
+  }
+  function hashStr(s) { let h = 5381; for (let i = 0; i < s.length; i++) { h = ((h << 5) + h + s.charCodeAt(i)) | 0; } return String(h); }
+  function getBaseHashes() { try { return JSON.parse(localStorage.getItem(BASE_KEY) || '{}'); } catch(e){ return {}; } }
+  function setBaseHashes(map) { try { localStorage.setItem(BASE_KEY, JSON.stringify(map)); } catch(e){} }
+
+  /* ---------- status UI ---------- */
+  function setStatus(text, ok) {
+    const chip = document.getElementById('cloudStatusChip');
+    const dot = document.getElementById('cloudDot');
+    if (chip) { chip.textContent = text; chip.style.color = ok ? 'var(--success)' : 'var(--text-muted)'; chip.style.borderColor = ok ? '#1d5e4b' : '#2b3a55'; }
+    if (dot) dot.style.display = ok ? 'block' : 'none';
+  }
+  function setCloudError(msg) {
+    const el = document.getElementById('cloudError');
+    if (el) { el.textContent = msg || ''; el.style.color = msg ? 'var(--danger)' : ''; }
+  }
+
+  window.renderCloudSettings = function() {
+    const cfg = getRepoCfg();
+    const tok = getToken();
+    const cfgBlock = document.getElementById('cloudConfigBlock');
+    const loginBlock = document.getElementById('cloudLoginBlock');
+    const connBlock = document.getElementById('cloudConnectedBlock');
+    cfgBlock.style.display = !cfg ? 'flex' : 'none';
+    loginBlock.style.display = (cfg && !tok) ? 'flex' : 'none';
+    connBlock.style.display = (cfg && tok) ? 'flex' : 'none';
+    const changeBtn = document.getElementById('cloudChangeConfigBtn');
+    if (changeBtn) changeBtn.style.display = isEmbeddedCfg() ? 'none' : '';
+    if (cfg && tok) {
+      document.getElementById('cloudUserEmail').textContent = cfg.owner + '/' + cfg.repo;
+      setStatus(cloudActive ? 'live' : 'connecting…', cloudActive);
+    } else {
+      setStatus(cfg ? 'key needed' : 'off', false);
+    }
+  };
+
+  /* ---------- GitHub API ---------- */
+  function apiUrl(cfg) {
+    return 'https://api.github.com/repos/' + encodeURIComponent(cfg.owner) + '/' + encodeURIComponent(cfg.repo) + '/contents/' + encodeURIComponent(cfg.path);
+  }
+  function headers(extraAccept) {
+    return { 'Authorization': 'Bearer ' + getToken(), 'Accept': extraAccept || 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
+  }
+  function friendlyHttpError(status) {
+    if (status === 401) return "Access key is wrong or was revoked. Ask the owner for a new key.";
+    if (status === 403) return "Access denied or rate limit reached — try again in a minute.";
+    if (status === 404) return null; // file/repo missing — handled by caller
+    return "Cloud error (HTTP " + status + ").";
+  }
+
+  // Returns { missing:true } or { sha, data:{products:{}, deleted:{}} }
+  async function pullRemote() {
+    const cfg = getRepoCfg();
+    const metaRes = await fetch(apiUrl(cfg) + '?ref=' + encodeURIComponent(cfg.branch), { headers: headers('application/vnd.github.object+json') });
+    if (metaRes.status === 404) return { missing: true };
+    if (!metaRes.ok) throw new Error(friendlyHttpError(metaRes.status) || ('HTTP ' + metaRes.status));
+    const meta = await metaRes.json();
+    let text;
+    if (meta.content) {
+      text = b64decodeUtf8(meta.content);
+    } else {
+      // File >1MB: fetch raw
+      const rawRes = await fetch(apiUrl(cfg) + '?ref=' + encodeURIComponent(cfg.branch), { headers: headers('application/vnd.github.raw+json') });
+      if (!rawRes.ok) throw new Error(friendlyHttpError(rawRes.status) || ('HTTP ' + rawRes.status));
+      text = await rawRes.text();
+    }
+    let data;
+    try { data = JSON.parse(text); } catch(e) { data = null; }
+    if (!data || typeof data !== 'object') data = {};
+    if (!data.products || typeof data.products !== 'object') data.products = {};
+    if (!data.deleted || typeof data.deleted !== 'object') data.deleted = {};
+    return { sha: meta.sha, data };
+  }
+
+  async function putRemote(data, sha) {
+    const cfg = getRepoCfg();
+    const body = { message: 'sync ' + new Date().toISOString(), branch: cfg.branch, content: b64encodeUtf8(JSON.stringify(data)) };
+    if (sha) body.sha = sha;
+    const res = await fetch(apiUrl(cfg), { method: 'PUT', headers: headers(), body: JSON.stringify(body) });
+    if (res.status === 409 || res.status === 422) return { conflict: true };
+    if (!res.ok) throw new Error(friendlyHttpError(res.status) || ('HTTP ' + res.status));
+    const out = await res.json();
+    return { sha: out.content && out.content.sha };
+  }
+
+  /* ---------- photo shrinking (JSON can't hold Blobs) ---------- */
+  function photoToDataURL(photo) {
+    if (!photo) return Promise.resolve(null);
+    if (typeof photo === 'string') return Promise.resolve(photo.length < 220000 ? photo : null);
+    if (!(photo instanceof Blob)) return Promise.resolve(null);
+    return new Promise(resolve => {
+      const url = URL.createObjectURL(photo);
+      const img = new Image();
+      img.onload = () => {
+        try {
+          let w = img.naturalWidth, h = img.naturalHeight;
+          const MAX = 420;
+          if (w > MAX || h > MAX) { const s = MAX / Math.max(w, h); w = Math.round(w*s); h = Math.round(h*s); }
+          const c = document.createElement('canvas'); c.width = w; c.height = h;
+          c.getContext('2d').drawImage(img, 0, 0, w, h);
+          URL.revokeObjectURL(url);
+          const d = c.toDataURL('image/jpeg', 0.55);
+          c.width = 0; c.height = 0;
+          resolve(d.length < 220000 ? d : null);
+        } catch(e) { URL.revokeObjectURL(url); resolve(null); }
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+      img.src = url;
+    });
+  }
+
+  async function serializeProduct(p, idx) {
+    const out = {
+      id: p.id, name: p.name || '', barcode: p.barcode || '',
+      mrp: p.mrp ?? 0, cost: p.cost ?? null, qty: p.qty ?? 0,
+      category: p.category || '', notes: p.notes || '',
+      _idx: idx, photos: []
+    };
+    const photos = Array.isArray(p.photos) ? p.photos.slice(0, 3) : [];
+    let budget = 450000;
+    for (const ph of photos) {
+      const d = await photoToDataURL(ph);
+      if (d && d.length < budget) { out.photos.push(d); budget -= d.length; }
+    }
+    return out;
+  }
+  // Hash ignores display order so re-sorting alone doesn't count as an "edit"
+  function productHash(s) { const { _idx, updatedAt, ...rest } = s; return hashStr(JSON.stringify(rest)); }
+
+  /* ---------- the sync core (pull → 3-way merge → push if needed) ---------- */
+  async function syncNow() {
+    if (!getRepoCfg() || !getToken()) return;
+    if (busy) { queued = true; return; }
+    busy = true;
+    setStatus('syncing…', true);
+    try {
+      // 1. Serialize local state and stamp updatedAt using last-synced hashes
+      const base = getBaseHashes();
+      const now = Date.now();
+      const localMap = {};
+      const local = Array.isArray(products) ? products : [];
+      for (let i = 0; i < local.length; i++) {
+        const s = await serializeProduct(local[i], i);
+        const h = productHash(s);
+        s.updatedAt = (base[s.id] && base[s.id].h === h) ? base[s.id].t : now;
+        s._h = h;
+        localMap[s.id] = s;
+      }
+
+      // 2. Pull remote
+      const remote = await pullRemote();
+      const remoteMap = remote.missing ? {} : remote.data.products;
+      const deleted = remote.missing ? {} : (remote.data.deleted || {});
+
+      // 3. Local deletions → tombstones (item was synced before but is gone locally now)
+      Object.keys(base).forEach(id => { if (!localMap[id]) deleted[id] = Math.max(deleted[id] || 0, now); });
+
+      // 4. Merge per product: newest updatedAt wins; tombstones beat older items
+      const merged = {};
+      const ids = new Set([...Object.keys(localMap), ...Object.keys(remoteMap)]);
+      ids.forEach(id => {
+        const L = localMap[id], R = remoteMap[id];
+        let winner = null;
+        if (L && R) winner = (L.updatedAt >= (R.updatedAt || 0)) ? L : R;
+        else if (L) {
+          // exists locally only: keep it unless a NEWER tombstone says it was deleted elsewhere
+          winner = (deleted[id] && deleted[id] >= L.updatedAt) ? null : L;
+        } else if (R) {
+          // exists remotely only: new from another device, unless we just deleted it
+          winner = (deleted[id] && deleted[id] >= (R.updatedAt || 0)) ? null : R;
+        }
+        if (winner) { const w = { ...winner }; delete w._h; merged[id] = w; if (deleted[id] && deleted[id] < (winner.updatedAt||0)) delete deleted[id]; }
+      });
+      // prune tombstones older than 60 days
+      const cutoff = now - 60*24*3600*1000;
+      Object.keys(deleted).forEach(id => { if (deleted[id] < cutoff) delete deleted[id]; });
+
+      // 5. Push only if merged differs from remote
+      const mergedJson = JSON.stringify({ products: merged, deleted });
+      const remoteJson = remote.missing ? '' : JSON.stringify({ products: remoteMap, deleted: remote.data.deleted || {} });
+      if (mergedJson !== remoteJson) {
+        const put = await putRemote({ updatedAt: now, products: merged, deleted }, remote.missing ? null : remote.sha);
+        if (put.conflict) { busy = false; queued = false; setTimeout(syncNow, 900 + Math.random()*900); return; }
+        lastSha = put.sha || null;
+      } else {
+        lastSha = remote.missing ? null : remote.sha;
+      }
+
+      // 6. Apply merged result locally (UI + IndexedDB) and remember it as the new base
+      const arr = Object.values(merged).sort((a,b) => (a._idx ?? 0) - (b._idx ?? 0) || String(a.name||'').localeCompare(String(b.name||'')));
+      const newBase = {};
+      Object.keys(merged).forEach(id => { newBase[id] = { h: productHash(merged[id]), t: merged[id].updatedAt || now }; });
+      setBaseHashes(newBase);
+      const cleaned = arr.map(p => { const c = { ...p }; delete c._idx; if (!Array.isArray(c.photos)) c.photos = []; return c; });
+      // Only touch the UI if the merge actually changed something vs. what's on screen
+      const localClean = local.map((p, i) => { const c = { ...localMap[p.id] }; delete c._h; delete c._idx; return c; });
+      if (JSON.stringify(cleaned) !== JSON.stringify(localClean)) {
+        products = cleaned;
+        try { await saveProductsToDB(products); } catch(e){ console.error(e); }
+        if (typeof refreshProductList === 'function') refreshProductList();
+      }
+
+      cloudActive = true;
+      try { localStorage.setItem(AUTHED_KEY, '1'); } catch(e){}
+      setCloudError('');
+      setStatus('live', true);
+      window.renderCloudSettings();
+      cloudGateResolve(true);
+    } catch(e) {
+      console.error('Sync failed:', e);
+      cloudActive = false;
+      setCloudError(String(e.message || e));
+      setStatus(navigator.onLine === false ? 'offline' : 'error', false);
+      window.renderCloudSettings();
+    }
+    busy = false;
+    if (queued) { queued = false; setTimeout(syncNow, 300); }
+  }
+
+  /* ---------- polling: pick up other devices' edits ---------- */
+  function startPolling() {
+    if (pollTimer) return;
+    pollTimer = setInterval(() => {
+      if (document.visibilityState === 'visible' && navigator.onLine !== false) syncNow();
+    }, 25000);
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('online', onVisible);
+  }
+  function onVisible() { if (document.visibilityState === 'visible' && getToken() && getRepoCfg()) syncNow(); }
+
+  /* ---------- public hooks (same names the rest of the app already uses) ---------- */
+  window.cloudPushDebounced = function() {
+    if (!getRepoCfg() || !getToken()) return;
+    clearTimeout(pushTimer);
+    pushTimer = setTimeout(syncNow, 800);
+  };
+
+  window.cloudInitIfConfigured = function() {
+    if (!getRepoCfg() || !getToken()) { setStatus(getRepoCfg() ? 'key needed' : 'off', false); return; }
+    startPolling();
+    syncNow();
+  };
+
+  /* ---------- first-open access gate ---------- */
+  window.cloudGateNeeded = function() {
+    try { return !!getRepoCfg() && (!getToken() || localStorage.getItem(AUTHED_KEY) !== '1'); } catch(e) { return false; }
+  };
+
+  function gateEls() {
+    return {
+      modal: document.getElementById('cloud-gate-modal'),
+      form: document.getElementById('cloudGateForm'),
+      loading: document.getElementById('cloudGateLoading'),
+      err: document.getElementById('cloudGateError'),
+      token: document.getElementById('cloudGateToken'),
+      signIn: document.getElementById('cloudGateSignInBtn'),
+      offline: document.getElementById('cloudGateOfflineBtn')
+    };
+  }
+  function setGateError(msg) { const g = gateEls(); g.err.textContent = msg || ''; g.err.style.color = msg ? 'var(--danger)' : ''; }
+
+  function cloudGateResolve(success) {
+    if (!gateOpen) return;
+    gateOpen = false;
+    gateEls().modal.style.display = 'none';
+    if (typeof routeStartupScreen === 'function') routeStartupScreen();
+  }
+
+  window.showCloudGate = function() {
+    gateOpen = true;
+    const g = gateEls();
+    document.getElementById('dealerApp').style.display = 'none';
+    document.getElementById('login-modal').style.display = 'none';
+    g.modal.style.display = 'flex';
+    setGateError('');
+
+    if (getToken()) {
+      // Key already saved (e.g. previous failed verify) — try silently first
+      g.form.style.display = 'none'; g.loading.style.display = 'block';
+      startPolling();
+      syncNow().then(() => {
+        if (gateOpen) { g.loading.style.display = 'none'; g.form.style.display = 'block'; setGateError("Could not connect with the saved key. Paste it again or continue offline."); }
+      });
+    } else {
+      g.loading.style.display = 'none';
+      g.form.style.display = 'block';
+      setTimeout(() => g.token.focus(), 120);
+    }
+
+    g.signIn.onclick = async function() {
+      setGateError('');
+      const tok = (g.token.value || '').trim();
+      if (!tok) { setGateError("Paste the access key first."); return; }
+      g.signIn.disabled = true; g.signIn.textContent = 'Connecting…';
+      try { localStorage.setItem(TOKEN_KEY, tok); } catch(e){}
+      await syncNow();
+      g.signIn.disabled = false; g.signIn.textContent = '🔑 Connect';
+      if (gateOpen) {
+        // syncNow failed — surface the reason and clear the bad key
+        setGateError(document.getElementById('cloudError').textContent || "Could not connect. Check the key and your internet.");
+        try { localStorage.removeItem(TOKEN_KEY); } catch(e){}
+      } else {
+        startPolling();
+      }
+    };
+    g.token.onkeydown = function(e) { if (e.key === 'Enter') g.signIn.click(); };
+    g.offline.onclick = function() { cloudGateResolve(false); };
+  };
+
+  /* ---------- settings wiring ---------- */
+  document.getElementById('cloudSaveConfigBtn').onclick = function() {
+    setCloudError('');
+    const owner = (document.getElementById('cloudOwnerInput').value || '').trim();
+    const repo = (document.getElementById('cloudRepoInput').value || '').trim();
+    if (!owner || !repo) { setCloudError("Enter the GitHub username and the repository name."); return; }
+    try { localStorage.setItem(REPO_KEY, JSON.stringify({ owner, repo, branch:'main', path:'products.json' })); } catch(e){}
+    window.renderCloudSettings();
+  };
+
+  document.getElementById('cloudSignInBtn').onclick = async function() {
+    setCloudError('');
+    const tok = (document.getElementById('cloudTokenInput').value || '').trim();
+    if (!tok) { setCloudError("Paste the access key first."); return; }
+    this.disabled = true; this.textContent = 'Connecting…';
+    try { localStorage.setItem(TOKEN_KEY, tok); } catch(e){}
+    await syncNow();
+    this.disabled = false; this.textContent = '🔑 Connect';
+    if (!cloudActive) { try { localStorage.removeItem(TOKEN_KEY); } catch(e){} }
+    else { document.getElementById('cloudTokenInput').value = ''; startPolling(); }
+    window.renderCloudSettings();
+  };
+
+  document.getElementById('cloudSignOutBtn').onclick = function() {
+    if (!confirm("Disconnect this device from the cloud database? Local data stays on this phone.")) return;
+    try { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(AUTHED_KEY); } catch(e){}
+    cloudActive = false;
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    setStatus('key needed', false);
+    window.renderCloudSettings();
+  };
+
+  document.getElementById('cloudPushBtn').onclick = function() { syncNow(); };
+
+  document.getElementById('cloudChangeConfigBtn').onclick = function() {
+    if (isEmbeddedCfg()) { setCloudError("The repository is set by the owner inside the app file."); return; }
+    if (!confirm("Change the cloud repository? (No data is deleted.)")) return;
+    try { localStorage.removeItem(REPO_KEY); localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(AUTHED_KEY); } catch(e){}
+    cloudActive = false;
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    window.renderCloudSettings();
+  };
+})();
+</script>
 </body>
 </html>
