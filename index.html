@@ -1362,7 +1362,7 @@
   <div class="modal-backdrop hide" id="settingsBackdrop">
     <div class="modal" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
       <button class="modal-close" type="button" id="closeSettingsBtn" title="Close" aria-label="Close dialog" role="button">✖</button>
-      <h3 id="settingsTitle">Settings <span style="font-size:.6em;color:var(--text-muted);font-weight:400;">v2.6</span></h3>
+      <h3 id="settingsTitle">Settings <span style="font-size:.6em;color:var(--text-muted);font-weight:400;">v2.7</span></h3>
 
       <div style="display:flex;flex-direction:column;gap:10px;">
         <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -1684,7 +1684,7 @@
       })();
 
       const swScript = `
-        const CACHE_NAME = 'local-dealer-cache-v22';
+        const CACHE_NAME = 'local-dealer-cache-v23';
         const OFFLINE_URL = self.registration.scope.endsWith('/') ? self.registration.scope + 'index.html' : self.registration.scope + '/index.html';
         const FILES_TO_CACHE = [ OFFLINE_URL, './index.html' ];
         
@@ -2514,19 +2514,19 @@ async function saveProductsToDB(productsArray) {
      ****************************************************************/
     function makeImageZoomable(img, slider) {
         let scale = 1, tx = 0, ty = 0;
-        const pointers = new Map();
-        let startDist = 0, startScale = 1;
-        let panStart = null;
+        // pinch baseline (captured when the 2nd finger lands)
+        let pinch = null;
+        let pan = null;
         let lastTap = 0, lastTapX = 0, lastTapY = 0;
+        let movedSinceDown = false;
 
         function applyTransform() {
             img.style.transform = scale > 1.02 ? `translate(${tx}px, ${ty}px) scale(${scale})` : '';
         }
         function setZoomMode(on) {
-            // While zoomed, the horizontal pan must move the IMAGE, not swipe the slider
+            // zoomed: gestures move the IMAGE; unzoomed: native swipe between photos
             slider.style.overflowX = on ? 'hidden' : 'auto';
             slider.style.scrollSnapType = on ? 'none' : 'x mandatory';
-            img.style.touchAction = on ? 'none' : '';
         }
         function clampPan() {
             const maxX = (img.clientWidth  * (scale - 1)) / 2;
@@ -2534,86 +2534,97 @@ async function saveProductsToDB(productsArray) {
             tx = Math.max(-maxX, Math.min(maxX, tx));
             ty = Math.max(-maxY, Math.min(maxY, ty));
         }
-        function resetZoom() { scale = 1; tx = 0; ty = 0; setZoomMode(false); applyTransform(); }
-        function zoomTo(s, cx, cy) {
+        function resetZoom() { scale = 1; tx = 0; ty = 0; pinch = null; pan = null; setZoomMode(false); applyTransform(); }
+        function zoomAtPoint(newScale, cx, cy) {
+            newScale = Math.max(1, Math.min(4, newScale));
             const rect = img.getBoundingClientRect();
-            // zoom towards the tapped/pinched point
-            const px = cx - rect.left - rect.width / 2;
-            const py = cy - rect.top - rect.height / 2;
-            const ratio = s / scale;
+            const px = cx - (rect.left + rect.width / 2);
+            const py = cy - (rect.top + rect.height / 2);
+            const ratio = newScale / scale;
             tx = tx * ratio - px * (ratio - 1);
             ty = ty * ratio - py * (ratio - 1);
-            scale = Math.max(1, Math.min(4, s));
+            scale = newScale;
             if (scale <= 1.02) { resetZoom(); return; }
             setZoomMode(true); clampPan(); applyTransform();
         }
+        const dist = (a, b) => Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+        const mid = (a, b) => ({ x: (a.clientX + b.clientX) / 2, y: (a.clientY + b.clientY) / 2 });
 
-        img.addEventListener('pointerdown', e => {
-            pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-            try { img.setPointerCapture(e.pointerId); } catch(_){}
-            if (pointers.size === 2) {
-                const [a, b] = [...pointers.values()];
-                startDist = Math.hypot(a.x - b.x, a.y - b.y);
-                startScale = scale;
-                panStart = null;
-                e.preventDefault();
-            } else if (pointers.size === 1 && scale > 1.02) {
-                panStart = { x: e.clientX - tx, y: e.clientY - ty };
-                e.preventDefault();
+        /* ---------- TOUCH (phones) ---------- */
+        img.addEventListener('touchstart', e => {
+            movedSinceDown = false;
+            if (e.touches.length === 2) {
+                pinch = { d: dist(e.touches[0], e.touches[1]), s: scale, m: mid(e.touches[0], e.touches[1]), tx, ty };
+                pan = null;
+            } else if (e.touches.length === 1 && scale > 1.02) {
+                pan = { x: e.touches[0].clientX - tx, y: e.touches[0].clientY - ty };
             }
-        });
+        }, { passive: true });
 
-        img.addEventListener('pointermove', e => {
-            if (!pointers.has(e.pointerId)) return;
-            pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-            if (pointers.size === 2) {
-                const [a, b] = [...pointers.values()];
-                const dist = Math.hypot(a.x - b.x, a.y - b.y);
-                if (startDist > 0) {
-                    const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
-                    zoomTo(startScale * (dist / startDist), cx, cy);
-                }
+        img.addEventListener('touchmove', e => {
+            if (e.touches.length === 2 && pinch) {
+                e.preventDefault(); // we own this gesture — stop scroll/native zoom
+                movedSinceDown = true;
+                const m = mid(e.touches[0], e.touches[1]);
+                const newScale = Math.max(1, Math.min(4, pinch.s * (dist(e.touches[0], e.touches[1]) / pinch.d)));
+                // rebuild transform from the pinch baseline (no drift)
+                scale = pinch.s; tx = pinch.tx; ty = pinch.ty;
+                zoomAtPoint(newScale, pinch.m.x, pinch.m.y);
+                // two-finger drag also pans
+                tx += m.x - pinch.m.x;
+                ty += m.y - pinch.m.y;
+                if (scale > 1.02) { clampPan(); applyTransform(); }
+            } else if (e.touches.length === 1 && pan && scale > 1.02) {
                 e.preventDefault();
-            } else if (pointers.size === 1 && panStart && scale > 1.02) {
-                tx = e.clientX - panStart.x;
-                ty = e.clientY - panStart.y;
+                movedSinceDown = true;
+                tx = e.touches[0].clientX - pan.x;
+                ty = e.touches[0].clientY - pan.y;
                 clampPan(); applyTransform();
-                e.preventDefault();
+            }
+        }, { passive: false });
+
+        img.addEventListener('touchend', e => {
+            if (e.touches.length < 2) pinch = null;
+            if (e.touches.length === 0) {
+                // double-tap toggle (only if the finger didn't drag)
+                if (!movedSinceDown && e.changedTouches.length === 1) {
+                    const t = e.changedTouches[0];
+                    const nowT = Date.now();
+                    if (nowT - lastTap < 320 && Math.hypot(t.clientX - lastTapX, t.clientY - lastTapY) < 45) {
+                        e.preventDefault();
+                        if (scale > 1.02) resetZoom();
+                        else zoomAtPoint(2.5, t.clientX, t.clientY);
+                        lastTap = 0;
+                    } else {
+                        lastTap = nowT; lastTapX = t.clientX; lastTapY = t.clientY;
+                    }
+                }
+                pan = null;
+                if (scale <= 1.02) resetZoom();
             }
         });
+        img.addEventListener('touchcancel', () => { pinch = null; pan = null; });
 
-        function endPointer(e) {
-            // Double-tap detection (single finger, not a pan)
-            if (pointers.size === 1 && !panStartMoved(e)) {
-                const nowT = Date.now();
-                if (nowT - lastTap < 320 && Math.hypot(e.clientX - lastTapX, e.clientY - lastTapY) < 40) {
-                    if (scale > 1.02) resetZoom();
-                    else zoomTo(2.5, e.clientX, e.clientY);
-                    lastTap = 0;
-                } else {
-                    lastTap = nowT; lastTapX = e.clientX; lastTapY = e.clientY;
-                }
-            }
-            pointers.delete(e.pointerId);
-            if (pointers.size < 2) startDist = 0;
-            if (pointers.size === 0) panStart = null;
-        }
-        function panStartMoved(e) {
-            if (!panStart) return false;
-            return Math.hypot((e.clientX - tx) - panStart.x, (e.clientY - ty) - panStart.y) > 12;
-        }
-        img.addEventListener('pointerup', endPointer);
-        img.addEventListener('pointercancel', e => { pointers.delete(e.pointerId); if (pointers.size === 0) { startDist = 0; panStart = null; } });
-
-        // Desktop conveniences: double-click and ctrl/cmd+wheel zoom
-        img.addEventListener('dblclick', e => { e.preventDefault(); if (scale > 1.02) resetZoom(); else zoomTo(2.5, e.clientX, e.clientY); });
+        /* ---------- MOUSE / TRACKPAD (desktop) ---------- */
+        img.addEventListener('mousedown', e => {
+            if (scale <= 1.02) return;
+            e.preventDefault();
+            const start = { x: e.clientX - tx, y: e.clientY - ty };
+            const move = ev => { tx = ev.clientX - start.x; ty = ev.clientY - start.y; clampPan(); applyTransform(); };
+            const up = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); };
+            window.addEventListener('mousemove', move);
+            window.addEventListener('mouseup', up);
+        });
+        img.addEventListener('dblclick', e => {
+            e.preventDefault();
+            if (scale > 1.02) resetZoom(); else zoomAtPoint(2.5, e.clientX, e.clientY);
+        });
         img.addEventListener('wheel', e => {
             if (!e.ctrlKey && !e.metaKey && scale <= 1.02) return;
             e.preventDefault();
-            zoomTo(scale * (e.deltaY < 0 ? 1.15 : 0.87), e.clientX, e.clientY);
+            zoomAtPoint(scale * (e.deltaY < 0 ? 1.15 : 0.87), e.clientX, e.clientY);
         }, { passive: false });
 
-        // Reset when the viewer closes / slide is rebuilt
         img.__resetZoom = resetZoom;
     }
 
@@ -3030,6 +3041,7 @@ async function saveProductsToDB(productsArray) {
           ${product.category?`<li><b>Category:</b> <span style="color:var(--accent2);font-weight:600">${escapeHTML(String(product.category))}</span></li>`:""}
           <li><b>Stock:</b> <span style="color:var(--accent2);font-weight:600">${Number(product.qty)||0}</span></li>
           <li><b>MRP:</b> <span style="color:var(--accent2);font-weight:600">₨${mrpNum.toLocaleString(undefined,{maximumFractionDigits:2})}</span></li>
+          ${product.updatedAt?`<li><b>Last updated:</b> <span style="color:var(--text-muted);">${new Date(product.updatedAt).toLocaleDateString()} ${new Date(product.updatedAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}${product.updatedBy?' · by <b style=\"color:var(--accent2)\">'+escapeHTML(product.updatedBy)+'</b>':''}</span></li>`:""}
           ${costNum!==null?`<li><b>Cost:</b> <span id="detailCostVal" style="color:var(--accent2);font-weight:600;letter-spacing:2px;">••••••</span> <button type="button" id="detailCostToggle" style="margin-left:8px;background:#222b3a;border:1px solid #2b3a55;color:var(--text-muted);border-radius:7px;padding:3px 10px;font-size:.85em;cursor:pointer;">👁 Show</button></li>`:""}
         </ul>
         ${product.notes?`<div style="margin-top:.8em;color:var(--text-muted);background:#213047;border-radius:8px;padding:.7em .9em">${escapeHTML(String(product.notes))}</div>`:""}
@@ -3158,6 +3170,8 @@ async function saveProductsToDB(productsArray) {
         const currentQty = quickSellProductTarget.qty || 0;
         const newQty = Math.max(0, currentQty - qtyToSell);
         quickSellProductTarget.qty = newQty;
+        quickSellProductTarget.updatedAt = Date.now();
+        quickSellProductTarget.updatedBy = getDeviceName();
         
         // Calculate Profit
         const costPrice = quickSellProductTarget.cost || 0;
@@ -3260,6 +3274,8 @@ async function saveProductsToDB(productsArray) {
                         const product = products.find(p => p.id === prodId);
                         if(product) {
                             product.qty = (product.qty || 0) + qty;
+                            product.updatedAt = Date.now();
+                            product.updatedBy = getDeviceName();
                             await saveProducts(); 
                         } else if (typeof cloudPushDebounced === 'function') {
                             cloudPushDebounced(); // still sync the deleted history record
@@ -3848,7 +3864,7 @@ async function saveProductsToDB(productsArray) {
       if (qtyVal === "" || isNaN(Number(qtyVal)) || Number(qtyVal) < 0) { modalError.textContent = "Valid quantity required."; return; }
       
       // Store the Array of BLOBS
-      const productObj = { id: productEditing ? productEditing.id : genID(), name, barcode: barcodeVal, mrp: Number(mrpVal), cost: costVal !== "" ? Number(costVal) : null, qty: Number(qtyVal), category, notes, photos: currentProductBlobs };
+      const productObj = { id: productEditing ? productEditing.id : genID(), name, barcode: barcodeVal, mrp: Number(mrpVal), cost: costVal !== "" ? Number(costVal) : null, qty: Number(qtyVal), category, notes, photos: currentProductBlobs, createdAt: (productEditing && productEditing.createdAt) || Date.now(), updatedAt: Date.now(), updatedBy: getDeviceName() };
       
       // Remove old photo property if it exists on edit
       if(productObj.photo) delete productObj.photo;
@@ -4481,6 +4497,7 @@ const EMBEDDED_CLOUD = { owner: "", repo: "", branch: "main", path: "products.js
       id: p.id, name: p.name || '', barcode: p.barcode || '',
       mrp: p.mrp ?? 0, cost: p.cost ?? null, qty: p.qty ?? 0,
       category: p.category || '', notes: p.notes || '',
+      updatedBy: p.updatedBy || '', createdAt: p.createdAt || 0,
       _idx: idx, photos: (Array.isArray(p.photos) ? p.photos.filter(ph => typeof ph === 'string' && ph.startsWith('ghp:')) : [])
     };
     return out;
@@ -4517,7 +4534,7 @@ const EMBEDDED_CLOUD = { owner: "", repo: "", branch: "main", path: "products.js
       for (let i = 0; i < local.length; i++) {
         const s = await serializeProduct(local[i], i);
         const h = productHash(s);
-        s.updatedAt = (base[s.id] && base[s.id].h === h) ? base[s.id].t : now;
+        s.updatedAt = (base[s.id] && base[s.id].h === h) ? base[s.id].t : (local[i].updatedAt || now);
         s._h = h;
         localMap[s.id] = s;
       }
