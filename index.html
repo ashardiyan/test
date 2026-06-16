@@ -1370,7 +1370,7 @@
   <div class="modal-backdrop hide" id="settingsBackdrop">
     <div class="modal" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
       <button class="modal-close" type="button" id="closeSettingsBtn" title="Close" aria-label="Close dialog" role="button">✖</button>
-      <h3 id="settingsTitle">Settings <span style="font-size:.6em;color:var(--text-muted);font-weight:400;">v3.2</span></h3>
+      <h3 id="settingsTitle">Settings <span style="font-size:.6em;color:var(--text-muted);font-weight:400;">v3.3</span></h3>
 
       <div style="display:flex;flex-direction:column;gap:10px;">
         <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -1693,7 +1693,7 @@
       })();
 
       const swScript = `
-        const CACHE_NAME = 'local-dealer-cache-v28';
+        const CACHE_NAME = 'local-dealer-cache-v29';
         const OFFLINE_URL = self.registration.scope.endsWith('/') ? self.registration.scope + 'index.html' : self.registration.scope + '/index.html';
         const FILES_TO_CACHE = [ OFFLINE_URL, './index.html' ];
         
@@ -4301,6 +4301,10 @@ const EMBEDDED_CLOUD = { owner: "", repo: "", branch: "main", path: "products.js
   function hashStr(s) { let h = 5381; for (let i = 0; i < s.length; i++) { h = ((h << 5) + h + s.charCodeAt(i)) | 0; } return String(h); }
   function getBaseHashes() { try { return JSON.parse(localStorage.getItem(BASE_KEY) || '{}'); } catch(e){ return {}; } }
   function setBaseHashes(map) { try { localStorage.setItem(BASE_KEY, JSON.stringify(map)); } catch(e){} }
+  // Per-field base (hashes + times + base qty) for field-level merge
+  const FBASE_KEY = 'dealer-gh-fbase';
+  function getFieldBase() { try { return JSON.parse(localStorage.getItem(FBASE_KEY) || '{}'); } catch(e){ return {}; } }
+  function setFieldBase(map) { try { localStorage.setItem(FBASE_KEY, JSON.stringify(map)); } catch(e){} }
 
   /* ---------- status UI ---------- */
   function setStatus(text, ok) {
@@ -4349,12 +4353,19 @@ const EMBEDDED_CLOUD = { owner: "", repo: "", branch: "main", path: "products.js
     return "Cloud error (HTTP " + status + ").";
   }
 
-  // Returns { missing:true } or { sha, data:{products:{}, deleted:{}} }
-  async function pullRemote() {
+  let lastETag = null;
+  // Returns { missing:true } | { unchanged:true } | { sha, data:{...} }
+  async function pullRemote(allowUnchanged) {
     const cfg = getRepoCfg();
-    const metaRes = await fetch(apiUrl(cfg) + '?ref=' + encodeURIComponent(cfg.branch), { headers: headers('application/vnd.github.object+json') });
+    const h = headers('application/vnd.github.object+json');
+    // Conditional request: if nothing changed, GitHub replies 304 (doesn't count
+    // against the rate limit) and we skip downloading/parsing entirely.
+    if (allowUnchanged && lastETag) h['If-None-Match'] = lastETag;
+    const metaRes = await fetch(apiUrl(cfg) + '?ref=' + encodeURIComponent(cfg.branch), { headers: h });
+    if (metaRes.status === 304) return { unchanged: true };
     if (metaRes.status === 404) return { missing: true };
     if (!metaRes.ok) throw new Error(friendlyHttpError(metaRes.status) || ('HTTP ' + metaRes.status));
+    const et = metaRes.headers.get('etag'); if (et) lastETag = et;
     const meta = await metaRes.json();
     let text;
     if (meta.content) {
@@ -4552,6 +4563,30 @@ const EMBEDDED_CLOUD = { owner: "", repo: "", branch: "main", path: "products.js
     });
   }
 
+  // ---- FIELD-LEVEL MERGE SUPPORT ----
+  // Fields we merge independently (each carries its own timestamp in _fts).
+  const MERGE_FIELDS = ['name','barcode','mrp','cost','category','notes','photos','updatedBy'];
+
+  // A stable hash of a single field's value (used to detect which fields changed).
+  function fieldHash(v) { return hashStr(typeof v === 'object' ? JSON.stringify(v) : String(v)); }
+
+  // Compute/refresh a product's per-field timestamps by comparing to the last
+  // synced snapshot (base.fields[id]). Only changed fields get a new timestamp.
+  function computeFieldTimes(p, baseFields, now) {
+    const prev = (baseFields && baseFields._h) || {};   // last-synced field hashes
+    const prevT = (baseFields && baseFields._t) || {};  // last-synced field times
+    const fts = {}, hashes = {};
+    MERGE_FIELDS.forEach(f => {
+      let v = p[f];
+      if (f === 'photos') v = (Array.isArray(p.photos) ? p.photos.filter(x => typeof x === 'string' && x.startsWith('ghp:')) : []);
+      const h = fieldHash(v == null ? '' : v);
+      hashes[f] = h;
+      // unchanged → keep old time; changed (or new) → bump to now
+      fts[f] = (prev[f] === h && prevT[f]) ? prevT[f] : Math.max(now, (prevT[f] || 0) + 1);
+    });
+    return { fts, hashes };
+  }
+
   async function serializeProduct(p, idx) {
     const out = {
       id: p.id, name: p.name || '', barcode: p.barcode || '',
@@ -4560,6 +4595,38 @@ const EMBEDDED_CLOUD = { owner: "", repo: "", branch: "main", path: "products.js
       updatedBy: p.updatedBy || '', updatedAt: p.updatedAt || 0, createdAt: p.createdAt || 0,
       _idx: idx, photos: (Array.isArray(p.photos) ? p.photos.filter(ph => typeof ph === 'string' && ph.startsWith('ghp:')) : [])
     };
+    return out;
+  }
+
+  // Merge two product records FIELD BY FIELD using their per-field timestamps.
+  // qty is special: merged by applying the net change each side made vs the base.
+  function mergeProductRecords(L, R, baseQty) {
+    // start from whichever has the newer overall record as the skeleton
+    const out = { id: (L||R).id };
+    const lf = (L && L._fts) || {}, rf = (R && R._fts) || {};
+    MERGE_FIELDS.forEach(f => {
+      const lt = lf[f] || 0, rt = rf[f] || 0;
+      if (L && R) out[f] = (lt >= rt) ? L[f] : R[f];   // newest field wins; tie → local (already applied)
+      else out[f] = (L || R)[f];
+    });
+    // --- qty via delta merge: base + (local-base) + (remote-base) ---
+    if (L && R && typeof baseQty === 'number') {
+      const dL = (L.qty ?? baseQty) - baseQty;
+      const dR = (R.qty ?? baseQty) - baseQty;
+      out.qty = Math.max(0, baseQty + dL + dR);
+    } else {
+      out.qty = (L && L.qty != null) ? L.qty : (R && R.qty != null ? R.qty : 0);
+    }
+    // bookkeeping fields: keep the most recent
+    const lA = (L && L.updatedAt) || 0, rA = (R && R.updatedAt) || 0;
+    out.updatedAt = Math.max(lA, rA);
+    out.updatedBy = (lA >= rA ? (L && L.updatedBy) : (R && R.updatedBy)) || (L && L.updatedBy) || (R && R.updatedBy) || '';
+    out.createdAt = Math.min((L && L.createdAt) || Infinity, (R && R.createdAt) || Infinity);
+    if (out.createdAt === Infinity) out.createdAt = out.updatedAt;
+    // carry the merged field-timestamps forward (max of both sides)
+    const mf = {};
+    MERGE_FIELDS.forEach(f => { mf[f] = Math.max(lf[f]||0, rf[f]||0); });
+    out._fts = mf;
     return out;
   }
   // Hash ignores display order so re-sorting alone doesn't count as an "edit"
@@ -4591,23 +4658,22 @@ const EMBEDDED_CLOUD = { owner: "", repo: "", branch: "main", path: "products.js
       if (photosChanged) { try { await saveProductsToDB(products); } catch(e){ console.error(e); } }
 
       const localMap = {};
+      const fieldBase = getFieldBase();
       let isFirstSync = Object.keys(base).length === 0; // this device never synced before
       for (let i = 0; i < local.length; i++) {
         const s = await serializeProduct(local[i], i);
         const h = productHash(s);
         const b = base[s.id];
-        if (b && b.h === h) {
-          // unchanged since last sync → keep its existing timestamp (do NOT touch)
-          s.updatedAt = b.t;
-        } else if (b && b.h !== h) {
-          // genuinely edited on this device since last sync → it is the newest
-          s.updatedAt = Math.max(local[i].updatedAt || 0, b.t + 1, now);
-        } else {
-          // never synced before from this device: trust its own real edit time if it
-          // has one; otherwise mark it as OLD (epoch) so cloud copies win, never the reverse
-          s.updatedAt = local[i].updatedAt || (isFirstSync ? 0 : now);
-        }
+        if (b && b.h === h) s.updatedAt = b.t;
+        else if (b && b.h !== h) s.updatedAt = Math.max(local[i].updatedAt || 0, b.t + 1, now);
+        else s.updatedAt = local[i].updatedAt || (isFirstSync ? 0 : now);
         s._h = h;
+        // attach per-field timestamps (only changed fields advance)
+        const fb = fieldBase[s.id];
+        const cft = computeFieldTimes(s, fb, isFirstSync && !fb ? 0 : s.updatedAt);
+        s._fts = cft.fts;
+        s.__fhashes = cft.hashes;       // kept locally only, stripped before upload
+        s.__baseQty = fb ? fb.qty : undefined;
         localMap[s.id] = s;
       }
 
@@ -4619,8 +4685,21 @@ const EMBEDDED_CLOUD = { owner: "", repo: "", branch: "main", path: "products.js
       const localKhataMap = {};
       (Array.isArray(khataCustomers) ? khataCustomers : []).forEach(c => { localKhataMap[c.id] = c; });
 
-      // 2. Pull remote
-      const remote = await pullRemote();
+      // 2. Pull remote. If nothing local changed AND the cloud is unchanged since
+      //    last time, this returns instantly without downloading the file.
+      const nothingLocalToPush = !__localDirty;
+      let remote = await pullRemote(nothingLocalToPush);
+      if (remote.unchanged) {
+        // Cloud identical to what we already have → skip the merge, but still let
+        // background photo workers catch up (missing downloads / pending uploads).
+        cloudActive = true; lastSyncOK = Date.now();
+        try { queueMissingPhotoDownloads(); } catch(e){}
+        setTimeout(runPhotoDownloads, 100);
+        setTimeout(runPhotoUploads, 300);
+        setStatus('live', true); window.renderCloudSettings(); cloudGateResolve(true);
+        busy = false; if (queued) { queued = false; setTimeout(() => syncNow(0), 300); }
+        return true;
+      }
       const remoteMap = remote.missing ? {} : remote.data.products;
       const deleted = remote.missing ? {} : (remote.data.deleted || {});
       const remoteHist = remote.missing ? {} : (remote.data.history || {});
@@ -4640,22 +4719,32 @@ const EMBEDDED_CLOUD = { owner: "", repo: "", branch: "main", path: "products.js
       try { userDeletes = JSON.parse(localStorage.getItem('dealer-gh-pdel') || '{}'); } catch(e){}
       Object.keys(userDeletes).forEach(id => { deleted[id] = Math.max(deleted[id] || 0, userDeletes[id]); });
 
-      // 4. Merge per product: newest updatedAt wins; tombstones beat older items
+      // 4. FIELD-LEVEL merge: each field independently takes its newest version,
+      //    so a price edit on one phone and a stock/notes edit on another both
+      //    survive. qty merges by deltas so concurrent sales sum correctly.
       const merged = {};
       const ids = new Set([...Object.keys(localMap), ...Object.keys(remoteMap)]);
       ids.forEach(id => {
         const L = localMap[id], R = remoteMap[id];
-        let winner = null;
-        if (productsWiped && L) { winner = L; }                                   // empty-cloud safety: keep local
-        else if (L && R) winner = ((L.updatedAt || 0) > (R.updatedAt || 0)) ? L : R; // tie → remote wins (stable)
-        else if (L) {
-          // exists locally only: keep it unless it was explicitly deleted (here or elsewhere)
-          winner = (deleted[id] && deleted[id] >= (L.updatedAt||0)) ? null : L;
+        let result = null;
+        if (productsWiped && L) {
+          result = L;                                              // empty-cloud safety: keep local
+        } else if (L && R) {
+          const baseQty = (L.__baseQty != null) ? L.__baseQty : (R.qty ?? L.qty); // best-effort base for delta
+          result = mergeProductRecords(L, R, baseQty);             // ← per-field merge
+        } else if (L) {
+          result = (deleted[id] && deleted[id] >= (L.updatedAt||0)) ? null : L;
         } else if (R) {
-          // exists remotely only: new from another device, unless we just deleted it
-          winner = (deleted[id] && deleted[id] >= (R.updatedAt || 0)) ? null : R;
+          result = (deleted[id] && deleted[id] >= (R.updatedAt||0)) ? null : R;
         }
-        if (winner) { const w = { ...winner }; delete w._h; if (!w.updatedAt) w.updatedAt = (winner === R ? (R.updatedAt||0) : (L.updatedAt||0)); merged[id] = w; if (deleted[id] && deleted[id] < (winner.updatedAt||0)) delete deleted[id]; }
+        if (result) {
+          const w = { ...result };
+          delete w._h; delete w.__fhashes; delete w.__baseQty;
+          if (!w.updatedAt) w.updatedAt = Math.max((L && L.updatedAt)||0, (R && R.updatedAt)||0);
+          if (!w._fts) { const mf = {}; MERGE_FIELDS.forEach(f => mf[f] = w.updatedAt); w._fts = mf; }
+          merged[id] = w;
+          if (deleted[id] && deleted[id] < (w.updatedAt||0)) delete deleted[id];
+        }
       });
       /* ---- HISTORY merge (entries are immutable: union + tombstones) ---- */
       const histBase = (() => { try { return JSON.parse(localStorage.getItem('dealer-gh-hbase') || '[]'); } catch(e){ return []; } })();
@@ -4701,14 +4790,18 @@ const EMBEDDED_CLOUD = { owner: "", repo: "", branch: "main", path: "products.js
       });
 
       // 5. Push only if merged differs from remote
-      const mergedJson = JSON.stringify({ products: merged, deleted, history: mergedHist, historyDeleted: histDeleted, khata: mergedKhata, khataDeleted });
+      // Build the upload copy: keep _fts (needed for field-merge) and _idx (order),
+      // but never upload purely-local bookkeeping keys.
+      const uploadProducts = {};
+      Object.keys(merged).forEach(id => { const c = { ...merged[id] }; delete c._h; delete c.__fhashes; delete c.__baseQty; uploadProducts[id] = c; });
+      const mergedJson = JSON.stringify({ products: uploadProducts, deleted, history: mergedHist, historyDeleted: histDeleted, khata: mergedKhata, khataDeleted });
       const remoteJson = remote.missing ? '' : JSON.stringify({ products: remoteMap, deleted: remote.data.deleted || {}, history: remoteHist, historyDeleted: remote.data.historyDeleted || {}, khata: remoteKhata, khataDeleted: remote.data.khataDeleted || {} });
       if (mergedJson !== remoteJson) {
-        let put = await putRemote({ updatedAt: now, products: merged, deleted, history: mergedHist, historyDeleted: histDeleted, khata: mergedKhata, khataDeleted }, remote.missing ? null : remote.sha);
+        let put = await putRemote({ updatedAt: now, products: uploadProducts, deleted, history: mergedHist, historyDeleted: histDeleted, khata: mergedKhata, khataDeleted }, remote.missing ? null : remote.sha);
         if (put.tooLarge) {
           // Emergency fallback: sync everything WITHOUT photos rather than failing
           const noPhotos = {};
-          Object.keys(merged).forEach(id => { noPhotos[id] = { ...merged[id], photos: [] }; });
+          Object.keys(uploadProducts).forEach(id => { noPhotos[id] = { ...uploadProducts[id], photos: [] }; });
           put = await putRemote({ updatedAt: now, products: noPhotos, deleted, history: mergedHist, historyDeleted: histDeleted, khata: mergedKhata, khataDeleted }, remote.missing ? null : remote.sha);
           if (!put.conflict && !put.tooLarge) setCloudError("File was too big — synced all data but without photos.");
         }
@@ -4726,15 +4819,25 @@ const EMBEDDED_CLOUD = { owner: "", repo: "", branch: "main", path: "products.js
       // 6. Apply merged result locally (UI + IndexedDB) and remember it as the new base
       const arr = Object.values(merged).sort((a,b) => (a._idx ?? 0) - (b._idx ?? 0) || String(a.name||'').localeCompare(String(b.name||'')));
       const newBase = {};
-      Object.keys(merged).forEach(id => { newBase[id] = { h: productHash(merged[id]), t: merged[id].updatedAt || now }; });
+      const newFieldBase = {};
+      Object.keys(merged).forEach(id => {
+        const m = merged[id];
+        newBase[id] = { h: productHash(m), t: m.updatedAt || now };
+        // record field hashes + times + qty so next sync knows what THIS device last saw
+        const fh = {};
+        MERGE_FIELDS.forEach(f => { let v = m[f]; if (f === 'photos') v = Array.isArray(m.photos) ? m.photos : []; fh[f] = fieldHash(v == null ? '' : v); });
+        newFieldBase[id] = { _h: fh, _t: { ...(m._fts || {}) }, qty: m.qty ?? 0 };
+      });
       setBaseHashes(newBase);
+      setFieldBase(newFieldBase);
+      __localDirty = false; // everything we had is now reflected in the cloud
       // Explicit deletes are now reflected in the cloud tombstones → clear the local queue
       try {
         const pd = JSON.parse(localStorage.getItem('dealer-gh-pdel') || '{}');
         Object.keys(pd).forEach(id => { if (deleted[id]) delete pd[id]; });
         localStorage.setItem('dealer-gh-pdel', JSON.stringify(pd));
       } catch(e){}
-      const stripVol = o => { const c = { ...o }; delete c._idx; delete c._h; if (!Array.isArray(c.photos)) c.photos = []; return c; };
+      const stripVol = o => { const c = { ...o }; delete c._idx; delete c._h; delete c._fts; delete c.__fhashes; delete c.__baseQty; if (!Array.isArray(c.photos)) c.photos = []; return c; };
       const cleaned = arr.map(stripVol);
       // Compare on identical fields so a changed editor-name/time is detected and redrawn
       const localClean = local.map(p => stripVol(localMap[p.id]));
@@ -4799,18 +4902,20 @@ const EMBEDDED_CLOUD = { owner: "", repo: "", branch: "main", path: "products.js
   function startPolling() {
     if (pollTimer) return;
     pollTimer = setInterval(() => {
-      if (document.visibilityState === 'visible' && navigator.onLine !== false) syncNow();
-    }, 25000);
+      if (document.visibilityState === 'visible' && navigator.onLine !== false) syncNow(0);
+    }, 8000); // ETag/304 keeps this light on the rate limit
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('online', onVisible);
   }
   function onVisible() { if (document.visibilityState === 'visible' && getToken() && getRepoCfg()) syncNow(); }
 
   /* ---------- public hooks (same names the rest of the app already uses) ---------- */
+  let __localDirty = false;
   window.cloudPushDebounced = function() {
     if (!getRepoCfg() || !getToken()) return;
+    __localDirty = true;
     clearTimeout(pushTimer);
-    pushTimer = setTimeout(syncNow, 800);
+    pushTimer = setTimeout(() => syncNow(0), 800);
   };
 
   window.cloudInitIfConfigured = function() {
