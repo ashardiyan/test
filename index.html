@@ -1370,7 +1370,7 @@
   <div class="modal-backdrop hide" id="settingsBackdrop">
     <div class="modal" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
       <button class="modal-close" type="button" id="closeSettingsBtn" title="Close" aria-label="Close dialog" role="button">✖</button>
-      <h3 id="settingsTitle">Settings <span style="font-size:.6em;color:var(--text-muted);font-weight:400;">v3.0</span></h3>
+      <h3 id="settingsTitle">Settings <span style="font-size:.6em;color:var(--text-muted);font-weight:400;">v3.2</span></h3>
 
       <div style="display:flex;flex-direction:column;gap:10px;">
         <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -1693,7 +1693,7 @@
       })();
 
       const swScript = `
-        const CACHE_NAME = 'local-dealer-cache-v26';
+        const CACHE_NAME = 'local-dealer-cache-v28';
         const OFFLINE_URL = self.registration.scope.endsWith('/') ? self.registration.scope + 'index.html' : self.registration.scope + '/index.html';
         const FILES_TO_CACHE = [ OFFLINE_URL, './index.html' ];
         
@@ -1987,19 +1987,22 @@
     // (which waited for every image and font before showing anything).
     async function appStartup() {
       updatePINUI(getHasPIN());
-      // If a shared cloud database is configured and this device hasn't signed in yet,
-      // show the cloud login gate first (one time per device). Otherwise open instantly.
+      // Load ALL local data FIRST, so any sync that starts below merges against the
+      // real on-disk state — never against an empty array (which caused races where
+      // freshly-synced data got overwritten by a late local load, and vice-versa).
+      try { await hydratePhotoCache(); } catch(e) {}
+      try { await loadProducts(); } catch(e) {}
+      try { await ensureHistoryMigrated(); } catch(e) {}
+      try { khataCustomers = await loadKhataFromDB(); } catch(e) { khataCustomers = []; }
+      refreshProductList();
+
+      // Only NOW is it safe to show the cloud gate / start syncing.
       if (typeof cloudGateNeeded === 'function' && cloudGateNeeded()) {
         showCloudGate();
       } else {
         routeStartupScreen();
         if (typeof cloudInitIfConfigured === 'function') { setTimeout(cloudInitIfConfigured, 250); }
       }
-      try { await hydratePhotoCache(); } catch(e) {}
-      try { await loadProducts(); } catch(e) {}
-      refreshProductList();
-      try { await ensureHistoryMigrated(); } catch(e) {}
-      try { khataCustomers = await loadKhataFromDB(); } catch(e) { khataCustomers = []; }
       setTimeout(function() { if ("serviceWorker" in navigator && window.matchMedia('(display-mode: standalone)').matches) { try { history.replaceState({start:true}, document.title, window.location.href); } catch (e) {} } }, 180);
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', appStartup);
@@ -2209,28 +2212,32 @@
     const STORE_PHOTOCACHE = 'photo_cache';
     const DB_VERSION = 5; // v5: adds photo cache for two-stage cloud sync
 
+    // Single cached connection. Opening a fresh one on every call (dozens during a
+    // sync) leaks connections and lets a future version-upgrade hang forever if an
+    // old connection is still open — so we reuse one and handle blocked/close.
+    let __dbPromise = null;
     function openDB() {
-        return new Promise((resolve, reject) => {
+        if (__dbPromise) return __dbPromise;
+        __dbPromise = new Promise((resolve, reject) => {
             const request = indexedDB.open(DB_NAME, DB_VERSION);
             request.onupgradeneeded = function(e) {
                 const db = e.target.result;
-                if (!db.objectStoreNames.contains(STORE_NAME)) {
-                    db.createObjectStore(STORE_NAME, { keyPath: 'id' });
-                }
-                if (!db.objectStoreNames.contains(STORE_HISTORY)) {
-                    // Create History Store
-                    db.createObjectStore(STORE_HISTORY, { keyPath: 'id', autoIncrement: true });
-                }
-                if (!db.objectStoreNames.contains(STORE_KHATA)) {
-                    db.createObjectStore(STORE_KHATA, { keyPath: 'id' });
-                }
-                if (!db.objectStoreNames.contains(STORE_PHOTOCACHE)) {
-                    db.createObjectStore(STORE_PHOTOCACHE, { keyPath: 'ref' });
-                }
+                if (!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+                if (!db.objectStoreNames.contains(STORE_HISTORY)) db.createObjectStore(STORE_HISTORY, { keyPath: 'id', autoIncrement: true });
+                if (!db.objectStoreNames.contains(STORE_KHATA)) db.createObjectStore(STORE_KHATA, { keyPath: 'id' });
+                if (!db.objectStoreNames.contains(STORE_PHOTOCACHE)) db.createObjectStore(STORE_PHOTOCACHE, { keyPath: 'ref' });
             };
-            request.onsuccess = e => resolve(e.target.result);
-            request.onerror = e => reject(e.target.error);
+            request.onsuccess = e => {
+                const db = e.target.result;
+                // If another tab triggers a version change, close so we don't block it
+                db.onversionchange = () => { try { db.close(); } catch(_){} __dbPromise = null; };
+                db.onclose = () => { __dbPromise = null; };
+                resolve(db);
+            };
+            request.onerror = e => { __dbPromise = null; reject(e.target.error); };
+            request.onblocked = () => { console.warn('IndexedDB upgrade blocked by another open connection'); };
         });
+        return __dbPromise;
     }
 
 
@@ -2307,10 +2314,13 @@ async function saveProductsToDB(productsArray) {
         const db = await openDB();
         const tx = db.transaction(STORE_HISTORY, 'readwrite');
         const store = tx.objectStore(STORE_HISTORY);
-        store.add(entry);
+        // put() (upsert) — our entries carry an explicit string id, so this is
+        // idempotent and won't throw a ConstraintError if an id ever repeats.
+        store.put(entry);
         return new Promise((resolve, reject) => {
-            tx.oncomplete = resolve;
-            tx.onerror = reject;
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+            tx.onabort = () => reject(tx.error || new Error('Transaction aborted (storage full?)'));
         });
     }
     
@@ -2500,24 +2510,14 @@ async function saveProductsToDB(productsArray) {
         }
     }
     
-    imageViewerClose.onclick = () => { 
-        imageViewerOverlay.classList.remove('show'); 
+    function closeImageViewer() {
+        imageViewerOverlay.classList.remove('show');
         const slider = document.getElementById('imageViewerSlider');
-        if(slider) {
-            slider.innerHTML = '';
-        }
-    };
-    
-    imageViewerOverlay.onclick = (e) => {
-        if(e.target === imageViewerOverlay) { 
-            imageViewerOverlay.classList.remove('show'); 
-            const slider = document.getElementById('imageViewerSlider');
-            if(slider) {
-                
-                slider.innerHTML = '';
-            }
-        }
-    };
+        if (slider) { slider.classList.remove('zoomed'); slider.querySelectorAll('img').forEach(im => { if (im.__resetZoom) im.__resetZoom(); }); slider.innerHTML = ''; }
+        if (typeof flushDeferredRevokes === 'function') flushDeferredRevokes();
+    }
+    imageViewerClose.onclick = closeImageViewer;
+    imageViewerOverlay.onclick = (e) => { if (e.target === imageViewerOverlay) closeImageViewer(); };
 
     /****************************************************************
      * IMAGE ZOOM: pinch-to-zoom, drag-to-pan, double-tap to zoom in/out
@@ -2559,7 +2559,12 @@ async function saveProductsToDB(productsArray) {
             moved = false;
             if (e.touches.length === 2) {
                 const m = mid(e.touches[0], e.touches[1]);
-                pinchStart = { dist: dist(e.touches[0], e.touches[1]), scale, cx: m.x, cy: m.y, tx, ty };
+                // Reference centre that is independent of the current transform:
+                // back out the live transform to find the element's untransformed centre.
+                const r = img.getBoundingClientRect();
+                const centreX = (r.left + r.width / 2) - tx;
+                const centreY = (r.top + r.height / 2) - ty;
+                pinchStart = { dist: dist(e.touches[0], e.touches[1]), scale, cx: m.x, cy: m.y, tx, ty, centreX, centreY };
                 panStart = null;
                 e.preventDefault();
             } else if (e.touches.length === 1 && scale > 1.02) {
@@ -2573,12 +2578,19 @@ async function saveProductsToDB(productsArray) {
                 moved = true;
                 const d = dist(e.touches[0], e.touches[1]);
                 const m = mid(e.touches[0], e.touches[1]);
-                // scale relative to the pinch start
-                zoomTo(pinchStart.scale * (d / pinchStart.dist), pinchStart.cx, pinchStart.cy, pinchStart.scale, pinchStart.tx, pinchStart.ty);
-                // follow the fingers' drift
-                tx += (m.x - pinchStart.cx);
-                ty += (m.y - pinchStart.cy);
-                if (scale > 1.02) { clamp(); apply(); }
+                const ns = Math.max(1, Math.min(4, pinchStart.scale * (d / pinchStart.dist)));
+                // Rebuild from the pinch baseline each frame so there is no drift:
+                // 1) zoom around the ORIGINAL anchor, then 2) translate by how far the
+                //    midpoint has moved since the pinch began. Applied exactly once.
+                const ratio = ns / pinchStart.scale;
+                // anchor relative to the UNTRANSFORMED centre captured at pinch start
+                const ax = pinchStart.cx - pinchStart.centreX;
+                const ay = pinchStart.cy - pinchStart.centreY;
+                scale = ns;
+                tx = pinchStart.tx * ratio - ax * (ratio - 1) + (m.x - pinchStart.cx);
+                ty = pinchStart.ty * ratio - ay * (ratio - 1) + (m.y - pinchStart.cy);
+                if (scale <= 1.02) { reset(); }
+                else { zoomedMode(true); clamp(); apply(); }
             } else if (e.touches.length === 1 && panStart && scale > 1.02) {
                 e.preventDefault();
                 moved = true;
@@ -3068,16 +3080,15 @@ async function saveProductsToDB(productsArray) {
 
       detailModalBackdrop.classList.remove('hide'); disableDetailBackgroundScroll(); setTimeout(()=>document.getElementById('closeDetailModalBtn').focus(),100);
     }
-    document.getElementById('closeDetailModalBtn').onclick = function(){ detailModalBackdrop.classList.add('hide'); detailModalBody.innerHTML = ''; currentDetailProductId = null; enableDetailBackgroundScroll(); };
+    document.getElementById('closeDetailModalBtn').onclick = function(){ detailModalBackdrop.classList.add('hide'); detailModalBody.innerHTML = ''; currentDetailProductId = null; enableDetailBackgroundScroll(); if (typeof flushDeferredRevokes === 'function') flushDeferredRevokes(); };
     
     document.addEventListener('keydown', function(e){
       if (e.key === "Escape") {
         let closedAModal = false;
         if(document.getElementById('imageViewerOverlay') && document.getElementById('imageViewerOverlay').classList.contains('show')) { 
             document.getElementById('imageViewerOverlay').classList.remove('show');
-         const _sl = document.getElementById('imageViewerSlider'); if (_sl) { _sl.classList.remove('zoomed'); _sl.querySelectorAll('img').forEach(im => { if (im.__resetZoom) im.__resetZoom(); }); } 
-            const slider = document.getElementById('imageViewerSlider');
-            if(slider) slider.innerHTML = '';
+         const _sl = document.getElementById('imageViewerSlider'); if (_sl) { _sl.classList.remove('zoomed'); _sl.querySelectorAll('img').forEach(im => { if (im.__resetZoom) im.__resetZoom(); }); _sl.innerHTML = ''; }
+            if (typeof flushDeferredRevokes === 'function') flushDeferredRevokes();
             closedAModal=true; 
         }
         else if(document.getElementById('scannerOverlay') && document.getElementById('scannerOverlay').classList.contains('show')) { stopScanner(); document.getElementById('scannerOverlay').classList.remove('show'); closedAModal=true; }
@@ -3173,18 +3184,11 @@ async function saveProductsToDB(productsArray) {
         if(qtyToSell <= 0) return;
         if(actualSellPrice < 0) { alert("Price cannot be negative."); return; }
         
-        // Update Stock
         const currentQty = quickSellProductTarget.qty || 0;
         const newQty = Math.max(0, currentQty - qtyToSell);
-        quickSellProductTarget.qty = newQty;
-        quickSellProductTarget.updatedAt = Date.now();
-        quickSellProductTarget.updatedBy = getDeviceName();
-        
-        // Calculate Profit
         const costPrice = quickSellProductTarget.cost || 0;
         const profit = (actualSellPrice - costPrice) * qtyToSell;
-        
-        // Log to History
+
         const logEntry = {
             id: genUID('h'),
             productId: quickSellProductTarget.id,
@@ -3197,18 +3201,22 @@ async function saveProductsToDB(productsArray) {
             device: getDeviceName(),
             timestamp: new Date().toISOString()
         };
-        
+
         try {
+            // 1) Record the sale FIRST. If this fails (e.g. storage full), we bail
+            //    out BEFORE touching stock, so qty can never drop without a sale.
             await logSaleToDB(logEntry);
-            await saveProducts(); // Saves updated qty, refreshes UI, and triggers cloud sync
-            
+            // 2) Only now deduct stock and save.
+            quickSellProductTarget.qty = newQty;
+            quickSellProductTarget.updatedAt = Date.now();
+            quickSellProductTarget.updatedBy = getDeviceName();
+            await saveProducts(); // saves qty, refreshes UI, triggers cloud sync
+
             if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
-            
-            // Close
             quickSellModalBackdrop.classList.add('hide');
             quickSellProductTarget = null;
         } catch(err) {
-            alert("Error saving sale: " + err.message);
+            alert("Error saving sale: " + (err && err.message ? err.message : err) + "\n\nNothing was changed — please try again.");
         }
     };
     
@@ -3443,8 +3451,15 @@ async function saveProductsToDB(productsArray) {
         const c = khataCustomers.find(x => x.id === khataActiveCustomerId);
         if (!c) return;
         if (!c.phone) { const e = document.getElementById('khataDetailError'); e.textContent = "No phone number saved for this customer."; e.style.color='var(--danger)'; return; }
-        let digits = c.phone.replace(/\D/g, '');
-        if (digits.startsWith('0')) digits = '92' + digits.slice(1); // PK local format → international
+        // Normalise to international digits for wa.me:
+        //  +92xxxxxxxxxx / 0092… → strip the +/00; 03xxxxxxxxx (PK local) → 92xxxxxxxxx;
+        //  bare 92… left as-is; anything else used as typed (already has country code).
+        let raw = c.phone.trim();
+        let digits = raw.replace(/[^\d+]/g, '');
+        if (digits.startsWith('+')) digits = digits.slice(1);
+        else if (digits.startsWith('00')) digits = digits.slice(2);
+        else if (digits.startsWith('0')) digits = '92' + digits.slice(1); // PK local
+        digits = digits.replace(/\D/g, '');
         const bal = khataBalance(c);
         const msg = "*Al Rehman Electronics*\nDear " + c.name + ", your outstanding balance is " + fmtRs(bal) + ". Kindly arrange the payment at your convenience. Thank you!";
         window.open('https://wa.me/' + digits + '?text=' + encodeURIComponent(msg), '_blank');
@@ -3583,9 +3598,26 @@ async function saveProductsToDB(productsArray) {
         refreshProductList();
     };
 
+    let deferredRevokeUrls = []; // URLs awaiting revoke until an open viewer closes
+    function aViewerIsOpen() {
+      const v = document.getElementById('imageViewerOverlay');
+      const d = document.getElementById('detailModalBackdrop');
+      return (v && v.classList.contains('show')) || (d && !d.classList.contains('hide'));
+    }
+    function flushDeferredRevokes() {
+      if (aViewerIsOpen()) return;
+      deferredRevokeUrls.forEach(u => { try { URL.revokeObjectURL(u); } catch(_){} });
+      deferredRevokeUrls = [];
+    }
     function refreshProductList() {
-      // FIX NO 1: Memory Leak Protection - Revoke old object URLs
-      activeObjectUrls.forEach(url => URL.revokeObjectURL(url));
+      // Memory-leak protection — but if a popup/viewer is showing one of these
+      // images, defer its revoke so the picture doesn't break mid-view.
+      if (aViewerIsOpen()) {
+        deferredRevokeUrls.push(...activeObjectUrls);
+      } else {
+        activeObjectUrls.forEach(url => { try { URL.revokeObjectURL(url); } catch(_){} });
+        flushDeferredRevokes();
+      }
       activeObjectUrls = [];
 
       productListElem.innerHTML = '';
@@ -4440,8 +4472,10 @@ const EMBEDDED_CLOUD = { owner: "", repo: "", branch: "main", path: "products.js
 
   /* ---- Stage 2a: background UPLOAD worker ---- */
   let uploadBusy = false;
+  let uploadBackoffUntil = 0;
   async function runPhotoUploads() {
     if (uploadBusy || !getToken() || !getRepoCfg()) return;
+    if (Date.now() < uploadBackoffUntil) return; // honour rate-limit cooldown
     const pending = getPendingUploads();
     if (!pending.length) return;
     uploadBusy = true;
@@ -4457,8 +4491,14 @@ const EMBEDDED_CLOUD = { owner: "", repo: "", branch: "main", path: "products.js
           method: 'PUT', headers: headers(),
           body: JSON.stringify({ message: 'photo', content: b64, branch: getRepoCfg().branch })
         });
-        if (res.ok || res.status === 422) removePendingUpload(ref); // 422 = already exists
-        else if (res.status === 401 || res.status === 403) break;   // auth problem: stop, retry next sync
+        if (res.ok || res.status === 422) { removePendingUpload(ref); }   // 422 = already exists
+        else if (res.status === 401) break;                                // bad token: stop, fix in settings
+        else if (res.status === 403 || res.status === 429) {
+          // Rate limited — record when GitHub says it resets, then stop this round
+          const reset = parseInt(res.headers.get('x-ratelimit-reset') || '0', 10);
+          uploadBackoffUntil = reset ? reset * 1000 : (Date.now() + 60000);
+          break;
+        }
         await new Promise(r => setTimeout(r, 350));
       } catch(e) { break; } // offline etc. — retry on next sync
     }
