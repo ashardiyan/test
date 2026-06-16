@@ -1402,7 +1402,7 @@
   <div class="modal-backdrop hide" id="settingsBackdrop">
     <div class="modal" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
       <button class="modal-close" type="button" id="closeSettingsBtn" title="Close" aria-label="Close dialog" role="button">✖</button>
-      <h3 id="settingsTitle">Settings <span style="font-size:.6em;color:var(--text-muted);font-weight:400;">v3.4</span></h3>
+      <h3 id="settingsTitle">Settings <span style="font-size:.6em;color:var(--text-muted);font-weight:400;">v3.5</span></h3>
 
       <div style="display:flex;flex-direction:column;gap:10px;">
         <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -1725,7 +1725,7 @@
       })();
 
       const swScript = `
-        const CACHE_NAME = 'local-dealer-cache-v30';
+        const CACHE_NAME = 'local-dealer-cache-v31';
         const OFFLINE_URL = self.registration.scope.endsWith('/') ? self.registration.scope + 'index.html' : self.registration.scope + '/index.html';
         const FILES_TO_CACHE = [ OFFLINE_URL, './index.html' ];
         
@@ -4883,8 +4883,6 @@ const EMBEDDED_CLOUD = { owner: "", repo: "", branch: "main", path: "products.js
         if (fb && changedFields.length) {
           s.updatedAt = Math.max(s.updatedAt || 0, ...changedFields.map(f => s._fts[f] || 0));
           s.updatedBy = getDeviceName() || s.updatedBy || '';
-          s.__changed = changedFields;        // used for audit logging below
-          s.__prevValues = (fb && fb._v) || {}; // previous values for the log
         }
         localMap[s.id] = s;
       }
@@ -4986,10 +4984,31 @@ const EMBEDDED_CLOUD = { owner: "", repo: "", branch: "main", path: "products.js
       const khataFirstSync = Object.keys(khataBase).length === 0;
       if (!khataWiped && !khataFirstSync) Object.keys(khataBase).forEach(id => { if (!localKhataMap[id]) khataDeleted[id] = Math.max(khataDeleted[id] || 0, now); });
       const mergedKhata = {};
+      const khataTxnBase = (() => { try { return JSON.parse(localStorage.getItem('dealer-gh-ktxnbase') || '{}'); } catch(e){ return {}; } })();
       new Set([...Object.keys(localKhataMap), ...Object.keys(remoteKhata)]).forEach(id => {
         const L = localKhataMap[id], R = remoteKhata[id];
         let winner = null;
-        if (L && R) winner = ((L.updatedAt||0) > (R.updatedAt||0)) ? L : R; // tie → remote
+        if (L && R) {
+          // Both have this customer → merge their transaction lists by union (txn ids
+          // are unique). A txn that existed in our base but is now gone locally was
+          // deleted by the user, so it stays deleted; everything else is kept.
+          const baseTxns = new Set(khataTxnBase[id] || []);
+          const txnMap = {};
+          (R.txns || []).forEach(t => { if (t && t.id) txnMap[t.id] = t; });
+          (L.txns || []).forEach(t => { if (t && t.id) txnMap[t.id] = t; });
+          // honour local deletions: in base, in remote, but not in local now → drop
+          (R.txns || []).forEach(t => {
+            if (t && t.id && baseTxns.has(t.id) && !(L.txns || []).some(x => x.id === t.id)) delete txnMap[t.id];
+          });
+          // and remote deletions: in base, in local, but not in remote now → drop
+          (L.txns || []).forEach(t => {
+            if (t && t.id && baseTxns.has(t.id) && !(R.txns || []).some(x => x.id === t.id)) delete txnMap[t.id];
+          });
+          const mergedTxns = Object.values(txnMap).sort((a,b) => (a.ts||0) - (b.ts||0));
+          // newest profile fields (name/phone) by updatedAt
+          const newer = ((L.updatedAt||0) >= (R.updatedAt||0)) ? L : R;
+          winner = { id, name: newer.name, phone: newer.phone, createdAt: Math.min(L.createdAt||Infinity, R.createdAt||Infinity) || Date.now(), updatedAt: Math.max(L.updatedAt||0, R.updatedAt||0), txns: mergedTxns };
+        }
         else if (L) winner = (!khataWiped && !khataFirstSync && khataBase[id] !== undefined) ? null : L;
         else if (R) winner = R;
         if (winner && khataDeleted[id] && khataDeleted[id] >= (winner.updatedAt||0)) winner = null;
@@ -5006,7 +5025,7 @@ const EMBEDDED_CLOUD = { owner: "", repo: "", branch: "main", path: "products.js
       // Build the upload copy: keep _fts (needed for field-merge) and _idx (order),
       // but never upload purely-local bookkeeping keys.
       const uploadProducts = {};
-      Object.keys(merged).forEach(id => { const c = { ...merged[id] }; delete c._h; delete c.__fhashes; delete c.__baseQty; uploadProducts[id] = c; });
+      Object.keys(merged).forEach(id => { const c = { ...merged[id] }; delete c._h; delete c.__fhashes; delete c.__baseQty; delete c.__changed; delete c.__prevValues; uploadProducts[id] = c; });
       const mergedJson = JSON.stringify({ products: uploadProducts, deleted, history: mergedHist, historyDeleted: histDeleted, khata: mergedKhata, khataDeleted });
       const remoteJson = remote.missing ? '' : JSON.stringify({ products: remoteMap, deleted: remote.data.deleted || {}, history: remoteHist, historyDeleted: remote.data.historyDeleted || {}, khata: remoteKhata, khataDeleted: remote.data.khataDeleted || {} });
       if (mergedJson !== remoteJson) {
@@ -5050,7 +5069,7 @@ const EMBEDDED_CLOUD = { owner: "", repo: "", branch: "main", path: "products.js
         Object.keys(pd).forEach(id => { if (deleted[id]) delete pd[id]; });
         localStorage.setItem('dealer-gh-pdel', JSON.stringify(pd));
       } catch(e){}
-      const stripVol = o => { const c = { ...o }; delete c._idx; delete c._h; delete c._fts; delete c.__fhashes; delete c.__baseQty; if (!Array.isArray(c.photos)) c.photos = []; return c; };
+      const stripVol = o => { const c = { ...o }; delete c._idx; delete c._h; delete c._fts; delete c.__fhashes; delete c.__baseQty; delete c.__changed; delete c.__prevValues; if (!Array.isArray(c.photos)) c.photos = []; return c; };
       const cleaned = arr.map(stripVol);
       // Compare on identical fields so a changed editor-name/time is detected and redrawn
       const localClean = local.map(p => stripVol(localMap[p.id]));
@@ -5072,7 +5091,9 @@ const EMBEDDED_CLOUD = { owner: "", repo: "", branch: "main", path: "products.js
 
       // 6c. Apply merged KHATA locally if it changed
       const newKBase = {};
-      Object.keys(mergedKhata).forEach(id => { newKBase[id] = mergedKhata[id].updatedAt || now; });
+      const newKTxnBase = {};
+      Object.keys(mergedKhata).forEach(id => { newKBase[id] = mergedKhata[id].updatedAt || now; newKTxnBase[id] = (mergedKhata[id].txns || []).map(t => t.id); });
+      try { localStorage.setItem('dealer-gh-ktxnbase', JSON.stringify(newKTxnBase)); } catch(e){}
       if (JSON.stringify(Object.values(mergedKhata).map(c=>[c.id,c.updatedAt]).sort()) !== JSON.stringify(Object.values(localKhataMap).map(c=>[c.id,c.updatedAt]).sort())) {
         khataCustomers = Object.values(mergedKhata);
         try { await replaceKhataInDB(khataCustomers); } catch(e){ console.error(e); }
