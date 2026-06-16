@@ -58,6 +58,11 @@
     .top-controls { display:flex; align-items:center; gap:10px; }
     button.icon-btn { background:none; border:none; color:var(--accent2); font-size:1.23rem; padding:8px 10px; border-radius:9px; cursor:pointer; outline:none; }
     button#settingsBtn { font-size:1.33rem; color:var(--text); background:#1b2430; padding:8px 11px; border-radius:9px; box-shadow:0 1px 6px #0008; }
+    button#refreshAllBtn { font-size:1.2rem; color:var(--text); background:#1b2430; padding:8px 11px; border-radius:9px; box-shadow:0 1px 6px #0008; border:none; cursor:pointer; margin-right:8px; }
+    button#refreshAllBtn:active { transform:scale(.94); }
+    button#refreshAllBtn.spinning { pointer-events:none; }
+    button#refreshAllBtn.spinning span { display:inline-block; animation:spin360 .8s linear infinite; }
+    @keyframes spin360 { from { transform:rotate(0); } to { transform:rotate(360deg); } }
     #installPromptBtn { display:none; align-items:center; gap:6px; font-size:.95em; padding:8px 14px; border-radius:999px; background:linear-gradient(91deg,var(--accent2),var(--accent)); color:#fff; font-weight:700; border:none; cursor:pointer; box-shadow:0 1px 11px #2e5fad33; white-space:nowrap; line-height:1; transition:transform .12s, box-shadow .15s; }
     #installPromptBtn:active { transform:scale(.96); }
     #installPromptBtn:disabled { opacity:.6; cursor:wait; }
@@ -1116,6 +1121,7 @@
         </div>
         <div class="top-controls">
           <button id="installPromptBtn" title="Install as App">📲 Install</button>
+          <button id="refreshAllBtn" title="Refresh / sync now"><span>🔄</span></button>
           <span id="settingsBtnWrap"><button id="settingsBtn" title="Settings (⋮)">⋮</button><span id="cloudDot" title="Cloud sync active"></span></span>
         </div>
       </header>
@@ -1402,7 +1408,7 @@
   <div class="modal-backdrop hide" id="settingsBackdrop">
     <div class="modal" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
       <button class="modal-close" type="button" id="closeSettingsBtn" title="Close" aria-label="Close dialog" role="button">✖</button>
-      <h3 id="settingsTitle">Settings <span style="font-size:.6em;color:var(--text-muted);font-weight:400;">v3.6</span></h3>
+      <h3 id="settingsTitle">Settings <span style="font-size:.6em;color:var(--text-muted);font-weight:400;">v3.7</span></h3>
 
       <div style="display:flex;flex-direction:column;gap:10px;">
         <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -1725,7 +1731,7 @@
       })();
 
       const swScript = `
-        const CACHE_NAME = 'local-dealer-cache-v32';
+        const CACHE_NAME = 'local-dealer-cache-v33';
         const OFFLINE_URL = self.registration.scope.endsWith('/') ? self.registration.scope + 'index.html' : self.registration.scope + '/index.html';
         const FILES_TO_CACHE = [ OFFLINE_URL, './index.html' ];
         
@@ -2170,6 +2176,31 @@
 
     settingsBtn.onclick = () => { settingsBackdrop.classList.remove('hide'); document.getElementById('deviceNameInput').value = getDeviceName(); document.getElementById('oldPin').value = ''; document.getElementById('newPin').value = ''; document.getElementById('confirmPin').value = ''; resetPinError.textContent = ''; resetPinError.style.color = ''; renderSecuritySettings(); if (typeof renderCloudSettings === 'function') renderCloudSettings(); };
     closeSettingsBtn.onclick = () => settingsBackdrop.classList.add('hide');
+
+    // Header REFRESH button: reload everything from local storage, force a cloud
+    // sync, pull latest logs, and re-render whatever is on screen.
+    const refreshAllBtn = document.getElementById('refreshAllBtn');
+    if (refreshAllBtn) refreshAllBtn.onclick = async function() {
+      if (refreshAllBtn.classList.contains('spinning')) return;
+      refreshAllBtn.classList.add('spinning');
+      try {
+        // 1) force a cloud sync if connected (this also pulls others' edits)
+        if (typeof cloudForceSync === 'function') {
+          try { await cloudForceSync(); } catch(e){}
+        }
+        // 2) reload local data from the database (in case sync changed it)
+        try { await loadProducts(); } catch(e){}
+        try { khataCustomers = await loadKhataFromDB(); } catch(e){}
+        try { auditLogs = await loadLogsFromDB(); } catch(e){}
+        // 3) re-render whatever view is open
+        refreshProductList();
+        if (typeof renderKhataList === 'function' && !document.getElementById('khataModalBackdrop').classList.contains('hide')) renderKhataList();
+        if (typeof renderLogsList === 'function' && !document.getElementById('logsModalBackdrop').classList.contains('hide')) renderLogsList();
+        if (typeof renderStats === 'function' && !document.getElementById('statsModalBackdrop').classList.contains('hide')) renderStats();
+        if (typeof refreshOpenDetailModal === 'function') refreshOpenDetailModal();
+      } catch(e) { console.error('Refresh failed', e); }
+      setTimeout(() => refreshAllBtn.classList.remove('spinning'), 500);
+    };
     document.getElementById('deviceNameInput').onchange = function() { setDeviceName(this.value); };
     logoutBtn.onclick = () => { settingsBackdrop.classList.add('hide'); doLogout(); };
     resetPinCancel.onclick = () => { resetPinError.textContent = ''; resetPinError.style.color = ''; settingsBackdrop.classList.add('hide'); };
@@ -4866,10 +4897,18 @@ const EMBEDDED_CLOUD = { owner: "", repo: "", branch: "main", path: "products.js
     } else {
       out.qty = (L && L.qty != null) ? L.qty : (R && R.qty != null ? R.qty : 0);
     }
-    // bookkeeping fields: keep the most recent
-    const lA = (L && L.updatedAt) || 0, rA = (R && R.updatedAt) || 0;
-    out.updatedAt = Math.max(lA, rA);
-    out.updatedBy = (lA >= rA ? (L && L.updatedBy) : (R && R.updatedBy)) || (L && L.updatedBy) || (R && R.updatedBy) || '';
+    // "Edited by/at" follows whichever side made the NEWEST field change. We compare
+    // each side's latest field-timestamp; the larger one owns the attribution. This
+    // way a device that only RECEIVES another's edit never claims authorship.
+    const lMax = Math.max(0, ...MERGE_FIELDS.map(f => lf[f] || 0));
+    const rMax = Math.max(0, ...MERGE_FIELDS.map(f => rf[f] || 0));
+    if (lMax >= rMax) {
+      out.updatedAt = (L && L.updatedAt) || lMax;
+      out.updatedBy = (L && L.updatedBy) || '';
+    } else {
+      out.updatedAt = (R && R.updatedAt) || rMax;
+      out.updatedBy = (R && R.updatedBy) || '';
+    }
     out.createdAt = Math.min((L && L.createdAt) || Infinity, (R && R.createdAt) || Infinity);
     if (out.createdAt === Infinity) out.createdAt = out.updatedAt;
     // carry the merged field-timestamps forward (max of both sides)
@@ -5241,6 +5280,12 @@ const EMBEDDED_CLOUD = { owner: "", repo: "", branch: "main", path: "products.js
 
   /* ---------- public hooks (same names the rest of the app already uses) ---------- */
   let __localDirty = false;
+  // Public: force an immediate full sync (used by the header refresh button).
+  window.cloudForceSync = async function() {
+    if (!getRepoCfg() || !getToken()) return false;
+    __localDirty = true;            // ensure we do a real pull+merge, not a 304 short-circuit
+    return await syncNow(0);
+  };
   window.cloudPushDebounced = function() {
     if (!getRepoCfg() || !getToken()) return;
     __localDirty = true;
