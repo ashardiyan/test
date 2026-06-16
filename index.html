@@ -1370,7 +1370,7 @@
   <div class="modal-backdrop hide" id="settingsBackdrop">
     <div class="modal" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
       <button class="modal-close" type="button" id="closeSettingsBtn" title="Close" aria-label="Close dialog" role="button">✖</button>
-      <h3 id="settingsTitle">Settings <span style="font-size:.6em;color:var(--text-muted);font-weight:400;">v2.9</span></h3>
+      <h3 id="settingsTitle">Settings <span style="font-size:.6em;color:var(--text-muted);font-weight:400;">v3.0</span></h3>
 
       <div style="display:flex;flex-direction:column;gap:10px;">
         <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -1693,7 +1693,7 @@
       })();
 
       const swScript = `
-        const CACHE_NAME = 'local-dealer-cache-v25';
+        const CACHE_NAME = 'local-dealer-cache-v26';
         const OFFLINE_URL = self.registration.scope.endsWith('/') ? self.registration.scope + 'index.html' : self.registration.scope + '/index.html';
         const FILES_TO_CACHE = [ OFFLINE_URL, './index.html' ];
         
@@ -2772,7 +2772,7 @@ async function saveProductsToDB(productsArray) {
         updateMultiSelectControls(); 
     });
     
-    document.getElementById("deleteSelectedBtn").onclick = function() { if (selectedProductIds.size === 0) return; if (!confirm(`Are you sure you want to delete ${selectedProductIds.size} selected item(s)?`)) return; products = products.filter(p => !selectedProductIds.has(p.id)); selectedProductIds.clear(); saveProducts(); updateMultiSelectControls(); };
+    document.getElementById("deleteSelectedBtn").onclick = function() { if (selectedProductIds.size === 0) return; if (!confirm(`Are you sure you want to delete ${selectedProductIds.size} selected item(s)?`)) return; selectedProductIds.forEach(id => recordProductDeletion(id)); products = products.filter(p => !selectedProductIds.has(p.id)); selectedProductIds.clear(); saveProducts(); updateMultiSelectControls(); };
 
     document.getElementById("shareSelectedBtn").onclick = function() {
         if (selectedProductIds.size === 0) return;
@@ -3892,8 +3892,21 @@ async function saveProductsToDB(productsArray) {
 
     function showDeleteModal(product) { deleteModalBackdrop.classList.remove('hide'); deleteName.textContent = product.name || ''; productToDelete = product; setTimeout(()=>document.getElementById('cancelDeleteBtn').focus(),60); }
     document.getElementById('closeDeleteBtn').onclick = document.getElementById('cancelDeleteBtn').onclick = () => { deleteModalBackdrop.classList.add('hide'); productToDelete = null; };
-    deleteModal.onsubmit = function(e){ e.preventDefault(); if (!productToDelete) return; const deletedId = productToDelete.id; products = products.filter(p => p.id !== deletedId); saveProducts(); deleteModalBackdrop.classList.add('hide'); productToDelete = null; selectedProductIds.delete(deletedId); updateMultiSelectControls(); };
+    deleteModal.onsubmit = function(e){ e.preventDefault(); if (!productToDelete) return; const deletedId = productToDelete.id; recordProductDeletion(deletedId); products = products.filter(p => p.id !== deletedId); saveProducts(); deleteModalBackdrop.classList.add('hide'); productToDelete = null; selectedProductIds.delete(deletedId); updateMultiSelectControls(); };
     function genID() { return 'p' + (Date.now() + ('' + Math.random()).slice(2,7)); }
+
+    // Record a product the USER explicitly deleted, so the sync deletes it in the
+    // cloud too — WITHOUT ever inferring deletions from mere local absence.
+    function recordProductDeletion(id) {
+        if (!id) return;
+        try {
+            const k = 'dealer-gh-pdel';
+            const m = JSON.parse(localStorage.getItem(k) || '{}');
+            m[id] = Date.now();
+            localStorage.setItem(k, JSON.stringify(m));
+        } catch(e){}
+    }
+    window.recordProductDeletion = recordProductDeletion;
 
     /****************************************************************
      * SHARE / PDF LOGIC
@@ -4576,29 +4589,16 @@ const EMBEDDED_CLOUD = { owner: "", repo: "", branch: "main", path: "products.js
       const khataDeleted = remote.missing ? {} : (remote.data.khataDeleted || {});
 
       // WIPE GUARD: a mysteriously empty cloud file must never delete local stock.
-      // Empty remote + no tombstones, while WE have synced before OR have local data → suspect.
       const remoteEmpty = Object.keys(remoteMap).length === 0 && Object.keys(deleted).length === 0;
       const productsWiped = remoteEmpty && (Object.keys(base).length > 0 || Object.keys(localMap).length > 0);
-      // 3. Local deletions → tombstones (item was synced before but is gone locally now).
-      //    On a device's FIRST sync (empty base) we NEVER create deletions.
-      const pendingDeletes = (productsWiped || isFirstSync) ? [] : Object.keys(base).filter(id => !localMap[id] && !deleted[id]);
-      const remoteCount = Object.keys(remoteMap).length;
-      // SAFETY GUARD: deleting many products at once (multi-delete, an old
-      // "Replace" import, or cleared data) must be confirmed by a human before
-      // it is allowed to remove them from the shared cloud database.
-      if (pendingDeletes.length >= 8 || (pendingDeletes.length >= 3 && remoteCount > 0 && pendingDeletes.length >= remoteCount * 0.5)) {
-        const names = pendingDeletes.slice(0, 5).map(id => (remoteMap[id] && remoteMap[id].name) || id);
-        const ok = confirm(
-          "⚠️ This sync would DELETE " + pendingDeletes.length + " product(s) from the shared database on ALL phones" +
-          (names.length ? " (e.g. " + names.join(", ") + (pendingDeletes.length > names.length ? ", …" : "") + ")" : "") +
-          ".\n\n[OK] = yes, really delete them everywhere\n[Cancel] = keep them (they will be restored on this phone from the cloud)"
-        );
-        if (ok) pendingDeletes.forEach(id => { deleted[id] = now; });
-        // Cancel: no tombstones → the merge below re-downloads them locally.
-      } else {
-        pendingDeletes.forEach(id => { deleted[id] = now; });
-      }
-      Object.keys(base).forEach(id => { if (!localMap[id] && deleted[id]) deleted[id] = Math.max(deleted[id], 0); });
+
+      // 3. DELETIONS ARE EXPLICIT ONLY. We never infer "this product vanished
+      //    locally, so delete it everywhere" — that caused accidental wipes and
+      //    the startup popup. A product is removed from the cloud ONLY if the user
+      //    actually pressed delete (recorded in dealer-gh-pdel).
+      let userDeletes = {};
+      try { userDeletes = JSON.parse(localStorage.getItem('dealer-gh-pdel') || '{}'); } catch(e){}
+      Object.keys(userDeletes).forEach(id => { deleted[id] = Math.max(deleted[id] || 0, userDeletes[id]); });
 
       // 4. Merge per product: newest updatedAt wins; tombstones beat older items
       const merged = {};
@@ -4606,10 +4606,11 @@ const EMBEDDED_CLOUD = { owner: "", repo: "", branch: "main", path: "products.js
       ids.forEach(id => {
         const L = localMap[id], R = remoteMap[id];
         let winner = null;
-        if (L && R) winner = ((L.updatedAt || 0) > (R.updatedAt || 0)) ? L : R; // tie → remote wins (stable)
+        if (productsWiped && L) { winner = L; }                                   // empty-cloud safety: keep local
+        else if (L && R) winner = ((L.updatedAt || 0) > (R.updatedAt || 0)) ? L : R; // tie → remote wins (stable)
         else if (L) {
-          // exists locally only: keep it unless a NEWER tombstone says it was deleted elsewhere
-          winner = (!productsWiped && !isFirstSync && deleted[id] && deleted[id] >= L.updatedAt) ? null : L;
+          // exists locally only: keep it unless it was explicitly deleted (here or elsewhere)
+          winner = (deleted[id] && deleted[id] >= (L.updatedAt||0)) ? null : L;
         } else if (R) {
           // exists remotely only: new from another device, unless we just deleted it
           winner = (deleted[id] && deleted[id] >= (R.updatedAt || 0)) ? null : R;
@@ -4687,6 +4688,12 @@ const EMBEDDED_CLOUD = { owner: "", repo: "", branch: "main", path: "products.js
       const newBase = {};
       Object.keys(merged).forEach(id => { newBase[id] = { h: productHash(merged[id]), t: merged[id].updatedAt || now }; });
       setBaseHashes(newBase);
+      // Explicit deletes are now reflected in the cloud tombstones → clear the local queue
+      try {
+        const pd = JSON.parse(localStorage.getItem('dealer-gh-pdel') || '{}');
+        Object.keys(pd).forEach(id => { if (deleted[id]) delete pd[id]; });
+        localStorage.setItem('dealer-gh-pdel', JSON.stringify(pd));
+      } catch(e){}
       const stripVol = o => { const c = { ...o }; delete c._idx; delete c._h; if (!Array.isArray(c.photos)) c.photos = []; return c; };
       const cleaned = arr.map(stripVol);
       // Compare on identical fields so a changed editor-name/time is detected and redrawn
