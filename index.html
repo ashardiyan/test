@@ -1370,7 +1370,7 @@
   <div class="modal-backdrop hide" id="settingsBackdrop">
     <div class="modal" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
       <button class="modal-close" type="button" id="closeSettingsBtn" title="Close" aria-label="Close dialog" role="button">✖</button>
-      <h3 id="settingsTitle">Settings <span style="font-size:.6em;color:var(--text-muted);font-weight:400;">v2.8</span></h3>
+      <h3 id="settingsTitle">Settings <span style="font-size:.6em;color:var(--text-muted);font-weight:400;">v2.9</span></h3>
 
       <div style="display:flex;flex-direction:column;gap:10px;">
         <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -1693,7 +1693,7 @@
       })();
 
       const swScript = `
-        const CACHE_NAME = 'local-dealer-cache-v24';
+        const CACHE_NAME = 'local-dealer-cache-v25';
         const OFFLINE_URL = self.registration.scope.endsWith('/') ? self.registration.scope + 'index.html' : self.registration.scope + '/index.html';
         const FILES_TO_CACHE = [ OFFLINE_URL, './index.html' ];
         
@@ -3000,7 +3000,17 @@ async function saveProductsToDB(productsArray) {
         }
     };
 
-    function showDetailModal(product) {
+    let currentDetailProductId = null;
+    function refreshOpenDetailModal() {
+        try {
+            if (currentDetailProductId && !detailModalBackdrop.classList.contains('hide')) {
+                const fresh = products.find(p => p.id === currentDetailProductId);
+                if (fresh) showDetailModal(fresh, true);
+            }
+        } catch(e) {}
+    }
+    function showDetailModal(product, _isRefresh) {
+        currentDetailProductId = product.id;
       const nameSafe = escapeHTML(product.name || 'Unnamed');
       
       // Prepare photos for viewer
@@ -3058,7 +3068,7 @@ async function saveProductsToDB(productsArray) {
 
       detailModalBackdrop.classList.remove('hide'); disableDetailBackgroundScroll(); setTimeout(()=>document.getElementById('closeDetailModalBtn').focus(),100);
     }
-    document.getElementById('closeDetailModalBtn').onclick = function(){ detailModalBackdrop.classList.add('hide'); detailModalBody.innerHTML = ''; enableDetailBackgroundScroll(); };
+    document.getElementById('closeDetailModalBtn').onclick = function(){ detailModalBackdrop.classList.add('hide'); detailModalBody.innerHTML = ''; currentDetailProductId = null; enableDetailBackgroundScroll(); };
     
     document.addEventListener('keydown', function(e){
       if (e.key === "Escape") {
@@ -4494,13 +4504,13 @@ const EMBEDDED_CLOUD = { owner: "", repo: "", branch: "main", path: "products.js
       id: p.id, name: p.name || '', barcode: p.barcode || '',
       mrp: p.mrp ?? 0, cost: p.cost ?? null, qty: p.qty ?? 0,
       category: p.category || '', notes: p.notes || '',
-      updatedBy: p.updatedBy || '', createdAt: p.createdAt || 0,
+      updatedBy: p.updatedBy || '', updatedAt: p.updatedAt || 0, createdAt: p.createdAt || 0,
       _idx: idx, photos: (Array.isArray(p.photos) ? p.photos.filter(ph => typeof ph === 'string' && ph.startsWith('ghp:')) : [])
     };
     return out;
   }
   // Hash ignores display order so re-sorting alone doesn't count as an "edit"
-  function productHash(s) { const { _idx, updatedAt, ...rest } = s; return hashStr(JSON.stringify(rest)); }
+  function productHash(s) { const { _idx, updatedAt, updatedBy, createdAt, ...rest } = s; return hashStr(JSON.stringify(rest)); }
 
   /* ---------- the sync core (pull → 3-way merge → push if needed) ---------- */
   function remoteCountCheck(remoteMap, deleted, base) {
@@ -4604,7 +4614,7 @@ const EMBEDDED_CLOUD = { owner: "", repo: "", branch: "main", path: "products.js
           // exists remotely only: new from another device, unless we just deleted it
           winner = (deleted[id] && deleted[id] >= (R.updatedAt || 0)) ? null : R;
         }
-        if (winner) { const w = { ...winner }; delete w._h; merged[id] = w; if (deleted[id] && deleted[id] < (winner.updatedAt||0)) delete deleted[id]; }
+        if (winner) { const w = { ...winner }; delete w._h; if (!w.updatedAt) w.updatedAt = (winner === R ? (R.updatedAt||0) : (L.updatedAt||0)); merged[id] = w; if (deleted[id] && deleted[id] < (winner.updatedAt||0)) delete deleted[id]; }
       });
       /* ---- HISTORY merge (entries are immutable: union + tombstones) ---- */
       const histBase = (() => { try { return JSON.parse(localStorage.getItem('dealer-gh-hbase') || '[]'); } catch(e){ return []; } })();
@@ -4677,12 +4687,15 @@ const EMBEDDED_CLOUD = { owner: "", repo: "", branch: "main", path: "products.js
       const newBase = {};
       Object.keys(merged).forEach(id => { newBase[id] = { h: productHash(merged[id]), t: merged[id].updatedAt || now }; });
       setBaseHashes(newBase);
-      const cleaned = arr.map(p => { const c = { ...p }; delete c._idx; if (!Array.isArray(c.photos)) c.photos = []; return c; });
-      // Only touch the UI if the merge actually changed something vs. what's on screen
-      const localClean = local.map((p, i) => { const c = { ...localMap[p.id] }; delete c._h; delete c._idx; return c; });
+      const stripVol = o => { const c = { ...o }; delete c._idx; delete c._h; if (!Array.isArray(c.photos)) c.photos = []; return c; };
+      const cleaned = arr.map(stripVol);
+      // Compare on identical fields so a changed editor-name/time is detected and redrawn
+      const localClean = local.map(p => stripVol(localMap[p.id]));
       if (JSON.stringify(cleaned) !== JSON.stringify(localClean)) {
         products = cleaned;
         try { await saveProductsToDB(products); } catch(e){ console.error(e); }
+        // If the product details popup is open for one of these, refresh its text too
+        if (typeof refreshOpenDetailModal === 'function') refreshOpenDetailModal();
         if (typeof refreshProductList === 'function') refreshProductList();
       }
 
