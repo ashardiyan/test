@@ -972,6 +972,18 @@
     .khata-row { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 4px; border-bottom:1px solid #1f2733; cursor:pointer; border-radius:8px; }
     .khata-row:hover { background:rgba(255,255,255,0.03); }
     .low-stock-row { display:flex; justify-content:space-between; padding:7px 4px; border-bottom:1px solid #1f2733; font-size:.95em; }
+    .log-row { padding:9px 4px; border-bottom:1px solid #1f2733; font-size:.9em; }
+    .log-row .log-head { display:flex; justify-content:space-between; gap:8px; align-items:baseline; }
+    .log-row .log-prod { font-weight:700; }
+    .log-row .log-when { color:var(--text-muted); font-size:.82em; white-space:nowrap; }
+    .log-row .log-detail { color:var(--text-muted); margin-top:2px; }
+    .log-row .log-old { color:#e08a8a; text-decoration:line-through; }
+    .log-row .log-new { color:#8ae0a8; }
+    .log-badge { display:inline-block; font-size:.74em; padding:1px 7px; border-radius:999px; margin-right:6px; vertical-align:middle; }
+    .log-badge.edit { background:#23314a; color:#8fb6ff; }
+    .log-badge.sale { background:#1c3a2a; color:#9af0c0; }
+    .log-badge.create { background:#2b2f3a; color:#cdd6e6; }
+    .log-badge.delete { background:#3a2326; color:#ffb1b8; }
     
     .keep-logged-toggle {
       display: flex;
@@ -1129,6 +1141,7 @@
             <button type="button" id="historyBtn" class="rounded-sky-btn">📜 History</button>
             <button type="button" id="khataBtn" class="rounded-sky-btn">💳 Khata</button>
             <button type="button" id="statsBtn" class="rounded-sky-btn">📊 Stats</button>
+            <button type="button" id="logsBtn" class="rounded-sky-btn">📋 Logs</button>
             <button type="button" id="addProductBtn" class="rounded-sky-btn">➕ Add</button>
             <button type="button" id="categoryFilterBtn" class="rounded-sky-btn">🗂️ Category</button>
             <button type="button" id="exportBtn" class="rounded-sky-btn">📤 Export</button>
@@ -1359,6 +1372,25 @@
     </div>
   </div>
 
+  <div class="modal-backdrop hide" id="logsModalBackdrop">
+    <div class="modal" id="logsModal">
+      <button class="modal-close" type="button" id="closeLogsBtn" title="Close">✖</button>
+      <h3>📋 Activity Logs</h3>
+      <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+        <input type="text" id="logsSearch" placeholder="Search product, person, field…" style="flex:1 1 160px;" />
+        <select id="logsFilter" style="flex:0 0 auto;background:var(--bg3);color:var(--text);border:1.5px solid #253048;border-radius:7px;padding:8px;">
+          <option value="">All actions</option>
+          <option value="edit">Edits</option>
+          <option value="sale">Sales</option>
+          <option value="create">New items</option>
+          <option value="delete">Deletes</option>
+        </select>
+      </div>
+      <div style="color:var(--text-muted);font-size:.83em;margin-bottom:8px;">Newest first · synced from all devices · stored in <b>logs.json</b></div>
+      <div id="logsList" class="history-list" style="max-height:60vh;"></div>
+    </div>
+  </div>
+
   <div class="modal-backdrop hide" id="detailModalBackdrop">
     <div class="modal" id="detailModal" tabindex="-1">
       <button class="modal-close" type="button" id="closeDetailModalBtn" title="Close" aria-label="Close dialog" role="button">✖</button>
@@ -1370,7 +1402,7 @@
   <div class="modal-backdrop hide" id="settingsBackdrop">
     <div class="modal" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
       <button class="modal-close" type="button" id="closeSettingsBtn" title="Close" aria-label="Close dialog" role="button">✖</button>
-      <h3 id="settingsTitle">Settings <span style="font-size:.6em;color:var(--text-muted);font-weight:400;">v3.3</span></h3>
+      <h3 id="settingsTitle">Settings <span style="font-size:.6em;color:var(--text-muted);font-weight:400;">v3.4</span></h3>
 
       <div style="display:flex;flex-direction:column;gap:10px;">
         <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -1693,7 +1725,7 @@
       })();
 
       const swScript = `
-        const CACHE_NAME = 'local-dealer-cache-v29';
+        const CACHE_NAME = 'local-dealer-cache-v30';
         const OFFLINE_URL = self.registration.scope.endsWith('/') ? self.registration.scope + 'index.html' : self.registration.scope + '/index.html';
         const FILES_TO_CACHE = [ OFFLINE_URL, './index.html' ];
         
@@ -1821,7 +1853,7 @@
     (function handleAndroidBackButton() {
       let isHandlerAttached = false;
       let openedModals = [];
-      const modalPriority = ['scannerOverlay', 'imageViewerOverlay', 'productModalBackdrop', 'deleteModalBackdrop', 'settingsBackdrop', 'detailModalBackdrop', 'shareModalBackdrop', 'categoryModalBackdrop', 'quickSellModalBackdrop', 'khataDetailModalBackdrop', 'khataModalBackdrop', 'statsModalBackdrop', 'historyModalBackdrop'];
+      const modalPriority = ['scannerOverlay', 'imageViewerOverlay', 'productModalBackdrop', 'deleteModalBackdrop', 'settingsBackdrop', 'detailModalBackdrop', 'shareModalBackdrop', 'categoryModalBackdrop', 'quickSellModalBackdrop', 'khataDetailModalBackdrop', 'khataModalBackdrop', 'statsModalBackdrop', 'logsModalBackdrop', 'historyModalBackdrop'];
 
       function pushMainStateToHistory() { try { history.replaceState({dealerAppMain: true}, document.title, window.location.href); } catch (e) {} }
       function pushModalState(modalId) { try { history.pushState({modal: modalId}, document.title, window.location.href); openedModals.push(modalId); } catch (e) {} }
@@ -1994,6 +2026,7 @@
       try { await loadProducts(); } catch(e) {}
       try { await ensureHistoryMigrated(); } catch(e) {}
       try { khataCustomers = await loadKhataFromDB(); } catch(e) { khataCustomers = []; }
+      try { auditLogs = await loadLogsFromDB(); } catch(e) { auditLogs = []; }
       refreshProductList();
 
       // Only NOW is it safe to show the cloud gate / start syncing.
@@ -2210,7 +2243,8 @@
     const STORE_HISTORY = 'sales_history'; // NEW STORE
     const STORE_KHATA = 'khata';
     const STORE_PHOTOCACHE = 'photo_cache';
-    const DB_VERSION = 5; // v5: adds photo cache for two-stage cloud sync
+    const STORE_LOGS = 'audit_logs';
+    const DB_VERSION = 6; // v6: adds audit logs store
 
     // Single cached connection. Opening a fresh one on every call (dozens during a
     // sync) leaks connections and lets a future version-upgrade hang forever if an
@@ -2226,6 +2260,7 @@
                 if (!db.objectStoreNames.contains(STORE_HISTORY)) db.createObjectStore(STORE_HISTORY, { keyPath: 'id', autoIncrement: true });
                 if (!db.objectStoreNames.contains(STORE_KHATA)) db.createObjectStore(STORE_KHATA, { keyPath: 'id' });
                 if (!db.objectStoreNames.contains(STORE_PHOTOCACHE)) db.createObjectStore(STORE_PHOTOCACHE, { keyPath: 'ref' });
+                if (!db.objectStoreNames.contains(STORE_LOGS)) db.createObjectStore(STORE_LOGS, { keyPath: 'id' });
             };
             request.onsuccess = e => {
                 const db = e.target.result;
@@ -2400,6 +2435,41 @@ async function saveProductsToDB(productsArray) {
         try { await replaceKhataInDB(khataCustomers); } catch(e){ console.error('Khata save failed', e); }
         if (typeof cloudPushDebounced === 'function') cloudPushDebounced();
     }
+
+    /**** AUDIT LOGS ****/
+    let auditLogs = [];
+    const FIELD_LABELS = { name:'Name', barcode:'Barcode', mrp:'Price (MRP)', cost:'Cost', category:'Category', notes:'Notes', photos:'Photos', qty:'Stock' };
+    async function loadLogsFromDB() {
+        const db = await openDB();
+        if (!db.objectStoreNames.contains(STORE_LOGS)) return [];
+        const tx = db.transaction(STORE_LOGS, 'readonly');
+        return new Promise((res, rej) => { const r = tx.objectStore(STORE_LOGS).getAll(); r.onsuccess = () => res(r.result || []); r.onerror = () => rej(r.error); });
+    }
+    async function replaceLogsInDB(arr) {
+        const db = await openDB();
+        const tx = db.transaction(STORE_LOGS, 'readwrite');
+        const store = tx.objectStore(STORE_LOGS);
+        await new Promise((res, rej) => { const r = store.clear(); r.onsuccess = res; r.onerror = rej; });
+        arr.forEach(l => store.put(l));
+        return new Promise((res, rej) => { tx.oncomplete = res; tx.onerror = rej; });
+    }
+    async function addLogEntry(entry) {
+        auditLogs.push(entry);
+        // keep memory bounded; full history still lives in the cloud logs.json
+        if (auditLogs.length > 3000) auditLogs = auditLogs.slice(-3000);
+        try { const db = await openDB(); const tx = db.transaction(STORE_LOGS, 'readwrite'); tx.objectStore(STORE_LOGS).put(entry); } catch(e){}
+    }
+    // Queue of new local log entries waiting to be merged into the cloud logs.json
+    function queueLog(entry) {
+        addLogEntry(entry);
+        try {
+            const k = 'dealer-gh-logq';
+            const q = JSON.parse(localStorage.getItem(k) || '[]');
+            q.push(entry);
+            localStorage.setItem(k, JSON.stringify(q.slice(-1000)));
+        } catch(e){}
+    }
+    function genLogId() { return 'lg' + Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
 
     async function saveProducts() { 
         // We update memory immediately, but save async
@@ -3207,9 +3277,11 @@ async function saveProductsToDB(productsArray) {
             //    out BEFORE touching stock, so qty can never drop without a sale.
             await logSaleToDB(logEntry);
             // 2) Only now deduct stock and save.
+            const _oldQty = quickSellProductTarget.qty;
             quickSellProductTarget.qty = newQty;
             quickSellProductTarget.updatedAt = Date.now();
             quickSellProductTarget.updatedBy = getDeviceName();
+            queueLog({ id: genLogId(), ts: Date.now(), device: getDeviceName() || 'Unknown', productId: quickSellProductTarget.id, productName: quickSellProductTarget.name, action: 'sale', field: 'qty', oldVal: String(_oldQty), newVal: String(newQty) + ' (sold ' + qtyToSell + ')' });
             await saveProducts(); // saves qty, refreshes UI, triggers cloud sync
 
             if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
@@ -3529,6 +3601,51 @@ async function saveProductsToDB(productsArray) {
         try { localStorage.setItem('dealer-low-stock-th', String(Math.max(0, parseInt(this.value)||0))); } catch(e){}
         renderStats();
     };
+
+    /****************************************************************
+     * FEATURE: ACTIVITY LOGS (who changed what, when, old → new)
+     ****************************************************************/
+    const logsModalBackdrop = document.getElementById('logsModalBackdrop');
+    window.renderLogsList = function() {
+        const listEl = document.getElementById('logsList');
+        const q = (document.getElementById('logsSearch').value || '').trim().toLowerCase();
+        const filter = document.getElementById('logsFilter').value;
+        let rows = [...auditLogs].sort((a,b) => (b.ts||0) - (a.ts||0));
+        if (filter) rows = rows.filter(l => l.action === filter);
+        if (q) rows = rows.filter(l =>
+            (l.productName||'').toLowerCase().includes(q) ||
+            (l.device||'').toLowerCase().includes(q) ||
+            (FIELD_LABELS[l.field]||l.field||'').toLowerCase().includes(q) ||
+            (l.newVal||'').toLowerCase().includes(q) || (l.oldVal||'').toLowerCase().includes(q)
+        );
+        rows = rows.slice(0, 500); // cap rendering
+        if (!rows.length) { listEl.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:18px;">No matching activity.</div>'; return; }
+        listEl.innerHTML = rows.map(l => {
+            const d = new Date(l.ts || 0);
+            const when = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+            const who = l.device ? escapeHTML(l.device) : 'Unknown';
+            let detail = '';
+            if (l.action === 'create') detail = 'Added this product';
+            else if (l.action === 'delete') detail = 'Deleted this product';
+            else if (l.action === 'sale') detail = 'Sold — stock <span class="log-old">' + escapeHTML(l.oldVal) + '</span> → <span class="log-new">' + escapeHTML(l.newVal) + '</span>';
+            else if (l.field === 'photos') detail = 'Photos updated <span class="log-new">(' + escapeHTML(l.newVal) + ')</span>';
+            else {
+                const label = FIELD_LABELS[l.field] || l.field;
+                detail = '<b>' + escapeHTML(label) + '</b>: <span class="log-old">' + (escapeHTML(l.oldVal) || '—') + '</span> → <span class="log-new">' + (escapeHTML(l.newVal) || '—') + '</span>';
+            }
+            return '<div class="log-row"><div class="log-head"><span class="log-prod"><span class="log-badge ' + l.action + '">' + l.action + '</span>' + escapeHTML(l.productName || '(unknown)') + '</span><span class="log-when">' + when + '</span></div>' +
+                   '<div class="log-detail">' + detail + ' · by <b style="color:var(--accent2)">' + who + '</b></div></div>';
+        }).join('');
+    };
+    document.getElementById('logsBtn').onclick = async function() {
+        try { if (!auditLogs.length) auditLogs = await loadLogsFromDB(); } catch(e){}
+        renderLogsList();
+        logsModalBackdrop.classList.remove('hide');
+        if (typeof syncLogs === 'function') setTimeout(syncLogs, 150); // pull latest from cloud
+    };
+    document.getElementById('closeLogsBtn').onclick = () => logsModalBackdrop.classList.add('hide');
+    document.getElementById('logsSearch').oninput = renderLogsList;
+    document.getElementById('logsFilter').onchange = renderLogsList;
 
     // --- NEW: CATEGORY BUTTON & MODAL LOGIC ---
     const categoryBtn = document.getElementById('categoryFilterBtn');
@@ -3904,6 +4021,24 @@ async function saveProductsToDB(productsArray) {
       
       // Store the Array of BLOBS
       const productObj = { id: productEditing ? productEditing.id : genID(), name, barcode: barcodeVal, mrp: Number(mrpVal), cost: costVal !== "" ? Number(costVal) : null, qty: Number(qtyVal), category, notes, photos: currentProductBlobs, createdAt: (productEditing && productEditing.createdAt) || Date.now(), updatedAt: Date.now(), updatedBy: getDeviceName() };
+
+      // --- AUDIT LOG: record exactly what changed (old → new), per field ---
+      const device = getDeviceName() || 'Unknown';
+      const ts = Date.now();
+      if (!productEditing) {
+        queueLog({ id: genLogId(), ts, device, productId: productObj.id, productName: name, action: 'create', field: '', oldVal: '', newVal: '' });
+      } else {
+        const old = productEditing;
+        const cmp = [['name',old.name,name],['barcode',old.barcode,barcodeVal],['mrp',old.mrp,Number(mrpVal)],['cost',old.cost,(costVal!==""?Number(costVal):null)],['qty',old.qty,Number(qtyVal)],['category',old.category,category],['notes',old.notes,notes]];
+        cmp.forEach(([f,ov,nv]) => {
+          const a = ov == null ? '' : String(ov), b = nv == null ? '' : String(nv);
+          if (a !== b) queueLog({ id: genLogId(), ts, device, productId: productObj.id, productName: name, action: 'edit', field: f, oldVal: a, newVal: b });
+        });
+        // photos: log only that they changed, never the image data
+        const oldN = Array.isArray(old.photos) ? old.photos.length : 0;
+        const newN = Array.isArray(currentProductBlobs) ? currentProductBlobs.length : 0;
+        if (oldN !== newN) queueLog({ id: genLogId(), ts, device, productId: productObj.id, productName: name, action: 'edit', field: 'photos', oldVal: oldN + ' photo(s)', newVal: newN + ' photo(s)' });
+      }
       
       // Remove old photo property if it exists on edit
       if(productObj.photo) delete productObj.photo;
@@ -3924,7 +4059,7 @@ async function saveProductsToDB(productsArray) {
 
     function showDeleteModal(product) { deleteModalBackdrop.classList.remove('hide'); deleteName.textContent = product.name || ''; productToDelete = product; setTimeout(()=>document.getElementById('cancelDeleteBtn').focus(),60); }
     document.getElementById('closeDeleteBtn').onclick = document.getElementById('cancelDeleteBtn').onclick = () => { deleteModalBackdrop.classList.add('hide'); productToDelete = null; };
-    deleteModal.onsubmit = function(e){ e.preventDefault(); if (!productToDelete) return; const deletedId = productToDelete.id; recordProductDeletion(deletedId); products = products.filter(p => p.id !== deletedId); saveProducts(); deleteModalBackdrop.classList.add('hide'); productToDelete = null; selectedProductIds.delete(deletedId); updateMultiSelectControls(); };
+    deleteModal.onsubmit = function(e){ e.preventDefault(); if (!productToDelete) return; const deletedId = productToDelete.id; queueLog({ id: genLogId(), ts: Date.now(), device: getDeviceName() || 'Unknown', productId: deletedId, productName: productToDelete.name, action: 'delete', field: '', oldVal: '', newVal: '' }); recordProductDeletion(deletedId); products = products.filter(p => p.id !== deletedId); saveProducts(); deleteModalBackdrop.classList.add('hide'); productToDelete = null; selectedProductIds.delete(deletedId); updateMultiSelectControls(); };
     function genID() { return 'p' + (Date.now() + ('' + Math.random()).slice(2,7)); }
 
     // Record a product the USER explicitly deleted, so the sync deletes it in the
@@ -4565,7 +4700,7 @@ const EMBEDDED_CLOUD = { owner: "", repo: "", branch: "main", path: "products.js
 
   // ---- FIELD-LEVEL MERGE SUPPORT ----
   // Fields we merge independently (each carries its own timestamp in _fts).
-  const MERGE_FIELDS = ['name','barcode','mrp','cost','category','notes','photos','updatedBy'];
+  const MERGE_FIELDS = ['name','barcode','mrp','cost','category','notes','photos'];
 
   // A stable hash of a single field's value (used to detect which fields changed).
   function fieldHash(v) { return hashStr(typeof v === 'object' ? JSON.stringify(v) : String(v)); }
@@ -4585,6 +4720,70 @@ const EMBEDDED_CLOUD = { owner: "", repo: "", branch: "main", path: "products.js
       fts[f] = (prev[f] === h && prevT[f]) ? prevT[f] : Math.max(now, (prevT[f] || 0) + 1);
     });
     return { fts, hashes };
+  }
+
+  /* ----------------------------------------------------------------
+     AUDIT LOG SYNC — kept in a SEPARATE file (logs.json) in the repo so
+     it never bloats products.json. Append-only union merge by log id.
+  ----------------------------------------------------------------- */
+  let logsETag = null;
+  let logSyncBusy = false;
+  function logsFileUrl() { const cfg = getRepoCfg(); return apiUrl({ ...cfg, path: 'logs.json' }); }
+
+  async function syncLogs() {
+    if (logSyncBusy || !getToken() || !getRepoCfg()) return;
+    logSyncBusy = true;
+    try {
+      const cfg = getRepoCfg();
+      // pull existing logs.json (conditional)
+      const h = headers('application/vnd.github.object+json');
+      if (logsETag) h['If-None-Match'] = logsETag;
+      let remoteLogs = {}, sha = null, unchanged = false;
+      const res = await fetch(logsFileUrl() + '?ref=' + encodeURIComponent(cfg.branch), { headers: h });
+      if (res.status === 304) { unchanged = true; }
+      else if (res.status === 404) { /* no file yet */ }
+      else if (res.ok) {
+        const et = res.headers.get('etag'); if (et) logsETag = et;
+        const meta = await res.json();
+        sha = meta.sha;
+        let text = meta.content ? b64decodeUtf8(meta.content) : '';
+        try { const d = JSON.parse(text); remoteLogs = (d && d.logs) || {}; } catch(e) { remoteLogs = {}; }
+      } else { logSyncBusy = false; return; }
+
+      // local queue of new entries
+      let localQueue = [];
+      try { localQueue = JSON.parse(localStorage.getItem('dealer-gh-logq') || '[]'); } catch(e){}
+
+      if (unchanged && localQueue.length === 0) { logSyncBusy = false; return; }
+
+      // union by id (logs are immutable, append-only)
+      const merged = { ...remoteLogs };
+      localQueue.forEach(l => { if (l && l.id) merged[l.id] = l; });
+      // also fold in anything we have locally that the cloud lacks
+      auditLogs.forEach(l => { if (l && l.id && !merged[l.id]) merged[l.id] = l; });
+
+      // cap stored cloud logs to most recent ~5000 to keep the file reasonable
+      let entries = Object.values(merged).sort((a,b) => (a.ts||0) - (b.ts||0));
+      if (entries.length > 5000) entries = entries.slice(-5000);
+      const cappedMap = {}; entries.forEach(l => cappedMap[l.id] = l);
+
+      const newJson = JSON.stringify({ logs: cappedMap });
+      const oldJson = JSON.stringify({ logs: remoteLogs });
+      if (newJson !== oldJson) {
+        const body = { message: 'logs ' + new Date().toISOString(), branch: cfg.branch, content: b64encodeUtf8(newJson) };
+        if (sha) body.sha = sha;
+        const put = await fetch(logsFileUrl(), { method: 'PUT', headers: headers(), body: JSON.stringify(body) });
+        if (put.ok) { const o = await put.json(); logsETag = (o.content && o.content.etag) || null; }
+        else if (put.status === 409 || put.status === 422) { logsETag = null; logSyncBusy = false; setTimeout(syncLogs, 1500); return; }
+      }
+
+      // apply merged logs locally + clear the queue
+      auditLogs = entries;
+      try { await replaceLogsInDB(entries); } catch(e){}
+      try { localStorage.setItem('dealer-gh-logq', '[]'); } catch(e){}
+      if (typeof renderLogsList === 'function' && !document.getElementById('logsModalBackdrop').classList.contains('hide')) renderLogsList();
+    } catch(e) { console.error('Log sync failed', e); }
+    logSyncBusy = false;
   }
 
   async function serializeProduct(p, idx) {
@@ -4609,6 +4808,7 @@ const EMBEDDED_CLOUD = { owner: "", repo: "", branch: "main", path: "products.js
       if (L && R) out[f] = (lt >= rt) ? L[f] : R[f];   // newest field wins; tie → local (already applied)
       else out[f] = (L || R)[f];
     });
+    // updatedBy follows the side that made the newest change (computed below via updatedAt)
     // --- qty via delta merge: base + (local-base) + (remote-base) ---
     if (L && R && typeof baseQty === 'number') {
       const dL = (L.qty ?? baseQty) - baseQty;
@@ -4674,6 +4874,18 @@ const EMBEDDED_CLOUD = { owner: "", repo: "", branch: "main", path: "products.js
         s._fts = cft.fts;
         s.__fhashes = cft.hashes;       // kept locally only, stripped before upload
         s.__baseQty = fb ? fb.qty : undefined;
+        // If ANY content field changed vs last sync, this device is the latest editor.
+        const prevH = (fb && fb._h) || {};
+        const changedFields = MERGE_FIELDS.filter(f => {
+          let v = s[f]; if (f === 'photos') v = Array.isArray(s.photos) ? s.photos : [];
+          return prevH[f] !== fieldHash(v == null ? '' : v);
+        });
+        if (fb && changedFields.length) {
+          s.updatedAt = Math.max(s.updatedAt || 0, ...changedFields.map(f => s._fts[f] || 0));
+          s.updatedBy = getDeviceName() || s.updatedBy || '';
+          s.__changed = changedFields;        // used for audit logging below
+          s.__prevValues = (fb && fb._v) || {}; // previous values for the log
+        }
         localMap[s.id] = s;
       }
 
@@ -4696,6 +4908,7 @@ const EMBEDDED_CLOUD = { owner: "", repo: "", branch: "main", path: "products.js
         try { queueMissingPhotoDownloads(); } catch(e){}
         setTimeout(runPhotoDownloads, 100);
         setTimeout(runPhotoUploads, 300);
+        setTimeout(syncLogs, 500);
         setStatus('live', true); window.renderCloudSettings(); cloudGateResolve(true);
         busy = false; if (queued) { queued = false; setTimeout(() => syncNow(0), 300); }
         return true;
@@ -4824,9 +5037,9 @@ const EMBEDDED_CLOUD = { owner: "", repo: "", branch: "main", path: "products.js
         const m = merged[id];
         newBase[id] = { h: productHash(m), t: m.updatedAt || now };
         // record field hashes + times + qty so next sync knows what THIS device last saw
-        const fh = {};
-        MERGE_FIELDS.forEach(f => { let v = m[f]; if (f === 'photos') v = Array.isArray(m.photos) ? m.photos : []; fh[f] = fieldHash(v == null ? '' : v); });
-        newFieldBase[id] = { _h: fh, _t: { ...(m._fts || {}) }, qty: m.qty ?? 0 };
+        const fh = {}, fv = {};
+        MERGE_FIELDS.forEach(f => { let v = m[f]; if (f === 'photos') v = Array.isArray(m.photos) ? m.photos : []; fh[f] = fieldHash(v == null ? '' : v); fv[f] = (f === 'photos') ? (Array.isArray(m.photos) ? m.photos.length : 0) : v; });
+        newFieldBase[id] = { _h: fh, _t: { ...(m._fts || {}) }, _v: fv, qty: m.qty ?? 0 };
       });
       setBaseHashes(newBase);
       setFieldBase(newFieldBase);
@@ -4875,6 +5088,7 @@ const EMBEDDED_CLOUD = { owner: "", repo: "", branch: "main", path: "products.js
       queueMissingPhotoDownloads();
       setTimeout(runPhotoDownloads, 100);
       setTimeout(runPhotoUploads, 300);
+      setTimeout(syncLogs, 500); // audit logs go to their own logs.json
 
       cloudActive = true;
       lastSyncOK = Date.now();
