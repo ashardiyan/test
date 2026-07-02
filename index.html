@@ -664,13 +664,41 @@
         touch-action: pan-x; /* allow horizontal swipe, but let images claim pinch */
     }
     #imageViewerSlider img {
-        touch-action: none !important;   /* image owns ALL its gestures (pinch/pan/dbl-tap) */
+        /* FIX (swipe): was `touch-action: none !important` which killed native
+           horizontal scrolling entirely — multi-image swipe never worked.
+           pan-x lets the browser swipe between slides; JS takes over for
+           pinch (preventDefault on 2-finger touchstart) and while zoomed. */
+        touch-action: pan-x;
         -webkit-user-select: none; user-select: none;
         -webkit-user-drag: none;
         cursor: zoom-in;
     }
     #imageViewerSlider.zoomed { touch-action: none; overflow: hidden; }
+    #imageViewerSlider.zoomed img { touch-action: none; cursor: grab; }
     #imageViewerSlider::-webkit-scrollbar { display: none; }
+
+    /* FIX (swipe UX): arrows + counter so multiple images are discoverable
+       and navigable on desktop too */
+    .iv-nav-btn {
+        position: absolute; top: 50%; transform: translateY(-50%);
+        width: 44px; height: 44px; border-radius: 50%;
+        border: none; background: rgba(255,255,255,0.12); color: #fff;
+        font-size: 1.5rem; line-height: 1; cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        z-index: 8001; transition: background .2s, opacity .2s;
+        -webkit-tap-highlight-color: transparent;
+    }
+    .iv-nav-btn:hover { background: rgba(255,255,255,0.28); }
+    .iv-nav-btn.disabled { opacity: .25; pointer-events: none; }
+    #ivPrevBtn { left: 12px; }
+    #ivNextBtn { right: 12px; }
+    #ivCounter {
+        position: absolute; bottom: 22px; left: 50%; transform: translateX(-50%);
+        background: rgba(0,0,0,0.55); color: #fff; font-weight: 700;
+        font-size: .95em; padding: 5px 14px; border-radius: 999px;
+        z-index: 8001; letter-spacing: 1px; pointer-events: none;
+    }
+    #imageViewerSlider.zoomed ~ .iv-nav-btn { opacity: 0; pointer-events: none; }
 
     /* NEW: Individual Slides */
     .full-screen-slide {
@@ -2570,21 +2598,8 @@ async function saveProductsToDB(productsArray) {
         if (typeof images === 'string') images = [images];
         if (!images || !Array.isArray(images) || images.length === 0) return;
 
-        // Try to find slider container first (new HTML), fallback to old img tag
+        // Slider container exists in this HTML build (#imageViewerSlider).
         let slider = document.getElementById('imageViewerSlider');
-        
-        // If the HTML hasn't been updated to include the slider div, we create/inject it dynamically
-        // or clear the existing image tag and use it as a container if needed.
-        if (!slider) {
-            // Fallback for previous HTML structure: replace img with div
-            const oldImg = document.getElementById('imageViewerImg');
-            if (oldImg) {
-                slider = document.createElement('div');
-                slider.id = 'imageViewerSlider';
-                slider.style.cssText = "display:flex; overflow-x:auto; scroll-snap-type:x mandatory; width:100%; height:100%; align-items:center;";
-                oldImg.parentNode.replaceChild(slider, oldImg);
-            }
-        }
         
         if(!slider) return;
         
@@ -2593,12 +2608,69 @@ async function saveProductsToDB(productsArray) {
         images.forEach(src => {
             const img = document.createElement('img');
             img.src = src;
-            // Add inline styles to ensure swipe works even if CSS is missing
+            // FIX (swipe): apply the .full-screen-slide class so scroll-snap-stop
+            // works; inline styles kept as fallback but WITHOUT the old
+            // touch-action:none that blocked native swiping.
+            img.className = 'full-screen-slide';
             img.style.cssText = "flex: 0 0 100%; width:100%; height:100%; object-fit:contain; scroll-snap-align:center; display:block; transform-origin:center center; will-change:transform;";
             img.draggable = false;
             slider.appendChild(img);
             makeImageZoomable(img, slider);
         });
+
+        // FIX (swipe UX): prev/next arrows + "n / total" counter for multi-image
+        // products, plus keyboard navigation. Rebuilt fresh on every open.
+        imageViewerOverlay.querySelectorAll('.iv-nav-btn, #ivCounter').forEach(el => el.remove());
+        if (imageViewerOverlay.__ivKeyHandler) { document.removeEventListener('keydown', imageViewerOverlay.__ivKeyHandler); imageViewerOverlay.__ivKeyHandler = null; }
+
+        if (images.length > 1) {
+            const prevBtn = document.createElement('button');
+            prevBtn.id = 'ivPrevBtn'; prevBtn.className = 'iv-nav-btn'; prevBtn.type = 'button';
+            prevBtn.setAttribute('aria-label', 'Previous image'); prevBtn.textContent = '‹';
+            const nextBtn = document.createElement('button');
+            nextBtn.id = 'ivNextBtn'; nextBtn.className = 'iv-nav-btn'; nextBtn.type = 'button';
+            nextBtn.setAttribute('aria-label', 'Next image'); nextBtn.textContent = '›';
+            const counter = document.createElement('div');
+            counter.id = 'ivCounter';
+            imageViewerOverlay.appendChild(prevBtn);
+            imageViewerOverlay.appendChild(nextBtn);
+            imageViewerOverlay.appendChild(counter);
+
+            const curIdx = () => Math.max(0, Math.min(images.length - 1, Math.round(slider.scrollLeft / Math.max(1, slider.clientWidth))));
+            const updateUI = () => {
+                const i = curIdx();
+                counter.textContent = (i + 1) + ' / ' + images.length;
+                prevBtn.classList.toggle('disabled', i <= 0);
+                nextBtn.classList.toggle('disabled', i >= images.length - 1);
+            };
+            const goTo = (i) => {
+                i = Math.max(0, Math.min(images.length - 1, i));
+                // Reset any zoom first so the slider can actually scroll
+                slider.classList.remove('zoomed');
+                slider.querySelectorAll('img').forEach(im => { if (im.__resetZoom) im.__resetZoom(); });
+                slider.scrollTo({ left: slider.clientWidth * i, behavior: 'smooth' });
+            };
+            prevBtn.onclick = (e) => { e.stopPropagation(); goTo(curIdx() - 1); };
+            nextBtn.onclick = (e) => { e.stopPropagation(); goTo(curIdx() + 1); };
+
+            let rafPending = false;
+            slider.onscroll = () => {
+                if (rafPending) return;
+                rafPending = true;
+                requestAnimationFrame(() => { rafPending = false; updateUI(); });
+            };
+
+            const keyHandler = (e) => {
+                if (!imageViewerOverlay.classList.contains('show')) return;
+                if (e.key === 'ArrowLeft')  { e.preventDefault(); goTo(curIdx() - 1); }
+                if (e.key === 'ArrowRight') { e.preventDefault(); goTo(curIdx() + 1); }
+            };
+            document.addEventListener('keydown', keyHandler);
+            imageViewerOverlay.__ivKeyHandler = keyHandler;
+            updateUI();
+        } else {
+            slider.onscroll = null;
+        }
 
         imageViewerOverlay.classList.add('show');
         
@@ -2614,7 +2686,9 @@ async function saveProductsToDB(productsArray) {
     function closeImageViewer() {
         imageViewerOverlay.classList.remove('show');
         const slider = document.getElementById('imageViewerSlider');
-        if (slider) { slider.classList.remove('zoomed'); slider.querySelectorAll('img').forEach(im => { if (im.__resetZoom) im.__resetZoom(); }); slider.innerHTML = ''; }
+        if (slider) { slider.classList.remove('zoomed'); slider.onscroll = null; slider.querySelectorAll('img').forEach(im => { if (im.__resetZoom) im.__resetZoom(); }); slider.innerHTML = ''; }
+        imageViewerOverlay.querySelectorAll('.iv-nav-btn, #ivCounter').forEach(el => el.remove());
+        if (imageViewerOverlay.__ivKeyHandler) { document.removeEventListener('keydown', imageViewerOverlay.__ivKeyHandler); imageViewerOverlay.__ivKeyHandler = null; }
         if (typeof flushDeferredRevokes === 'function') flushDeferredRevokes();
     }
     imageViewerClose.onclick = closeImageViewer;
@@ -2631,17 +2705,35 @@ async function saveProductsToDB(productsArray) {
         let moved = false;
 
         function apply() { img.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`; }
+        // FIX (zoom): smooth animated zoom for double-tap / reset, instant for
+        // pinch & pan (a transition during pinch feels laggy and rubbery).
+        function applySmooth() {
+            img.style.transition = 'transform 0.25s cubic-bezier(.2,.7,.3,1)';
+            apply();
+            setTimeout(() => { img.style.transition = 'none'; }, 260);
+        }
         function zoomedMode(on) {
             slider.classList.toggle('zoomed', on);
         }
+        // FIX (zoom): the old clamp used img.clientWidth/Height — the ELEMENT box,
+        // which fills the whole screen — so with object-fit:contain you could pan
+        // the picture completely off into black space. Clamp against the actual
+        // RENDERED image size instead.
+        function renderedSize() {
+            const cw = img.clientWidth, ch = img.clientHeight;
+            const nw = img.naturalWidth || cw, nh = img.naturalHeight || ch;
+            const fit = Math.min(cw / nw, ch / nh);
+            return { rw: nw * fit, rh: nh * fit, cw, ch };
+        }
         function clamp() {
-            const mx = (img.clientWidth  * (scale - 1)) / 2;
-            const my = (img.clientHeight * (scale - 1)) / 2;
+            const { rw, rh, cw, ch } = renderedSize();
+            const mx = Math.max(0, (rw * scale - cw) / 2);
+            const my = Math.max(0, (rh * scale - ch) / 2);
             tx = Math.max(-mx, Math.min(mx, tx));
             ty = Math.max(-my, Math.min(my, ty));
         }
-        function reset() { scale = 1; tx = 0; ty = 0; pinchStart = null; panStart = null; zoomedMode(false); apply(); }
-        function zoomTo(ns, cx, cy, baseScale, baseTx, baseTy) {
+        function reset(smooth) { scale = 1; tx = 0; ty = 0; pinchStart = null; panStart = null; zoomedMode(false); if (smooth) applySmooth(); else apply(); }
+        function zoomTo(ns, cx, cy, baseScale, baseTx, baseTy, smooth) {
             ns = Math.max(1, Math.min(4, ns));
             const rect = img.getBoundingClientRect();
             const px = cx - (rect.left + rect.width / 2);
@@ -2650,14 +2742,16 @@ async function saveProductsToDB(productsArray) {
             tx = baseTx * ratio - px * (ratio - 1);
             ty = baseTy * ratio - py * (ratio - 1);
             scale = ns;
-            if (scale <= 1.02) { reset(); return; }
-            zoomedMode(true); clamp(); apply();
+            if (scale <= 1.02) { reset(smooth); return; }
+            zoomedMode(true); clamp();
+            if (smooth) applySmooth(); else apply();
         }
         const dist = (a, b) => Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
         const mid  = (a, b) => ({ x:(a.clientX+b.clientX)/2, y:(a.clientY+b.clientY)/2 });
 
         img.addEventListener('touchstart', e => {
             moved = false;
+            img.style.transition = 'none'; // FIX (zoom): never animate during finger contact
             if (e.touches.length === 2) {
                 const m = mid(e.touches[0], e.touches[1]);
                 // Reference centre that is independent of the current transform:
@@ -2709,8 +2803,8 @@ async function saveProductsToDB(productsArray) {
                     const t = e.changedTouches[0];
                     const nt = Date.now();
                     if (nt - lastTap < 300 && Math.hypot(t.clientX - lx, t.clientY - ly) < 40) {
-                        if (scale > 1.02) reset();
-                        else zoomTo(2.5, t.clientX, t.clientY, 1, 0, 0);
+                        if (scale > 1.02) reset(true);
+                        else zoomTo(2.5, t.clientX, t.clientY, 1, 0, 0, true);
                         lastTap = 0;
                     } else { lastTap = nt; lx = t.clientX; ly = t.clientY; }
                 }
@@ -2720,16 +2814,20 @@ async function saveProductsToDB(productsArray) {
         img.addEventListener('touchcancel', () => { pinchStart = null; panStart = null; if (scale <= 1.02) reset(); });
 
         /* desktop */
-        img.addEventListener('dblclick', e => { e.preventDefault(); if (scale > 1.02) reset(); else zoomTo(2.5, e.clientX, e.clientY, 1, 0, 0); });
+        img.addEventListener('dblclick', e => { e.preventDefault(); if (scale > 1.02) reset(true); else zoomTo(2.5, e.clientX, e.clientY, 1, 0, 0, true); });
         img.addEventListener('mousedown', e => {
             if (scale <= 1.02) return; e.preventDefault();
+            img.style.transition = 'none';
             const s = { x: e.clientX - tx, y: e.clientY - ty };
             const mv = ev => { tx = ev.clientX - s.x; ty = ev.clientY - s.y; clamp(); apply(); };
             const up = () => { window.removeEventListener('mousemove', mv); window.removeEventListener('mouseup', up); };
             window.addEventListener('mousemove', mv); window.addEventListener('mouseup', up);
         });
         img.addEventListener('wheel', e => {
-            if (!e.ctrlKey && !e.metaKey && scale <= 1.02) return;
+            // FIX (zoom): plain vertical wheel now zooms (no Ctrl needed).
+            // Mostly-horizontal wheel/trackpad gestures fall through to the
+            // slider's native scroll so desktop can still swipe between images.
+            if (Math.abs(e.deltaX) > Math.abs(e.deltaY) && scale <= 1.02) return;
             e.preventDefault();
             zoomTo(scale * (e.deltaY < 0 ? 1.15 : 0.87), e.clientX, e.clientY, scale, tx, ty);
         }, { passive: false });
@@ -3187,9 +3285,7 @@ async function saveProductsToDB(productsArray) {
       if (e.key === "Escape") {
         let closedAModal = false;
         if(document.getElementById('imageViewerOverlay') && document.getElementById('imageViewerOverlay').classList.contains('show')) { 
-            document.getElementById('imageViewerOverlay').classList.remove('show');
-         const _sl = document.getElementById('imageViewerSlider'); if (_sl) { _sl.classList.remove('zoomed'); _sl.querySelectorAll('img').forEach(im => { if (im.__resetZoom) im.__resetZoom(); }); _sl.innerHTML = ''; }
-            if (typeof flushDeferredRevokes === 'function') flushDeferredRevokes();
+            closeImageViewer(); // FIX: also removes nav arrows/counter and the arrow-key listener
             closedAModal=true; 
         }
         else if(document.getElementById('scannerOverlay') && document.getElementById('scannerOverlay').classList.contains('show')) { stopScanner(); document.getElementById('scannerOverlay').classList.remove('show'); closedAModal=true; }
@@ -3202,6 +3298,12 @@ async function saveProductsToDB(productsArray) {
         // NEW MODAL ESC HANDLERS
         else if (!quickSellModalBackdrop.classList.contains('hide')) { quickSellModalBackdrop.classList.add('hide'); closedAModal = true; }
         else if (!historyModalBackdrop.classList.contains('hide')) { historyModalBackdrop.classList.add('hide'); closedAModal = true; }
+        // FIX: these four modals previously ignored the Escape key entirely.
+        // Khata DETAIL must be checked before the khata LIST so ESC closes the top-most one first.
+        else if (!khataDetailModalBackdrop.classList.contains('hide')) { khataDetailModalBackdrop.classList.add('hide'); closedAModal = true; }
+        else if (!khataModalBackdrop.classList.contains('hide')) { khataModalBackdrop.classList.add('hide'); closedAModal = true; }
+        else if (!statsModalBackdrop.classList.contains('hide')) { statsModalBackdrop.classList.add('hide'); closedAModal = true; }
+        else if (!logsModalBackdrop.classList.contains('hide')) { logsModalBackdrop.classList.add('hide'); closedAModal = true; }
         
         if (closedAModal) enableDetailBackgroundScroll();
       }
@@ -3217,7 +3319,12 @@ async function saveProductsToDB(productsArray) {
         (!categoryModalBackdrop || categoryModalBackdrop.classList.contains('hide')) &&
         // NEW
         (!quickSellModalBackdrop || quickSellModalBackdrop.classList.contains('hide')) &&
-        (!historyModalBackdrop || historyModalBackdrop.classList.contains('hide'))
+        (!historyModalBackdrop || historyModalBackdrop.classList.contains('hide')) &&
+        // FIX: these were missing, so scroll could stay locked after closing them
+        (!khataDetailModalBackdrop || khataDetailModalBackdrop.classList.contains('hide')) &&
+        (!khataModalBackdrop || khataModalBackdrop.classList.contains('hide')) &&
+        (!statsModalBackdrop || statsModalBackdrop.classList.contains('hide')) &&
+        (!logsModalBackdrop || logsModalBackdrop.classList.contains('hide'))
       ) {
         enableDetailBackgroundScroll();
       }
@@ -3262,9 +3369,17 @@ async function saveProductsToDB(productsArray) {
     };
     
     function openQuickSellModal(product) {
+        // FIX: never open the sell dialog for an item with no stock —
+        // selling it would corrupt inventory vs. sales history.
+        const availableQty = Number(product.qty) || 0;
+        if (availableQty <= 0) {
+            alert(`"${product.name}" is out of stock (0 left).\n\nRestock it first, or edit the product to correct the quantity.`);
+            return;
+        }
         quickSellProductTarget = product;
         quickSellName.textContent = `Sell: ${product.name}`;
         quickSellQty.value = 1;
+        quickSellQty.max = availableQty; // FIX: browser-level cap at available stock
         quickSellPrice.value = product.mrp || 0; // Pre-fill with MRP
         
         quickSellModalBackdrop.classList.remove('hide');
@@ -3279,14 +3394,25 @@ async function saveProductsToDB(productsArray) {
         e.preventDefault();
         if(!quickSellProductTarget) return;
         
-        const qtyToSell = parseInt(quickSellQty.value);
+        let qtyToSell = parseInt(quickSellQty.value);
         const actualSellPrice = parseFloat(quickSellPrice.value) || 0;
         
-        if(qtyToSell <= 0) return;
+        // FIX: parseInt('') is NaN and (NaN <= 0) is false, so a blank/garbage
+        // quantity used to slip through and set stock to NaN. Guard properly.
+        if(!Number.isFinite(qtyToSell) || qtyToSell <= 0) { alert("Enter a valid quantity (1 or more)."); return; }
         if(actualSellPrice < 0) { alert("Price cannot be negative."); return; }
         
-        const currentQty = quickSellProductTarget.qty || 0;
-        const newQty = Math.max(0, currentQty - qtyToSell);
+        const currentQty = Number(quickSellProductTarget.qty) || 0;
+        // FIX: OVERSELL PROTECTION. Previously the stock was silently clamped to 0
+        // while History recorded the full oversold qty/revenue/profit — corrupting
+        // inventory vs. accounting. Now we never sell more than what exists.
+        if (currentQty <= 0) { alert(`"${quickSellProductTarget.name}" is out of stock. Sale not recorded.`); quickSellModalBackdrop.classList.add('hide'); return; }
+        if (qtyToSell > currentQty) {
+            const sellAvailable = confirm(`Only ${currentQty} in stock — you entered ${qtyToSell}.\n\n• [OK] Sell the available ${currentQty} instead.\n• [Cancel] Go back and change the quantity.`);
+            if (!sellAvailable) return;
+            qtyToSell = currentQty;
+        }
+        const newQty = currentQty - qtyToSell;
         const costPrice = quickSellProductTarget.cost || 0;
         const profit = (actualSellPrice - costPrice) * qtyToSell;
 
@@ -3295,6 +3421,7 @@ async function saveProductsToDB(productsArray) {
             productId: quickSellProductTarget.id,
             productName: quickSellProductTarget.name,
             qtySold: qtyToSell,
+            deductedQty: qtyToSell, // FIX: exact stock deducted, used for accurate restore on delete
             salePricePerUnit: actualSellPrice,
             costPricePerUnit: costPrice,
             totalValue: qtyToSell * actualSellPrice,
@@ -3370,7 +3497,7 @@ async function saveProductsToDB(productsArray) {
                             <div style="font-size:0.85em; color:var(--text-muted);">Total: ₨${item.totalValue.toLocaleString()}</div>
                             <div class="history-profit" style="color:${profitColor}">${profitSign}₨${profit.toLocaleString()}</div>
                         </div>
-                        <button class="history-delete-btn" data-id="${item.id}" data-prod-id="${item.productId}" data-qty="${item.qtySold}" title="Delete & Restore Stock">✖</button>
+                        <button class="history-delete-btn" data-id="${item.id}" data-prod-id="${item.productId}" data-qty="${item.deductedQty !== undefined ? item.deductedQty : item.qtySold}" title="Delete & Restore Stock">✖</button>
                     </div>
                 `;
             });
@@ -3382,7 +3509,8 @@ async function saveProductsToDB(productsArray) {
                     let id = this.getAttribute('data-id');
                     if (/^\d+$/.test(id)) id = Number(id); // pre-migration numeric ids
                     const prodId = this.getAttribute('data-prod-id');
-                    const qty = Number(this.getAttribute('data-qty'));
+                    let qty = Number(this.getAttribute('data-qty'));
+                    if (!Number.isFinite(qty) || qty < 0) qty = 0; // FIX: never let NaN reach stock
                     
                     if(!confirm("Remove this record and restore " + qty + " item(s) to stock?")) return;
                     
@@ -3719,13 +3847,22 @@ async function saveProductsToDB(productsArray) {
             }
         });
         
-        let html = `<div class="category-item-btn ${activeCategoryFilter === null ? 'active' : ''}" onclick="selectCategory(null)">📦 All Categories</div>`;
+        // FIX: was onclick="selectCategory('${cat}')" — a category name containing an
+        // apostrophe (e.g. "Men's Items") broke the inline JS and the filter silently
+        // failed. Use data attributes + addEventListener instead (injection-safe too).
+        let html = `<div class="category-item-btn ${activeCategoryFilter === null ? 'active' : ''}" data-cat="">📦 All Categories</div>`;
         cleanedCats.forEach(cat => {
             const isActive = (activeCategoryFilter && activeCategoryFilter.toLowerCase() === cat.toLowerCase()) ? 'active' : '';
-            html += `<div class="category-item-btn ${isActive}" onclick="selectCategory('${escapeHTML(cat)}')"><span style="font-size:1.25em;margin-right:6px;">${categoryEmoji(cat)}</span>${escapeHTML(cat)}</div>`;
+            html += `<div class="category-item-btn ${isActive}" data-cat="${escapeHTML(cat)}"><span style="font-size:1.25em;margin-right:6px;">${categoryEmoji(cat)}</span>${escapeHTML(cat)}</div>`;
         });
         
         categoryGrid.innerHTML = html;
+        categoryGrid.querySelectorAll('.category-item-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const c = this.getAttribute('data-cat');
+                selectCategory(c === '' ? null : c);
+            });
+        });
         categoryModalBackdrop.classList.remove('hide');
     };
 
@@ -3860,25 +3997,41 @@ async function saveProductsToDB(productsArray) {
     /****************************************************************
      * BINARY BLOB COMPRESSION (NO BASE64 STRINGS)
      ****************************************************************/
-    async function compressImageFileToBlob(file, maxDim = 800, quality = 0.85) { 
+    async function compressImageFileToBlob(file, maxDim = 2000, quality = 0.92) { 
       // 1. SAFETY CHECK
       if (file.size > 20 * 1024 * 1024) return Promise.reject("File too large (>20MB).");
       if (!/^image\//.test(file.type)) return Promise.reject("Not an image file.");
       
       // 2. ATTEMPT: createImageBitmap (Low Memory)
+      // FIX (quality): let the browser do the resize with resizeQuality:'high'
+      // (Lanczos-class filtering) and honour EXIF rotation. The old code drew
+      // the full bitmap onto the canvas in ONE step with default (fast/bilinear)
+      // smoothing — large photos came out soft and aliased.
       if ('createImageBitmap' in window) {
           try {
-              const bitmap = await createImageBitmap(file);
-              let { width, height } = bitmap;
+              let bitmap;
+              const probe = await createImageBitmap(file);
+              let { width, height } = probe;
               if (width > maxDim || height > maxDim) {
                   const scale = maxDim / Math.max(width, height);
-                  width = Math.round(width * scale);
-                  height = Math.round(height * scale);
+                  const rw = Math.round(width * scale);
+                  const rh = Math.round(height * scale);
+                  probe.close();
+                  try {
+                      bitmap = await createImageBitmap(file, { resizeWidth: rw, resizeHeight: rh, resizeQuality: 'high', imageOrientation: 'from-image' });
+                  } catch(_) {
+                      bitmap = await createImageBitmap(file, { resizeWidth: rw, resizeHeight: rh, resizeQuality: 'high' });
+                  }
+                  width = bitmap.width; height = bitmap.height;
+              } else {
+                  bitmap = probe;
               }
               const canvas = document.createElement('canvas');
               canvas.width = width;
               canvas.height = height;
               const ctx = canvas.getContext('2d');
+              ctx.imageSmoothingEnabled = true;
+              ctx.imageSmoothingQuality = 'high';
               ctx.drawImage(bitmap, 0, 0, width, height);
               bitmap.close(); 
               
@@ -3905,10 +4058,29 @@ async function saveProductsToDB(productsArray) {
             if (w > h) { h = Math.round(h * maxDim / w); w = maxDim; }
             else { w = Math.round(w * maxDim / h); h = maxDim; }
           }
+          // FIX (quality): step-down halving. Shrinking e.g. a 4000px photo to
+          // 2000px in one drawImage call discards detail; halving repeatedly
+          // until within 2x of the target, then doing the final resize with
+          // high-quality smoothing, keeps edges crisp.
+          let src = img, sw = img.naturalWidth, sh = img.naturalHeight;
+          while (sw / 2 >= w * 1.0 && sh / 2 >= h * 1.0 && sw > w) {
+            const step = document.createElement('canvas');
+            step.width = Math.max(w, Math.round(sw / 2));
+            step.height = Math.max(h, Math.round(sh / 2));
+            const sctx = step.getContext('2d');
+            sctx.imageSmoothingEnabled = true;
+            sctx.imageSmoothingQuality = 'high';
+            sctx.drawImage(src, 0, 0, step.width, step.height);
+            if (src instanceof HTMLCanvasElement) { src.width = 0; src.height = 0; }
+            src = step; sw = step.width; sh = step.height;
+          }
           const canvas = document.createElement('canvas');
           canvas.width = w; canvas.height = h;
           const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, w, h);
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(src, 0, 0, w, h);
+          if (src instanceof HTMLCanvasElement) { src.width = 0; src.height = 0; }
           URL.revokeObjectURL(url);
           img.src = ""; img = null;
 
@@ -3995,7 +4167,10 @@ async function saveProductsToDB(productsArray) {
         imageCompressMsg.textContent = `Processing ${files.length} image(s)...`; 
         imageCompressMsg.style.display = 'block';
         
-        const promises = Array.from(files).map(file => compressImageFileToBlob(file, 1200, 0.90));
+        // FIX (quality): was 1200px @ 0.90 — soft on modern phone screens.
+        // 2000px @ 0.92 with high-quality resampling looks crisp fullscreen;
+        // cloud sync still re-compresses separately (900px) so sync stays light.
+        const promises = Array.from(files).map(file => compressImageFileToBlob(file, 2000, 0.92));
         
         const allPromise = Promise.all(promises).then(blobs => {
              blobs.forEach(blob => {
