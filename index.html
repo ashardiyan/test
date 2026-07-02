@@ -664,11 +664,13 @@
         touch-action: pan-x; /* allow horizontal swipe, but let images claim pinch */
     }
     #imageViewerSlider img {
-        /* FIX (swipe): was `touch-action: none !important` which killed native
-           horizontal scrolling entirely — multi-image swipe never worked.
-           pan-x lets the browser swipe between slides; JS takes over for
-           pinch (preventDefault on 2-finger touchstart) and while zoomed. */
-        touch-action: pan-x;
+        /* FIX (zoom reliability): pan-x let the BROWSER own 1-finger swipes, so
+           when a pinch's two fingers landed a few ms apart the browser had
+           already claimed the gesture as a scroll and the pinch was ignored —
+           zoom "sometimes worked, sometimes didn't". JS now owns ALL touch
+           gestures (touch-action:none) and implements the swipe itself in
+           makeImageZoomable, so pinch can never lose the race. */
+        touch-action: none;
         -webkit-user-select: none; user-select: none;
         -webkit-user-drag: none;
         cursor: zoom-in;
@@ -2703,6 +2705,10 @@ async function saveProductsToDB(productsArray) {
         let panStart = null;     // { x, y }
         let lastTap = 0, lx = 0, ly = 0;
         let moved = false;
+        // FIX (swipe, JS-driven): with touch-action:none the browser no longer
+        // scrolls for us, so we drive slider.scrollLeft from the finger directly.
+        let swipeStart = null;   // { x, y, sl, t }
+        let lastX = 0;
 
         function apply() { img.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`; }
         // FIX (zoom): smooth animated zoom for double-tap / reset, instant for
@@ -2753,6 +2759,15 @@ async function saveProductsToDB(productsArray) {
             moved = false;
             img.style.transition = 'none'; // FIX (zoom): never animate during finger contact
             if (e.touches.length === 2) {
+                e.preventDefault();
+                // FIX (zoom reliability): a pinch always wins. If a swipe-drag was
+                // in progress, park the slider on the nearest slide first.
+                if (swipeStart) {
+                    swipeStart = null;
+                    const w = Math.max(1, slider.clientWidth);
+                    slider.scrollTo({ left: Math.round(slider.scrollLeft / w) * w, behavior: 'auto' });
+                    slider.style.scrollSnapType = '';
+                }
                 const m = mid(e.touches[0], e.touches[1]);
                 // Reference centre that is independent of the current transform:
                 // back out the live transform to find the element's untransformed centre.
@@ -2761,13 +2776,26 @@ async function saveProductsToDB(productsArray) {
                 const centreY = (r.top + r.height / 2) - ty;
                 pinchStart = { dist: dist(e.touches[0], e.touches[1]), scale, cx: m.x, cy: m.y, tx, ty, centreX, centreY };
                 panStart = null;
-                e.preventDefault();
             } else if (e.touches.length === 1 && scale > 1.02) {
                 panStart = { x: e.touches[0].clientX - tx, y: e.touches[0].clientY - ty };
+                swipeStart = null;
+            } else if (e.touches.length === 1) {
+                // Not zoomed: this may become a swipe between slides.
+                swipeStart = { x: e.touches[0].clientX, y: e.touches[0].clientY, sl: slider.scrollLeft, t: Date.now() };
+                lastX = e.touches[0].clientX;
             }
         }, { passive: false });
 
         img.addEventListener('touchmove', e => {
+            // FIX (zoom reliability): safety net — if the 2nd finger's touchstart
+            // was somehow missed, adopt the pinch from the first 2-finger move.
+            if (e.touches.length === 2 && !pinchStart) {
+                const m = mid(e.touches[0], e.touches[1]);
+                const r = img.getBoundingClientRect();
+                pinchStart = { dist: dist(e.touches[0], e.touches[1]), scale, cx: m.x, cy: m.y, tx, ty,
+                               centreX: (r.left + r.width / 2) - tx, centreY: (r.top + r.height / 2) - ty };
+                swipeStart = null; panStart = null;
+            }
             if (e.touches.length === 2 && pinchStart) {
                 e.preventDefault();
                 moved = true;
@@ -2792,6 +2820,17 @@ async function saveProductsToDB(productsArray) {
                 tx = e.touches[0].clientX - panStart.x;
                 ty = e.touches[0].clientY - panStart.y;
                 clamp(); apply();
+            } else if (e.touches.length === 1 && swipeStart && scale <= 1.02) {
+                // FIX (swipe, JS-driven): drag the slider with the finger.
+                e.preventDefault();
+                const x = e.touches[0].clientX, y = e.touches[0].clientY;
+                lastX = x;
+                const dx = x - swipeStart.x, dy = y - swipeStart.y;
+                if (!moved && Math.hypot(dx, dy) > 10) {
+                    moved = true; // also stops swipes from counting as taps (fake double-tap zoom)
+                    slider.style.scrollSnapType = 'none'; // don't fight the drag
+                }
+                if (moved) slider.scrollLeft = swipeStart.sl - dx;
             }
         }, { passive: false });
 
@@ -2799,6 +2838,28 @@ async function saveProductsToDB(productsArray) {
             if (e.touches.length < 2) pinchStart = null;
             if (e.touches.length === 0) {
                 panStart = null;
+                // FIX (swipe, JS-driven): decide which slide to settle on —
+                // flick (fast, short) or drag past threshold moves one slide,
+                // otherwise snap back to the nearest.
+                if (swipeStart) {
+                    const w = Math.max(1, slider.clientWidth);
+                    const n = Math.max(1, slider.children.length);
+                    if (moved) {
+                        const dx = lastX - swipeStart.x;
+                        const dt = Date.now() - swipeStart.t;
+                        const base = Math.round(swipeStart.sl / w);
+                        let idx = Math.round(slider.scrollLeft / w);
+                        if (dx <= -50 || (dx < -20 && dt < 250)) idx = base + 1;
+                        else if (dx >= 50 || (dx > 20 && dt < 250)) idx = base - 1;
+                        else idx = base;
+                        idx = Math.max(0, Math.min(n - 1, idx));
+                        slider.scrollTo({ left: idx * w, behavior: 'smooth' });
+                        setTimeout(() => { slider.style.scrollSnapType = ''; }, 420);
+                    } else {
+                        slider.style.scrollSnapType = '';
+                    }
+                    swipeStart = null;
+                }
                 if (!moved && e.changedTouches.length === 1) {
                     const t = e.changedTouches[0];
                     const nt = Date.now();
@@ -2811,7 +2872,7 @@ async function saveProductsToDB(productsArray) {
                 if (scale <= 1.02) reset();
             }
         });
-        img.addEventListener('touchcancel', () => { pinchStart = null; panStart = null; if (scale <= 1.02) reset(); });
+        img.addEventListener('touchcancel', () => { pinchStart = null; panStart = null; if (swipeStart) { swipeStart = null; slider.style.scrollSnapType = ''; } if (scale <= 1.02) reset(); });
 
         /* desktop */
         img.addEventListener('dblclick', e => { e.preventDefault(); if (scale > 1.02) reset(true); else zoomTo(2.5, e.clientX, e.clientY, 1, 0, 0, true); });
@@ -4096,20 +4157,43 @@ async function saveProductsToDB(productsArray) {
     }
 
     // UPDATE UI TO SHOW LIST OF THUMBNAILS
+    // FIX (edit-modal blank images): preview object URLs are ours to clean up
+    let previewObjectUrls = [];
     function updatePhotoPreviewUI() {
+      previewObjectUrls.forEach(u => { try { URL.revokeObjectURL(u); } catch(_){} });
+      previewObjectUrls = [];
       prodPhotoList.innerHTML = '';
       currentProductBlobs.forEach((blob, index) => {
           const itemDiv = document.createElement('div');
           itemDiv.className = 'photo-preview-item';
           
-          const img = document.createElement('img');
-          // Handle Blob vs String
+          // FIX (edit-modal blank images): after cloud sync, photos are stored as
+          // 'ghp:...' reference strings, not Blobs. The old code set
+          // img.src = "ghp:..." — an invalid URL — so every synced product showed
+          // a broken-image icon in Edit. Resolve refs through getPhotoSrc() like
+          // the product list does; show a placeholder while a photo downloads.
+          let src = null;
           if (blob instanceof Blob) {
-              img.src = URL.createObjectURL(blob);
+              src = URL.createObjectURL(blob);
+              previewObjectUrls.push(src);
           } else {
-              img.src = blob; 
+              src = getPhotoSrc(blob); // handles 'ghp:' refs + base64/data-URL strings
           }
-          img.className = 'photo-preview-img-thumb';
+          
+          if (src) {
+              const img = document.createElement('img');
+              img.src = src;
+              img.className = 'photo-preview-img-thumb';
+              itemDiv.appendChild(img);
+          } else {
+              // 'ghp:' photo not downloaded yet — getPhotoSrc has queued it.
+              const ph = document.createElement('div');
+              ph.className = 'photo-preview-img-thumb';
+              ph.style.cssText = 'display:flex;align-items:center;justify-content:center;background:var(--bg3);color:var(--text-muted);font-size:1.3em;';
+              ph.textContent = '⏳';
+              ph.title = 'Photo is downloading from cloud…';
+              itemDiv.appendChild(ph);
+          }
           
           const removeBtn = document.createElement('button');
           removeBtn.type = 'button'; 
@@ -4120,7 +4204,6 @@ async function saveProductsToDB(productsArray) {
               updatePhotoPreviewUI();
           };
           
-          itemDiv.appendChild(img);
           itemDiv.appendChild(removeBtn);
           prodPhotoList.appendChild(itemDiv);
       });
